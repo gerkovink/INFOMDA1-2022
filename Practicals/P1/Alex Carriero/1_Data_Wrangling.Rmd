@@ -8,7 +8,6 @@ output: pdf_document
 # Class Notes: 
 # TDGM - True Data Generating Mechanism 
 # TDGM exist, but nobody has ever encountered it 
-
 # Recall frequentest definition of CI 
 ```
 
@@ -62,7 +61,9 @@ apps <- read_csv("googleplaystore.csv")
 ```
 
 7. Did any column get a variable type you did not expect?
-
+```{r}
+apps
+```
 
 8. Use the function head() to look at the first few rows of the apps dataset. 
 ```{r}
@@ -71,5 +72,113 @@ head(apps)
 
 9. Repeat steps 5, 6, and 7 but now for “data/students.xlsx” (NB: You’ll need a function from the package readxl). Also try out the function tail() and View() (with a capital V).
 
+```{r}
+# import data 
+studs <- read_excel("students.xlsx")
+```
+
+```{r}
+head(studs)
+tail(studs)
+```
+```{r}
+View(studs) # opens data frame in consol 
+```
+
 10. Create a summary of the three columns in the students dataset using the summary() function. What is the range of the grades achieved by the students?
+
+```{r}
+summary(studs) # the grades of the students range from 4.844 - 9.291. 
+```
+
+
+11. Look at the help pages for filter() (especially the examples) and show the students with a grade lower than 5.5
+```{r}
+studs %>% 
+  filter(grade < 5.5)
+```
+
+12. Show only the students with a grade higher than 8 from programme A
+```{r}
+studs %>% 
+  filter(grade > 8)
+```
+13. Sort the students dataset such that the students from programme A are on top of the data frame and within the programmes the highest grades come first.
+```{r}
+studs%>% 
+  arrange(programme, desc(grade))
+```
+14. Show only the student_number and programme columns from the students dataset
+```{r}
+studs%>% 
+  select(-grade)
+```
+15. Use mutate() and recode() to change the codes in the programme column of the students dataset to their names. Store the result in a variable called students_recoded. 
+```{r}
+studs_recoded <- studs %>% 
+                 mutate(programme = recode(programme, `A` = "Science",  `B` = "Social Science"))
+studs_recoded                  
+```
+16. Create a data processing pipeline that (a) loads the apps dataset, (b) parses the number of installs as ‘Downloads’ variable using mutate and parse_number(), (c) shows only apps with more than 500 000 000 downloads, (d) orders them by rating (best on top), and (e) shows only the relevant columns (you can choose which are relevant, but select at least the Rating and Category variables). Save the result under the name popular_apps.
+
+```{r}
+popular_apps <- apps %>% 
+                  mutate(Downloads = parse_number(Installs))%>% 
+                  filter(Downloads> 500000000) %>% 
+                  arrange(desc(Rating))%>% 
+                  select(App, Rating, Category, Price)
+
+head(popular_apps)
+```
+17. Show the median, minimum, and maximum for the popular apps dataset you made in the previous assignment.
+```{r}
+popular_apps %>% 
+  summarise(
+    median= median(Rating), 
+    min = min(Rating), 
+    max = max(Rating)
+  )
+```
+18. Add the median absolute deviation to the summaries you made before
+
+```{r}
+# make our own function 
+mad <- function(x) {
+  median(abs(x - median(x)))
+}
+
+# use the function in summarise 
+popular_apps %>% 
+  summarise(
+    median= median(Rating), 
+    min = min(Rating), 
+    max = max(Rating), 
+    mad = mad(Rating)
+  )
+```
+19. Create a grouped summary of the ratings per category in the popular apps dataset.
+```{r}
+popular_apps %>% 
+    group_by(Category)%>% 
+    summarise(
+      rating_avg = mean(Rating), 
+      n=n()
+    )
+```
+20. Create an interesting summary based on the Google play store apps dataset. An example could be “do games get higher ratings than communication apps?”
+
+```{r}
+# Which Category get the highest ratings 
+
+popular_apps %>% 
+    group_by(Category)%>% 
+    summarise(
+      rating_avg = mean(Rating), 
+      n=n()
+    )%>% 
+    arrange(desc(rating_avg))
+
+
+# Games and Photography are tied for highest rating. 
+```
 
