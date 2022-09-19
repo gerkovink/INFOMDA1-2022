@@ -204,7 +204,6 @@ baseball <- Hitters %>%
                                  breaks = c(0, 190, 750, 2461), 
                                  labels = c("1", "2", "3")), 
                      prop = HmRun/CHits) 
-baseball         
 ```
 19. Create a scatter plot where you map CWalks to the x position and the proportion you calculated in the previous exercise to the y position. Fix the y axis limits to (0, 0.4) and the x axis to (0, 1600) using ylim() and xlim(). Add nice x and y axis titles using the labs() function. Save the plot as the variable baseball_plot.
 
@@ -226,8 +225,16 @@ bb_plot +
   facet_wrap(~s_cat)
 ```
 
+\newpage
+
 21. Create an interesting data visualization based on the Carseats data from the ISLR package.
-```{r}
-Carseats
+```{r, fig.height=7, fig.width =10}
+Carseats %>% 
+  ggplot(aes(x = Advertising, y = Sales)) + 
+  geom_point(aes(color = US)) + 
+  scale_color_manual(values = c("No" = "lightsalmon", 
+                                "Yes"= "skyblue1"))+ 
+  theme_minimal()+ 
+  labs(title = "Sales vs. Advertising Costs for Stores Located both inside and outside the US.")
 ```
 
