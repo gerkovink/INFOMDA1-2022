@@ -1,0 +1,7 @@
+---
+title: "P2 - Alex Carriero"
+author: "Alex Carriero"
+date: "19/09/2022"
+output: pdf_document
+---
+
