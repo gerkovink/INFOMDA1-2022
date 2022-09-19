@@ -124,13 +124,110 @@ gg_students %>%
 ```
 
 10. Create a boxplot of student grades per programme in the gg_students dataset you made earlier: map the programme variable to the x position and the grade to the y position. For extra visual aid, you can additionally map the programme variable to the fill aesthetic.
-```{r}
-
+```{r, fig.height=4, fig.width=10}
+gg_students %>%
+  ggplot(aes(x=programme, y=student_grade)) +
+  geom_boxplot(aes(fill = programme)) + 
+  theme_minimal()
 ```
 
 11. What do each of the horizontal lines in the boxplot mean? What do the vertical lines (whiskers) mean?
 
+- The horizontal lines from bottom to top represent the 25th percentile, median, and 75th percentile. 
+- The whiskers extend to the most extreme value that is not more (upper whisker) or less (lower whisker) than 1.5*IQR, where IQR is the inter quartile range (distance between the first and third quantiles). 
 
 12. Comparison of distributions across categories can also be done by adding a fill aesthetic to the density plot you made earlier. Try this out. To take care of the overlap, you might want to add some transparency in the geom_density() function using the alpha argument.
+```{r, fig.height=3, fig.width=10}
+gg_students %>%
+  ggplot(aes(x= student_grade))+ 
+  geom_density(aes(fill = programme), alpha= 0.5, color = NA)+
+  geom_rug(color = "black", size = 0.5)+
+  theme_minimal()+
+  theme(axis.text.y=element_blank()) + 
+  xlim(0,10)
+```
 
 13. Create a bar plot of the variable Years from the Hitters dataset.
+```{r, fig.height=3, fig.width=10}
+Hitters %>% 
+    ggplot(aes(x = Years))+ 
+    geom_bar()
+```
+
+14. Use geom_line() to make a line plot out of the first 200 observations of the variable Volume (the number of trades made on each day) of the Smarket dataset. You will need to create a Day variable using mutate() to map to the x-position. This variable can simply be the integers from 1 to 200. Remember, you can select the first 200 rows using Smarket[1:200, ].
+
+```{r, fig.height=3, fig.width=10}
+Smarket[1:200,]%>% 
+    mutate(day = c(1:200)) %>% 
+    ggplot(aes(x = day, y = Volume)) + 
+    geom_line() 
+```
+15. Give the line a nice colour and increase its size. Also add points of the same colour on top.
+```{r, fig.height=3, fig.width=10}
+sm_graph <- Smarket[1:200,]%>% 
+            mutate(day = c(1:200)) %>% 
+              ggplot(aes(x = day, y = Volume)) + 
+              geom_line(color = "skyblue", size = 0.7) + 
+              geom_point(color = "lightsalmon")
+
+sm_graph
+```
+
+16. Use the function which.max() to find out which of the first 200 days has the highest trade volume and use the function max() to find out how large this volume was.
+```{r}
+which.max(Smarket[1:200,]$Volume) # day 170 has the largest volume
+```
+```{r}
+max(Smarket[1:200,]$Volume)  # the maximum Volume is 2.33083
+```
+
+17. Use geom_label(aes(x = your_x, y = your_y, label = "Peak volume")) to add a label to this day. You can use either the values or call the functions. Place the label near the peak!
+```{r, fig.height=3, fig.width=10}
+sm_graph + 
+  geom_label(aes(x = 170, y = 2.33083, label = "Peak volume")) 
+```
+
+18. Create a data frame called baseball based on the Hitters dataset. In this data frame, create a factor variable which splits players’ salary range into 3 categories. Tip: use the filter() function to remove the missing values, and then use the cut() function and assign nice labels to the categories. In addition, create a variable which indicates the proportion of career hits that was a home run.
+```{r}
+summary(Hitters$Salary) # check for missing values -- there are none?
+```
+
+```{r}
+# Salary Categories will represent 
+# 1: < 1st Quartile 
+# 2:  Within the 1st and 3rd Quartile
+# 3: > 3rd Quartile
+
+baseball <- Hitters %>% 
+              filter(Salary >= 0)%>% 
+              mutate(s_cat = cut(Salary, 
+                                 breaks = c(0, 190, 750, 2461), 
+                                 labels = c("1", "2", "3")), 
+                     prop = HmRun/CHits) 
+baseball         
+```
+19. Create a scatter plot where you map CWalks to the x position and the proportion you calculated in the previous exercise to the y position. Fix the y axis limits to (0, 0.4) and the x axis to (0, 1600) using ylim() and xlim(). Add nice x and y axis titles using the labs() function. Save the plot as the variable baseball_plot.
+
+```{r}
+bb_plot<- baseball %>% 
+            ggplot(aes(x = CWalks, y = prop))+ 
+            geom_point()+
+            ylim(0,0.4)+
+            xlim(0,1600)+
+            xlab("Career Walks")+ 
+            ylab("Home Runs / Career Hits")
+
+bb_plot
+```
+
+20. Split up this plot into three parts based on the salary range variable you calculated. Use the facet_wrap() function for this; look at the examples in the help file for tips.
+```{r}
+bb_plot + 
+  facet_wrap(~s_cat)
+```
+
+21. Create an interesting data visualization based on the Carseats data from the ISLR package.
+```{r}
+Carseats
+```
+
