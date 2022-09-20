@@ -1,0 +1,225 @@
+---
+title: "Practical 2: Data Visualisation"
+author: "Nina van Gerwen (1860852)"
+date: "2022-09-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(ISLR)
+library(tidyverse)
+```
+
+### Question 1
+
+Aesthetics: aes(x = Hits, y = HmRun)
+Geoms:
+1) geom_point() for the scatterplot
+2) geom_density_2d() for the weird circles
+Scales: xlab = "Hits, ylab = "Home runs", labs(title = "...")
+Themes: theme_minimal()
+
+As for statistical transformations, I believe geom_density_2d() does this
+as it performs a 2D kernel density estimation.
+
+### Question 2
+
+```{r}
+set.seed(1234)
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+
+gg_students <- data.frame(student_number, student_grade, programme)
+```
+
+
+### Question 3
+
+```{r}
+rev_homeruns_plot <- ggplot(data = Hitters, aes(x = HmRun, y = Hits)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits") +
+  geom_density_2d() +
+  labs(title = "Cool density and scatter plot of baseball data") +
+  theme_minimal()
+
+rev_homeruns_plot
+```
+
+### Question 4
+
+```{r}
+upgraded_homeruns_plot <- rev_homeruns_plot + aes(x = HmRun, y = Hits,
+                                                  col = League,
+                                                  size = Salary)
+
+upgraded_homeruns_plot
+```
+
+### Question 5
+
+There are indeed many geoms.
+
+
+### Question 6
+
+```{r}
+student_hist <- ggplot(data = gg_students, aes(x = student_grade)) +
+  geom_histogram(binwidth = 0.15) +
+  theme_minimal()
+
+student_hist
+```
+
+### Question 7
+
+```{r}
+student_dens <- ggplot(data = gg_students, aes(x = student_grade)) +
+  geom_density(fill = "light seagreen", col = NA)
+
+student_dens
+```
+A very pretty colour indeed.
+
+
+### Question 8
+
+```{r}
+upgr_student_dens <- student_dens +
+  geom_rug(col = "red", size = 1)
+
+upgr_student_dens
+```
+
+
+### Question 9
+
+```{r}
+upgr_student_dens +
+  xlim(0, 10) +
+  labs(y = "", title = "Density plot of student grades") +
+  theme_minimal()
+```
+I had already removed the border in the first graph.
+
+
+### Question 10
+
+```{r}
+ggplot(data = gg_students, aes(y = student_grade, x = programme,
+                                                  fill = programme)) +
+  geom_boxplot() 
+```
+
+### Question 11
+
+The somewhat thicker horizontal line is the mean of the group, the other two
+horizontal lines are the first and third quartile of the
+students grade in each programme. The vertical whiskers are the range of
+grades in each programme.
+
+### Question 12
+
+```{r}
+ggplot(data = gg_students, aes(x = student_grade, fill = programme)) +
+  geom_density(col = NA, alpha = .5)
+
+```
+
+### Question 13
+
+```{r}
+Hitters %>%
+  ggplot(data = ., aes(x = Years)) +
+  geom_bar()
+```
+
+### Question 14
+
+```{r}
+line_plot <- ggplot(data = Smarket[1:200 ,], aes(x = 1:200, y = Volume)) +
+  geom_line() +
+  labs(x = "Days")
+
+line_plot
+```
+
+### Question 15
+
+```{r}
+line_plot_2 <- line_plot +
+  geom_line(col = "purple", size = 1) +
+  geom_point(col = "purple", size = 2)
+
+line_plot_2
+```
+I really like purple.
+
+### Question 16
+
+```{r}
+which.max(Smarket$Volume[1:200])
+max(Smarket$Volume[1:200])
+```
+So the 170th day had the highest trade volume of 2.33.
+
+
+### Question 17
+
+```{r}
+line_plot_2 +
+  geom_label(aes(x = 170, y = 2.33083, label = "Peak volume"))
+```
+
+### Question 18
+
+```{r}
+library(magrittr)
+baseball <- Hitters %>%
+  filter(., !is.na(Salary)) %>%
+  mutate(Cat_Sal = cut(x = Salary, breaks = 3, labels = c("Well-Off", 
+                                                          "Rich", 
+                                                          "Super Rich")),
+         Prop_HmRun = CHmRun/CHits)
+```
+
+
+### Question 19
+
+```{r}
+baseball_plot <- ggplot(data = baseball, aes(x = CWalks, y = Prop_HmRun)) +
+  geom_point() +
+  ylim(0, 0.4) + xlim(0, 1600) +
+  labs(x = "Number of walks during career", 
+       y = "Proportion of home runs during career hits")
+
+baseball_plot
+```
+
+### Question 20
+
+```{r}
+baseball_plot + facet_wrap(vars(baseball$Cat_Sal))
+```
+
+### Question 21
+
+```{r}
+Carseats %>%
+  ggplot(data = ., aes(x = Income, y = Sales, col = Urban)) +
+  geom_point() +
+  facet_wrap(vars(Carseats$US)) +
+  geom_smooth()
+  
+```
+Tadaaa! A beautiful plot that shows the relation between community income
+and car sales while taking into account whether the area is urban or not and
+whether the shop is in the USA. There does not seem to be a relation between
+the two variables. Noticeable is however that there seem more car sales in the US.
+This could possibly be explained by to the fact that it is a large country with terrible
+public transportation. Hence, everyone needs to have a car.
