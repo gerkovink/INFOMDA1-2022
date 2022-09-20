@@ -1,0 +1,1056 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={P1\_MartinOkanik},
+  pdfauthor={Martin Okanik},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{P1\_MartinOkanik}
+\author{Martin Okanik}
+\date{2022-09-19}
+
+\begin{document}
+\maketitle
+
+\hypertarget{loading-packages}{%
+\section{Loading packages}\label{loading-packages}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ISLR)}
+
+\FunctionTok{library}\NormalTok{(tidyverse)}
+
+\FunctionTok{library}\NormalTok{(haven)}
+
+\FunctionTok{library}\NormalTok{(readxl)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{data-types}{%
+\section{Data types}\label{data-types}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Run the following code in \texttt{R} and inspect their data
+  types using the \texttt{class()} function. Try to guess beforehand
+  what their types will be!}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_1 }\OtherTok{\textless{}{-}} \DecValTok{1}\SpecialCharTok{:}\DecValTok{5}
+
+\FunctionTok{class}\NormalTok{(object\_1) }\CommentTok{\# integer}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "integer"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_2 }\OtherTok{\textless{}{-}}\NormalTok{ 1L}\SpecialCharTok{:}\NormalTok{5L}
+
+\FunctionTok{class}\NormalTok{(object\_2) }\CommentTok{\# integer}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "integer"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_3 }\OtherTok{\textless{}{-}} \StringTok{"{-}123.456"}
+
+\FunctionTok{class}\NormalTok{(object\_3) }\CommentTok{\# character}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "character"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_4 }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(object\_2)}
+
+\FunctionTok{class}\NormalTok{(object\_4) }\CommentTok{\# numeric}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "numeric"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_5 }\OtherTok{\textless{}{-}}\NormalTok{ letters[object\_1]}
+
+\FunctionTok{class}\NormalTok{(object\_5) }\CommentTok{\# character}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "character"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_6 }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(}\FunctionTok{rep}\NormalTok{(object\_5, }\DecValTok{2}\NormalTok{))}
+
+\FunctionTok{class}\NormalTok{(object\_6) }\CommentTok{\# factor}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "factor"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_7 }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\StringTok{"4"}\NormalTok{, }\StringTok{"5"}\NormalTok{, }\StringTok{"6"}\NormalTok{)}
+
+\FunctionTok{class}\NormalTok{(object\_7) }\CommentTok{\# character}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "character"
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  \textbf{Convert \texttt{object\_7} back to a vector of numbers using
+  the \texttt{as.numeric()} function}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{object\_7 }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(object\_7)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  \textbf{Make a list called \texttt{objects} containing object 1 to 7
+  using the \texttt{list()} function.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{objects }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(object\_1, object\_2, object\_3, object\_4, object\_5, object\_6,}
+
+\NormalTok{                object\_7)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  \textbf{Make a data frame out of \texttt{object\_1},
+  \texttt{object\_2}, and \texttt{object\_5} using the
+  \texttt{data.frame()} function}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dat }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{Var1 =}\NormalTok{ object\_1, }\AttributeTok{Var2 =}\NormalTok{ object\_2, }\AttributeTok{Var3 =}\NormalTok{ object\_5)}
+
+\NormalTok{dat}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Var1 Var2 Var3
+## 1    1    1    a
+## 2    2    2    b
+## 3    3    3    c
+## 4    4    4    d
+## 5    5    5    e
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  \textbf{Useful functions for determining the size of a data frame are
+  \texttt{ncol()} and \texttt{nrow()}. Try them out!}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ncol}\NormalTok{(dat)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 3
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{nrow}\NormalTok{(dat)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 5
+\end{verbatim}
+
+\hypertarget{loading-viewing-and-summarising-data}{%
+\section{Loading, viewing, and summarising
+data}\label{loading-viewing-and-summarising-data}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{5}
+\tightlist
+\item
+  \textbf{Use the function \texttt{read\_csv()} to import the file
+  ``data/googleplaystore.csv'' and store it in a variable called
+  \texttt{apps}.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{apps }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{"data/googleplaystore.csv"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Rows: 10841 Columns: 13
+## -- Column specification --------------------------------------------------------
+## Delimiter: ","
+## chr (11): App, Category, Size, Installs, Type, Price, Content Rating, Genres...
+## dbl  (2): Rating, Reviews
+## 
+## i Use `spec()` to retrieve the full column specification for this data.
+## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{apps}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 10,841 x 13
+##    App   Categ~1 Rating Reviews Size  Insta~2 Type  Price Conte~3 Genres Last ~4
+##    <chr> <chr>    <dbl>   <dbl> <chr> <chr>   <chr> <chr> <chr>   <chr>  <chr>  
+##  1 "Pho~ ART_AN~    4.1     159 19M   10,000+ Free  0     Everyo~ Art &~ Januar~
+##  2 "Col~ ART_AN~    3.9     967 14M   500,00~ Free  0     Everyo~ Art &~ Januar~
+##  3 "U L~ ART_AN~    4.7   87510 8.7M  5,000,~ Free  0     Everyo~ Art &~ August~
+##  4 "Ske~ ART_AN~    4.5  215644 25M   50,000~ Free  0     Teen    Art &~ June 8~
+##  5 "Pix~ ART_AN~    4.3     967 2.8M  100,00~ Free  0     Everyo~ Art &~ June 2~
+##  6 "Pap~ ART_AN~    4.4     167 5.6M  50,000+ Free  0     Everyo~ Art &~ March ~
+##  7 "Smo~ ART_AN~    3.8     178 19M   50,000+ Free  0     Everyo~ Art &~ April ~
+##  8 "Inf~ ART_AN~    4.1   36815 29M   1,000,~ Free  0     Everyo~ Art &~ June 1~
+##  9 "Gar~ ART_AN~    4.4   13791 33M   1,000,~ Free  0     Everyo~ Art &~ Septem~
+## 10 "Kid~ ART_AN~    4.7     121 3.1M  10,000+ Free  0     Everyo~ Art &~ July 3~
+## # ... with 10,831 more rows, 2 more variables: `Current Ver` <chr>,
+## #   `Android Ver` <chr>, and abbreviated variable names 1: Category,
+## #   2: Installs, 3: `Content Rating`, 4: `Last Updated`
+## # i Use `print(n = ...)` to see more rows, and `colnames()` to see all variable names
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{6}
+\tightlist
+\item
+  \textbf{Did any column get a variable type you did not expect?}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# (i) Size is \textless{}chr\textgreater{} because it is expressed in "M"}
+
+\CommentTok{\# its dimensions would ideally be included in the name, e.g. "Size [M]"}
+
+\CommentTok{\# (ii) Type should perhaps be a factor}
+
+\CommentTok{\# (iii) Price should definitely be numeric}
+
+\CommentTok{\# (iv) Content too}
+
+\CommentTok{\# (v) Generes should be a factor, just like (ii)}
+
+\CommentTok{\# (vi) Last Updated should use some suitable date{-}time format}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{7}
+\tightlist
+\item
+  \textbf{Use the function \texttt{head()} to look at the first few rows
+  of the \texttt{apps} dataset}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{head}\NormalTok{(apps)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 13
+##   App    Categ~1 Rating Reviews Size  Insta~2 Type  Price Conte~3 Genres Last ~4
+##   <chr>  <chr>    <dbl>   <dbl> <chr> <chr>   <chr> <chr> <chr>   <chr>  <chr>  
+## 1 "Phot~ ART_AN~    4.1     159 19M   10,000+ Free  0     Everyo~ Art &~ Januar~
+## 2 "Colo~ ART_AN~    3.9     967 14M   500,00~ Free  0     Everyo~ Art &~ Januar~
+## 3 "U La~ ART_AN~    4.7   87510 8.7M  5,000,~ Free  0     Everyo~ Art &~ August~
+## 4 "Sket~ ART_AN~    4.5  215644 25M   50,000~ Free  0     Teen    Art &~ June 8~
+## 5 "Pixe~ ART_AN~    4.3     967 2.8M  100,00~ Free  0     Everyo~ Art &~ June 2~
+## 6 "Pape~ ART_AN~    4.4     167 5.6M  50,000+ Free  0     Everyo~ Art &~ March ~
+## # ... with 2 more variables: `Current Ver` <chr>, `Android Ver` <chr>, and
+## #   abbreviated variable names 1: Category, 2: Installs, 3: `Content Rating`,
+## #   4: `Last Updated`
+## # i Use `colnames()` to see all variable names
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{8}
+\tightlist
+\item
+  \textbf{Repeat steps 5, 6, and 7 but now for ``data/students.xlsx''
+  (NB: You'll need a function from the package \texttt{readxl}). Also
+  try out the function \texttt{tail()} and \texttt{View()} (with a
+  capital V).}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{students }\OtherTok{\textless{}{-}} \FunctionTok{read\_xlsx}\NormalTok{(}\StringTok{"data/students.xlsx"}\NormalTok{)}
+
+\FunctionTok{head}\NormalTok{(students)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 3
+##   student_number grade programme
+##            <dbl> <dbl> <chr>    
+## 1        5117250  6.54 A        
+## 2        6562582  7.57 A        
+## 3        6000241  6.08 B        
+## 4        4862862  7.71 A        
+## 5        6561723  6.57 B        
+## 6        5625916  7.90 B
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{tail}\NormalTok{(students)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 3
+##   student_number grade programme
+##            <dbl> <dbl> <chr>    
+## 1        5062746  7.43 B        
+## 2        6560954  7.04 B        
+## 3        6120285  6.71 A        
+## 4        6553913  8.24 A        
+## 5        4181101  5.62 B        
+## 6        4639846  4.84 A
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# student\_number should be integer}
+
+\CommentTok{\# programme could be a factor}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{9}
+\tightlist
+\item
+  \textbf{Create a summary of the three columns in the students dataset
+  using the \texttt{summary()} function. What is the range of the grades
+  achieved by the students?}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(students)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  student_number        grade        programme        
+##  Min.   :4011659   Min.   :4.844   Length:37         
+##  1st Qu.:4862862   1st Qu.:6.390   Class :character  
+##  Median :6000241   Median :7.151   Mode  :character  
+##  Mean   :5686729   Mean   :6.991                     
+##  3rd Qu.:6553913   3rd Qu.:7.573                     
+##  Max.   :6997130   Max.   :9.291
+\end{verbatim}
+
+\hypertarget{data-transformation-with-dplyr-verbs}{%
+\section{\texorpdfstring{Data transformation with \texttt{dplyr}
+verbs}{Data transformation with dplyr verbs}}\label{data-transformation-with-dplyr-verbs}}
+
+\hypertarget{filter}{%
+\subsubsection{Filter}\label{filter}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{10}
+\tightlist
+\item
+  \textbf{Look at the help pages for \texttt{filter()} (especially the
+  examples) and show the students with a grade lower than 5.5}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{filter}\NormalTok{(students, grade }\SpecialCharTok{\textless{}} \FloatTok{5.5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 3 x 3
+##   student_number grade programme
+##            <dbl> <dbl> <chr>    
+## 1        6114656  5.16 A        
+## 2        5265402  5.49 B        
+## 3        4639846  4.84 A
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{11}
+\tightlist
+\item
+  \textbf{Show only the students with a grade higher than 8 from
+  programme A}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{filter}\NormalTok{(students, grade }\SpecialCharTok{\textgreater{}} \DecValTok{8}\NormalTok{, programme }\SpecialCharTok{==} \StringTok{"A"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 5 x 3
+##   student_number grade programme
+##            <dbl> <dbl> <chr>    
+## 1        6352581  8.09 A        
+## 2        6165611  8.02 A        
+## 3        4133949  8.40 A        
+## 4        4011659  8.94 A        
+## 5        6553913  8.24 A
+\end{verbatim}
+
+\hypertarget{arrange}{%
+\section{Arrange}\label{arrange}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{12}
+\tightlist
+\item
+  \textbf{Sort the students dataset such that the students from
+  programme A are on top of the data frame and within the programmes the
+  highest grades come first.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{arrange}\NormalTok{(students, programme, }\SpecialCharTok{{-}}\NormalTok{grade)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 37 x 3
+##    student_number grade programme
+##             <dbl> <dbl> <chr>    
+##  1        4011659  8.94 A        
+##  2        4133949  8.40 A        
+##  3        6553913  8.24 A        
+##  4        6352581  8.09 A        
+##  5        6165611  8.02 A        
+##  6        6997130  7.75 A        
+##  7        4862862  7.71 A        
+##  8        6562582  7.57 A        
+##  9        4483974  7.46 A        
+## 10        5128923  7.26 A        
+## # ... with 27 more rows
+## # i Use `print(n = ...)` to see more rows
+\end{verbatim}
+
+\hypertarget{select}{%
+\section{Select}\label{select}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{13}
+\tightlist
+\item
+  \textbf{Show only the \texttt{student\_number} and \texttt{programme}
+  columns from the students dataset}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{select}\NormalTok{(students, student\_number, programme)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 37 x 2
+##    student_number programme
+##             <dbl> <chr>    
+##  1        5117250 A        
+##  2        6562582 A        
+##  3        6000241 B        
+##  4        4862862 A        
+##  5        6561723 B        
+##  6        5625916 B        
+##  7        4096023 A        
+##  8        6114656 A        
+##  9        5265402 B        
+## 10        5977188 B        
+## # ... with 27 more rows
+## # i Use `print(n = ...)` to see more rows
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{students }\OtherTok{\textless{}{-}} \FunctionTok{mutate}\NormalTok{(students, }\AttributeTok{pass =}\NormalTok{ grade }\SpecialCharTok{\textgreater{}} \FloatTok{5.5}\NormalTok{)}
+
+\NormalTok{students}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 37 x 4
+##    student_number grade programme pass 
+##             <dbl> <dbl> <chr>     <lgl>
+##  1        5117250  6.54 A         TRUE 
+##  2        6562582  7.57 A         TRUE 
+##  3        6000241  6.08 B         TRUE 
+##  4        4862862  7.71 A         TRUE 
+##  5        6561723  6.57 B         TRUE 
+##  6        5625916  7.90 B         TRUE 
+##  7        4096023  5.92 A         TRUE 
+##  8        6114656  5.16 A         FALSE
+##  9        5265402  5.49 B         FALSE
+## 10        5977188  7.26 B         TRUE 
+## # ... with 27 more rows
+## # i Use `print(n = ...)` to see more rows
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{14}
+\tightlist
+\item
+  \textbf{Use \texttt{mutate()} and \texttt{recode()} to change the
+  codes in the programme column of the students dataset to their names.
+  Store the result in a variable called \texttt{students\_recoded}}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{students\_recoded }\OtherTok{\textless{}{-}}\NormalTok{ students }\SpecialCharTok{\%\textgreater{}\%}
+
+\FunctionTok{mutate}\NormalTok{(}\AttributeTok{programme =}\NormalTok{ programme }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{recode}\NormalTok{(}\StringTok{"A"} \OtherTok{=} \StringTok{"Science"}\NormalTok{, }\StringTok{"B"} \OtherTok{=} \StringTok{"Social Science"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{data-processing-pipelines}{%
+\section{Data processing pipelines}\label{data-processing-pipelines}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{15}
+\tightlist
+\item
+  \textbf{Create a data processing pipeline that (a) loads the apps
+  dataset, (b) parses the number of installs as `Downloads' variable
+  using \texttt{mutate} and \texttt{parse\_number()}, (c) shows only
+  apps with more than 500 000 000 downloads, (d) orders them by rating
+  (best on top), and (e) shows only the relevant columns (you can choose
+  which are relevant, but select at least the \texttt{Rating} and
+  \texttt{Category} variables). Save the result under the name
+  \texttt{popular\_apps}.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{popular\_apps }\OtherTok{\textless{}{-}}
+
+  \FunctionTok{read\_csv}\NormalTok{(}\StringTok{"data/googleplaystore.csv"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{Downloads =} \FunctionTok{parse\_number}\NormalTok{(Installs)) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{filter}\NormalTok{(Downloads }\SpecialCharTok{\textgreater{}} \FloatTok{5e8}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{arrange}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{Rating) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{select}\NormalTok{(App, Rating, Downloads, Category) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{distinct}\NormalTok{(App, }\AttributeTok{.keep\_all =} \ConstantTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Rows: 10841 Columns: 13
+## -- Column specification --------------------------------------------------------
+## Delimiter: ","
+## chr (11): App, Category, Size, Installs, Type, Price, Content Rating, Genres...
+## dbl  (2): Rating, Reviews
+## 
+## i Use `spec()` to retrieve the full column specification for this data.
+## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+\end{verbatim}
+
+\hypertarget{grouping-and-summarisation}{%
+\section{Grouping and summarisation}\label{grouping-and-summarisation}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{16}
+\tightlist
+\item
+  \textbf{Show the median, minimum, and maximum for the popular apps
+  dataset you made in the previous assignment.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{popular\_apps }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{summarise}\NormalTok{(}
+
+    \AttributeTok{med =} \FunctionTok{median}\NormalTok{(Rating),}
+
+    \AttributeTok{min =} \FunctionTok{min}\NormalTok{(Rating),}
+
+    \AttributeTok{max =} \FunctionTok{max}\NormalTok{(Rating)}
+
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 1 x 3
+##     med   min   max
+##   <dbl> <dbl> <dbl>
+## 1   4.3   3.7   4.5
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{17}
+\tightlist
+\item
+  \textbf{Add the median absolute deviation to the summaries you made
+  before}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{popular\_apps }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{summarise}\NormalTok{(}
+
+    \AttributeTok{med =} \FunctionTok{median}\NormalTok{(Rating),}
+
+    \AttributeTok{min =} \FunctionTok{min}\NormalTok{(Rating),}
+
+    \AttributeTok{max =} \FunctionTok{max}\NormalTok{(Rating),}
+
+    \AttributeTok{mad =} \FunctionTok{mad}\NormalTok{(Rating)}
+
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 1 x 4
+##     med   min   max   mad
+##   <dbl> <dbl> <dbl> <dbl>
+## 1   4.3   3.7   4.5 0.222
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{18}
+\tightlist
+\item
+  \textbf{Create a grouped summary of the ratings per category in the
+  popular apps dataset.}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{    popular\_apps }\SpecialCharTok{\%\textgreater{}\%}
+
+      \FunctionTok{group\_by}\NormalTok{(Category) }\SpecialCharTok{\%\textgreater{}\%}
+
+      \FunctionTok{summarise}\NormalTok{(}
+
+        \AttributeTok{med =} \FunctionTok{median}\NormalTok{(Rating),}
+
+        \AttributeTok{min =} \FunctionTok{min}\NormalTok{(Rating),}
+
+        \AttributeTok{max =} \FunctionTok{max}\NormalTok{(Rating),}
+
+        \AttributeTok{mad =} \FunctionTok{mad}\NormalTok{(Rating)}
+
+\NormalTok{      )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 11 x 5
+##    Category              med   min   max    mad
+##    <chr>               <dbl> <dbl> <dbl>  <dbl>
+##  1 BOOKS_AND_REFERENCE  3.9    3.9   3.9 0     
+##  2 COMMUNICATION        4.2    4     4.4 0.222 
+##  3 ENTERTAINMENT        4.3    4.3   4.3 0     
+##  4 GAME                 4.5    4.5   4.5 0     
+##  5 NEWS_AND_MAGAZINES   3.9    3.9   3.9 0     
+##  6 PHOTOGRAPHY          4.5    4.5   4.5 0     
+##  7 PRODUCTIVITY         4.4    4.4   4.4 0     
+##  8 SOCIAL               4.2    4.1   4.5 0.148 
+##  9 TOOLS                4.4    4.4   4.4 0     
+## 10 TRAVEL_AND_LOCAL     4.25   4.2   4.3 0.0741
+## 11 VIDEO_PLAYERS        4      3.7   4.3 0.445
+\end{verbatim}
+
+\hypertarget{final-exercise}{%
+\section{Final exercise}\label{final-exercise}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{19}
+\tightlist
+\item
+  \textbf{Create an interesting summary based on the Google play store
+  apps dataset. An example could be ``do games get higher ratings than
+  communication apps?''}
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# which category has the highest and lowest spread (sd) of rankings?}
+
+\CommentTok{\# what is the entire ranking?}
+
+\CommentTok{\# loading, selecting relevant data, and some preliminary exploration}
+
+\NormalTok{app\_data }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{"data/googleplaystore.csv"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{select}\NormalTok{(App, Rating, Category) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{na.omit}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Rows: 10841 Columns: 13
+## -- Column specification --------------------------------------------------------
+## Delimiter: ","
+## chr (11): App, Category, Size, Installs, Type, Price, Content Rating, Genres...
+## dbl  (2): Rating, Reviews
+## 
+## i Use `spec()` to retrieve the full column specification for this data.
+## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{str}\NormalTok{(app\_data)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## tibble [9,366 x 3] (S3: tbl_df/tbl/data.frame)
+##  $ App     : chr [1:9366] "Photo Editor & Candy Camera & Grid & ScrapBook" "Coloring book moana" "U Launcher Lite \x96 FREE Live Cool Themes, Hide Apps" "Sketch - Draw & Paint" ...
+##  $ Rating  : num [1:9366] 4.1 3.9 4.7 4.5 4.3 4.4 3.8 4.1 4.4 4.7 ...
+##  $ Category: chr [1:9366] "ART_AND_DESIGN" "ART_AND_DESIGN" "ART_AND_DESIGN" "ART_AND_DESIGN" ...
+##  - attr(*, "na.action")= 'omit' Named int [1:1475] 24 114 124 127 130 131 135 164 181 186 ...
+##   ..- attr(*, "names")= chr [1:1475] "24" "114" "124" "127" ...
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(app\_data)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      App                Rating        Category        
+##  Length:9366        Min.   :1.000   Length:9366       
+##  Class :character   1st Qu.:4.000   Class :character  
+##  Mode  :character   Median :4.300   Mode  :character  
+##                     Mean   :4.192                     
+##                     3rd Qu.:4.500                     
+##                     Max.   :5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# calculating sd of Rating per Category}
+
+\NormalTok{sd\_by\_cat }\OtherTok{\textless{}{-}}\NormalTok{ app\_data }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{group\_by}\NormalTok{(Category) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{mean =} \FunctionTok{mean}\NormalTok{(Rating), }\AttributeTok{sd =} \FunctionTok{sd}\NormalTok{(Rating), }\AttributeTok{n =} \FunctionTok{n}\NormalTok{()) }\SpecialCharTok{\%\textgreater{}\%}
+
+  \FunctionTok{arrange}\NormalTok{(sd)}
+
+\NormalTok{sd\_by\_cat}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 33 x 4
+##    Category            mean    sd     n
+##    <chr>              <dbl> <dbl> <int>
+##  1 EDUCATION           4.39 0.252   155
+##  2 ENTERTAINMENT       4.13 0.303   149
+##  3 WEATHER             4.24 0.331    75
+##  4 PERSONALIZATION     4.34 0.353   314
+##  5 ART_AND_DESIGN      4.36 0.358    62
+##  6 BEAUTY              4.28 0.363    42
+##  7 GAME                4.29 0.365  1097
+##  8 HOUSE_AND_HOME      4.20 0.368    76
+##  9 LIBRARIES_AND_DEMO  4.18 0.379    65
+## 10 SHOPPING            4.26 0.405   238
+## # ... with 23 more rows
+## # i Use `print(n = ...)` to see more rows
+\end{verbatim}
+
+\hypertarget{conclusion}{%
+\section{CONCLUSION:}\label{conclusion}}
+
+according to this dataset, people tend to have:
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\item
+  the most differing opinions about health, bussiness and dating apps
+\item
+  the least differing opinions about education, weather and
+  entertainment apps
+\end{enumerate}
+
+This is in line with the expectation that more important life decisions,
+which also trigger increased emotions (dating, health etc.) provoke a
+wider range of reactions, which might also carry over to the relevant
+apps. Remarkably, weather apps were also spared from people's bad mood,
+the dataset was probably not collected in Netherlands or the UK\ldots{}
+
+The mean scores of various categories are different, but the spread of
+standard deviations is significantly larger than the spread in mean
+scores. The mean scores for categories with lower deviation seem to be
+on average very slightly larger compared to those with higher deviation.
+I cut my analysis before going to any significance tests\ldots{}
+
+\end{document}
