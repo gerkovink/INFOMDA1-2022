@@ -13,6 +13,40 @@ The NYC Rat Sightings dataset describes mostly the location where there are rat 
 We will analyse if sightings depend on the month they happen. Additionally, we will analyse a dataset that describes borough populations so we can analyse if population density compares to number of rat sightings and which boroughs have more density of rat sightings. 
 
 ```{r}
+library(tidyverse)
+
+##Data cleaning
+
+#First a function to use for splitting up the different dates
+date.split <- function(txtdate, x){
+  date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
+  time <- parse_time(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
+  year <- as.numeric(format(date, format = "%Y"))
+  month <- as.numeric(format(date, format = "%m"))
+  day <- as.numeric(format(date, format = "%d"))
+  
+  if (x == 1) {value <- year}
+  else if (x == 2) {value <- month}
+  else if (x == 3) {value <- day}
+  else if (x == 4) {value <- time}
+  
+  return(value)
+}
+
+
+#Second, a function to use when splitting a specific number from a data point, as used for both the address and the community boards
+
+
+#Lastly, the actual cleaning pipe
+
+rat_dataset <-
+  read_csv("Rat_Sightings.csv") %>% 
+  select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
+  rename(Unique_Key = "Unique Key", Created_Date = "Created Date", Closed_Date = "Closed Date", Location_Type = "Location Type", Incident_Zip = "Incident Zip", Incident_Address = "Incident Address", Street_Name = "Street Name", Cross_Street_1 = "Cross Street 1", Cross_Street_2 = "Cross Street 2", Intersection_Street_1 = "Intersection Street 1", Intersection_Street_2 = "Intersection Street 2", Address_Type = "Address Type", Status = "Status", Due_Date = "Due Date", RAU_Date = "Resolution Action Updated Date", Community_Board = "Community Board", Borough = "Borough", Latitude = "Latitude", Longitude = "Longitude") %>% 
+  mutate(Created_Year = date.split(Created_Date, 1), Created_Month = date.split(Created_Date, 2), Created_Day = date.split(Created_Date, 3)) %>% 
+  mutate(Closed_Year = date.split(Closed_Date, 1), Closed_Month = date.split(Closed_Date, 2), Closed_Day = date.split(Closed_Date, 3)) %>%
+  mutate(Due_Year = date.split(Due_Date, 1), Due_Month = date.split(Due_Date, 2), Due_Day = date.split(Due_Date, 3), Due_Time = date.split(Due_Date, 4)) %>%
+  mutate(RAU_Year = date.split(RAU_Date, 1), RAU_Month = date.split(RAU_Date, 2), RAU_Day = date.split(RAU_Date, 3), RAU_Time = date.split(RAU_Date, 4))
+
 
 ```
-
