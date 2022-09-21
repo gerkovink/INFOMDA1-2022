@@ -1,0 +1,18 @@
+---
+title: "Assignment1 - RHAT"
+output: html_document
+date: "September 2022"
+---
+
+# NYC Rat Sightings
+
+## Data Description
+
+The NYC Rat Sightings dataset describes mostly the location where there are rat sightings, the dates when it happened and which type of building it happened on. In the original dataset there are also many empty columns or columns with only one value.
+
+We will analyse if sightings depend on the month they happen. Additionally, we will analyse a dataset that describes borough populations so we can analyse if population density compares to number of rat sightings and which boroughs have more density of rat sightings. 
+
+```{r}
+
+```
+
