@@ -1,0 +1,372 @@
+
+# Introduction
+
+```{r load_packages}
+#install.packages("ISLR","tidyverse","haven","readxl")
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+library(here)
+```
+
+
+
+# Data types
+
+
+---
+
+1. __Run the following code in `R` and inspect their data types using the `class()` function. Try to guess beforehand what their types will be!__
+
+---
+
+```{r }
+object_1 <- 1:5
+object_2 <- 1L:5L
+object_3 <- "-123.456"
+object_4 <- as.numeric(object_2)
+object_5 <- letters[object_1]
+object_6 <- as.factor(rep(object_5, 2))
+object_7 <- c(1, 2, 3, "4", "5", "6")
+
+class(object_1)
+class(object_2)
+class(object_3)
+class(object_4)
+class(object_5)
+class(object_6)
+class(object_7)
+
+
+
+```
+
+
+---
+
+2. __Convert `object_7` back to a vector of numbers using the `as.numeric()` function__
+
+---
+
+```{r }
+object_7<-as.numeric(object_7)
+object_7
+class(object_7)
+```
+
+# Lists and data frames
+
+
+---
+
+3. __Make a list called `objects` containing object 1 to 7 using the `list()` function.__
+
+---
+
+```{r }
+objects <- list(object_1, object_2, object_3, object_4, object_5, object_6, 
+                object_7)
+```
+
+
+---
+
+4. __Make a data frame out of `object_1`, `object_2`, and `object_5` using the `data.frame()` function__
+
+---
+
+```{r }
+dat <- data.frame(Var1 = object_1, Var2 = object_2, Var3 = object_5)
+dat
+#also can be done with tibble
+data<-tibble(Var1 = object_1, Var2 = object_2, Var3 = object_5)
+data
+```
+
+---
+
+5. __Useful functions for determining the size of a data frame are `ncol()` and `nrow()`. Try them out!__
+
+---
+
+```{r }
+ncol(dat)
+nrow(dat)
+```
+
+# Loading, viewing, and summarising data
+
+
+---
+
+6. __Use the function `read_csv()` to import the file "data/googleplaystore.csv" and store it in a variable called `apps`.__
+
+---
+
+```{r }
+apps <- read_csv("data/googleplaystore.csv")
+```
+---
+
+7. __Did any column get a variable type you did not expect?__
+
+---
+
+```{r }
+# size, price could be number while they are of the type character 
+spec(apps)
+```
+
+---
+
+8. __Use the function `head()` to look at the first few rows of the `apps` dataset__
+
+---
+
+```{r}
+head(apps)
+```
+
+
+---
+
+9. __Repeat steps 5, 6, and 7 but now for "data/students.xlsx" (NB: You'll need a function from the package `readxl`). Also try out the function `tail()` and `View()` (with a capital V).__
+
+---
+
+```{r }
+#student_number could possibly be an integer instead of the double
+students <- read_xlsx("data/students.xlsx")
+head(students)
+tail(students)
+```
+
+---
+
+10. __Create a summary of the three columns in the students dataset using the `summary()` function. What is the range of the grades achieved by the students?__
+
+---
+
+```{r }
+summary(students)
+```
+
+
+# Data transformation with `dplyr` verbs
+
+---
+
+11. __Look at the help pages for `filter()` (especially the examples) and show the students with a grade lower than 5.5__
+
+---
+
+```{r }
+filter(students, grade < 5.5)
+```
+
+---
+
+12. __Show only the students with a grade higher than 8 from programme A__
+
+---
+
+
+```{r }
+filter(students, grade > 8, programme == "A")
+```
+
+### Arrange
+
+---
+
+13. __Sort the students dataset such that the students from programme A are on top of the data frame and within the programmes the highest grades come first.__
+
+---
+
+```{r}
+arrange(students,programme,-grade)
+```
+
+
+### Select
+
+---
+
+14. __Show only the `student_number` and `programme` columns from the students dataset__ 
+
+---
+```{r}
+select(students, student_number,programme)
+```
+### Mutate
+With `mutate()` you can compute new columns and transform existing columns as functions of the columns in your dataset. For example, we may create a new logical column in the students dataset to indicate whether a student has passed or failed:
+
+```{r }
+students <- mutate(students, pass = grade > 5.5)
+students
+```
+
+Now, the students dataset has an extra column named "pass".
+
+You can also transform existing columns with the `mutate()` function. For example, we may want to transform the programme column to an actual programme name according to this table:
+
+| Code | Name           |
+| :--- | :------------- |
+| A    | Science        |
+| B    | Social Science |
+
+---
+
+15. __Use `mutate()` and `recode()` to change the codes in the programme column of the students dataset to their names. Store the result in a variable called `students_recoded`__
+
+---
+
+```{r }
+students_recoded <- mutate(students, 
+  programme = recode(programme, "A" = "Science", "B" = "Social Science")
+)
+students_recoded
+```
+
+
+# Data processing pipelines
+
+
+
+```{r pipeline}
+students_dataset <-
+  read_xlsx("data/students.xlsx") %>% 
+  mutate(prog = recode(programme, "A" = "Science", "B" = "Social Science")) %>% 
+  filter(grade > 5.5) %>% 
+  arrange(programme, -grade) %>% 
+  select(student_number, prog, grade)
+
+students_dataset
+```
+
+---
+
+16. __Create a data processing pipeline that (a) loads the apps dataset, (b) parses the number of installs as 'Downloads' variable using `mutate` and `parse_number()`, (c) shows only apps with more than 500 000 000 downloads, (d) orders them by rating (best on top), and (e) shows only the relevant columns (you can choose which are relevant, but select at least the `Rating` and `Category` variables). Save the result under the name `popular_apps`.__
+
+---
+```{r}
+popular_apps <-  read_csv("data/googleplaystore.csv") %>%
+  mutate(Downloads=parse_number(Installs,na = c("", "NA"))) %>%
+  filter(Downloads>5e8) %>%
+  arrange(-Rating) %>%
+  select(Rating, Category,Downloads) %>% distinct( .keep_all = TRUE)
+
+popular_apps
+```
+
+# Grouping and summarisation
+
+
+```{r meangrade}
+students_dataset %>% 
+  summarise(
+    mean = mean(grade), 
+    variance = var(grade), 
+    min = min(grade), 
+    max = max(grade)
+  )
+```
+
+---
+
+17. __Show the median, minimum, and maximum for the popular apps dataset you made in the previous assignment.__
+
+---
+
+```{r }
+popular_apps %>% 
+  summarise(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating)
+  )
+```
+
+The `summarise()` function works with any function that takes a vector of numbers and outputs a single number. For example, we can create our own [Median Absolute Deviation (MAD)](https://en.wikipedia.org/wiki/Median_absolute_deviation) function:
+
+```{r mad}
+mad <- function(x) {
+  median(abs(x - median(x)))
+}
+
+students_dataset %>% summarise(mad = mad(grade))
+```
+
+---
+
+18. __Add the median absolute deviation to the summaries you made before__
+
+---
+
+
+```{r}
+popular_apps %>% 
+  summarise(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+```
+
+By itself, the `summarise()` function is not very useful; we can also simply use the `summary()` function or directly enter the vector we are interested in as an argument to the functions: `mad(students_dataset$grade)` = `r mad(students_dataset$grade)`. The power of `summarise()` is in its combined use with the `group_by()` function, which makes it easy to make grouped summaries:
+
+```{r group}
+students_dataset %>% 
+  group_by(prog) %>% 
+  summarise(
+    mean = mean(grade), 
+    variance = var(grade), 
+    min = min(grade), 
+    max = max(grade)
+  )
+
+```
+
+---
+
+19. __Create a grouped summary of the ratings per category in the popular apps dataset.__
+
+---
+```{r}
+popular_apps %>% 
+  group_by(Category) %>% 
+  summarise(
+    mean = round(mean(Rating),3), 
+    variance = round(var(Rating),3), 
+    min = round(min(Rating),3), 
+    max = round(max(Rating),3)
+  ) %>% replace_na(list(variance=0))
+  
+```
+
+# Final exercise
+
+---
+
+20. __Create an interesting summary based on the Google play store apps dataset. An example could be "do games get higher ratings than communication apps?"__
+---
+
+```{r }
+read_csv("data/googleplaystore.csv") %>% 
+  filter(Category == "GAME" | Category == "COMMUNICATION") %>% 
+  select(App, Category, Rating) %>% 
+  distinct(App, .keep_all = TRUE) %>% 
+  group_by(Category) %>% 
+  summarise(
+    mean = mean(Rating, na.rm = TRUE),
+    median = median(Rating, na.rm = TRUE)
+  )
+```
+```{r}
+read_csv("data/googleplaystore.csv") %>% 
+  filter(Category == "GAME" | Category == "COMMUNICATION") %>% 
+  select(Category, Rating) %>%  ggplot( mapping = aes(Category,Rating))+geom_boxplot()
+```
+
