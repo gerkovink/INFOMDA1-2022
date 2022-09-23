@@ -47,11 +47,9 @@ get.number <- function(string1, string2){
   
   split_1 <- strsplit(string1, split = " ")
   split_2 <- strsplit(string2, split = " ")
-    
-  unique_values <- Map(setdiff, split_1, split_2)
-    
-  to_be_returned <- unlist(unique_values)
   
+  unique_values <- Map(setdiff, split_1, split_2)
+  to_be_returned <- unlist(unique_values)
   return(to_be_returned)
 }
 ```
@@ -61,40 +59,39 @@ get.number <- function(string1, string2){
 
 ```{r}
 #Second attempt at a function that could split "Incident_Address":
-#get.number2 <- function(address){
-  #split_x <- strsplit(address, split = " ")
-  #non_list <- unlist(split_x)
-  #house_number <- non_list[1]
-  #return(house_number)
-#}
+get.number2 <- function(address){
+  if(!identical(address, NA)){
+    nums <- str_extract(address, "[0-9]+")
+    return(nums)
+  }
+}
 ```
 
 The dataset initially looks like this:
 
 ```{r}
 rat_dataset <-
-  read_csv("Rat_Sightings.csv")
+  read_csv("Rat_Sightings.csv", show_col_types = FALSE)
 rat_dataset
 ```
 
-Lastly, the actual cleaning pipe:
+with many empty features or with one single value. In this next step, we will be taking these features out and separating some interesting data in more features:
 
 ```{r}
 rat_dataset <-
-  read_csv("Rat_Sightings.csv") %>% 
-  select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
+  read_csv("Rat_Sightings.csv", show_col_types = FALSE) %>% 
+  #select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
   rename(Unique_Key = "Unique Key", Created_Date = "Created Date", Closed_Date = "Closed Date", Location_Type = "Location Type", Incident_Zip = "Incident Zip", Incident_Address = "Incident Address", Street_Name = "Street Name", Cross_Street_1 = "Cross Street 1", Cross_Street_2 = "Cross Street 2", Intersection_Street_1 = "Intersection Street 1", Intersection_Street_2 = "Intersection Street 2", Address_Type = "Address Type", Status = "Status", Due_Date = "Due Date", RAU_Date = "Resolution Action Updated Date", Community_Board = "Community Board", Borough = "Borough", Latitude = "Latitude", Longitude = "Longitude") %>% 
   mutate(Created_Year = date.split(Created_Date, 1), Created_Month = date.split(Created_Date, 2), Created_Day = date.split(Created_Date, 3)) %>% 
   mutate(Closed_Year = date.split(Closed_Date, 1), Closed_Month = date.split(Closed_Date, 2), Closed_Day = date.split(Closed_Date, 3)) %>%
   mutate(Due_Year = date.split(Due_Date, 1), Due_Month = date.split(Due_Date, 2), Due_Day = date.split(Due_Date, 3), Due_Time = date.split(Due_Date, 4)) %>%
   mutate(RAU_Year = date.split(RAU_Date, 1), RAU_Month = date.split(RAU_Date, 2), RAU_Day = date.split(RAU_Date, 3), RAU_Time = date.split(RAU_Date, 4)) %>% 
   ##These two lines handled the NAs in both columns, specifically to fit the get.number function
-  #mutate(Incident_Address = replace_na(Incident_Address, "Unspecified None")) %>% 
+  #mutate(Incident_Address = replace_na(Incident_Address, "None")) %>% 
   #mutate(Street_Name = replace_na(Street_Name, "None")) %>% 
-  ##This mutate was supposed to split Incident_Address, without success thusfar
-  #mutate(Address_Number = get.number2(Incident_Address)) %>% 
+  mutate(Address_Number = get.number2(Incident_Address)) %>% 
   mutate(Community_Board_Number = get.number(Community_Board, Borough)) %>% 
-  select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
+  select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Address_Number, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
 ```
 
 We also want to make sure that all of the features have the proper type.
@@ -102,6 +99,18 @@ We also want to make sure that all of the features have the proper type.
 ```{r}
 rat_dataset$Location_Type <- 
   as.factor(rat_dataset$Location_Type)
+rat_dataset$Street_Name <-
+  as.factor(rat_dataset$Street_Name)
+rat_dataset$Cross_Street_1 <-
+  as.factor(rat_dataset$Cross_Street_1)
+rat_dataset$Cross_Street_2 <-
+  as.factor(rat_dataset$Cross_Street_2)
+rat_dataset$Address_Type <-
+  as.factor(rat_dataset$Address_Type)
+rat_dataset$Status <-
+  as.factor(rat_dataset$Status)
+rat_dataset$Borough <-
+  as.factor(rat_dataset$Borough)
 ```
 
 
