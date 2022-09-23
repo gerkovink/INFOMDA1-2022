@@ -12,12 +12,17 @@ The NYC Rat Sightings dataset describes mostly the location where there are rat 
 
 We will analyse if sightings depend on the month they happen. Additionally, we will analyse a dataset that describes borough populations so we can analyse if population density compares to number of rat sightings and which boroughs have more density of rat sightings. 
 
+The dataset we will be using can be found on [kaggle](https://www.kaggle.com/datasets/new-york-city/nyc-rat-sightings).
+
 ```{r}
 library(tidyverse)
+```
 
-##Data cleaning
+## Data cleaning
 
-#First a function to use for splitting up the different dates
+First, we create a function to use for splitting up the different dates.
+
+```{r}
 date.split <- function(txtdate, x){
   date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   time <- parse_time(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
@@ -32,9 +37,12 @@ date.split <- function(txtdate, x){
   
   return(value)
 }
+```
 
-#Second, a function to use when splitting a specific number from a data point, as used for both the address and the community boards
 
+Secondly, we create a function to use when splitting a specific number from a data point, as used for both the address and the community boards.
+
+```{r}
 get.number <- function(string1, string2){
   
   split_1 <- strsplit(string1, split = " ")
@@ -46,17 +54,32 @@ get.number <- function(string1, string2){
   
   return(to_be_returned)
 }
+```
 
-##Second attempt at a function that could split "Incident_Address"
+
+
+
+```{r}
+#Second attempt at a function that could split "Incident_Address":
 #get.number2 <- function(address){
   #split_x <- strsplit(address, split = " ")
   #non_list <- unlist(split_x)
   #house_number <- non_list[1]
   #return(house_number)
 #}
+```
 
-#Lastly, the actual cleaning pipe
+The dataset initially looks like this:
 
+```{r}
+rat_dataset <-
+  read_csv("Rat_Sightings.csv")
+rat_dataset
+```
+
+Lastly, the actual cleaning pipe:
+
+```{r}
 rat_dataset <-
   read_csv("Rat_Sightings.csv") %>% 
   select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
@@ -72,5 +95,19 @@ rat_dataset <-
   #mutate(Address_Number = get.number2(Incident_Address)) %>% 
   mutate(Community_Board_Number = get.number(Community_Board, Borough)) %>% 
   select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
-
 ```
+
+We also want to make sure that all of the features have the proper type.
+
+```{r}
+rat_dataset$Location_Type <- 
+  as.factor(rat_dataset$Location_Type)
+```
+
+
+So, our starting point data is:
+
+```{r}
+rat_dataset
+```
+
