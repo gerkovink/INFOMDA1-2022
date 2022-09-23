@@ -47,6 +47,7 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+<<<<<<< HEAD
 .DS_Store
 Assignments/.DS_Store
 Assignments/Assignment 1/.DS_Store
@@ -62,3 +63,6 @@ Practicals/P5/.DS_Store
 Practicals/P6/.DS_Store
 Practicals/P7/.DS_Store
 Practicals/P8/.DS_Store
+=======
+Assignments/Assignment 1/Work info.xlsx
+>>>>>>> 5340ecaf8713ad56151fe7d685248a98871dbe0a

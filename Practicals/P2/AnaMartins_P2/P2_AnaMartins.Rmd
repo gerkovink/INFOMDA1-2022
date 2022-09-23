@@ -1,0 +1,105 @@
+---
+title: "Pratical 2"
+subtitle: "Supervised Learning and Visualization"
+author: "Ana Martins"
+date: "September 2022"
+output: html_document
+---
+
+**Libraries**:
+
+```{r}
+library(ISLR)
+library(tidyverse)
+```
+
+## What is `ggplot`?
+
+1. **Name the aesthetics, geoms, scales, and facets of the above visualisation. Also name any statistical transformations or special coordinate systems.**
+
+Specifications of the "Cool density and scatter plot of baseball data" plot:
+
+- Aesthetics: none defined by the user, the plot uses the default
+- Geoms: the points geoms is used, meaning the data is displayed in a scatter plot, as well as the 2d density, which displays the data according to density curves
+- Scales: the scales are defined automatically
+- Facets: there are no facets, the whole data is displayed in one place
+- Other: the labels for the axis and the title are changed, as well as the theme, which is set to minimal
+
+## Aesthetics and data preparation
+
+2. **Run the code below to generate data. There will be three vectors in your environment. Put them in a data frame for entering it in a `ggplot()` call using either the `data.frame()` or the `tibble()` function. Give informative names and make sure the types are correct (use the `as.<type>()` functions). Name the result `gg_students`**
+
+```{r}
+set.seed(1234)
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+```
+
+```{r}
+gg_students <- data.frame(student_grade, student_number, programme)
+gg_students$programme <-  as.factor(programme)
+gg_students
+```
+
+The type of `programme` was assumed to be `character`. We know that there is a finite number of values in `programme`, so we can set it as `factor`.
+
+3. **Plot the first `homeruns_plot` again, but map the `Hits` to the y-axis and the `HmRun` to the x-axis instead.**
+
+```{r}
+homeruns_plot <- 
+  ggplot(Hitters, aes(x = HmRun, y = Hits)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits")
+homeruns_plot
+```
+
+4. **Recreate the same plot once more, but now also map the variable `League` to the `colour` aesthetic and the variable `Salary` to the size aesthetic.**
+
+```{r}
+homeruns_plot <- 
+  ggplot(Hitters, aes(x = HmRun, y = Hits, colour = League, size = Salary)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits")
+homeruns_plot
+```
+
+## Histogram
+
+6. **Use `geom_histogram()` to create a histogram of the grades of the students in the `gg_students` dataset. Play around with the `binwidth` argument of the `geom_histogram()` function.**
+
+```{r}
+histogram <-
+  ggplot(gg_students, aes(x = student_grade)) +
+  geom_histogram()
+histogram
+histogram <-
+  ggplot(gg_students, aes(x = student_grade)) +
+  geom_histogram(binwidth = 1)
+histogram
+histogram <-
+  ggplot(gg_students, aes(x = student_grade)) +
+  geom_histogram(binwidth = 0.5, boundary = 0)
+histogram
+```
+
+## Density
+
+7. **Use `geom_density()` to create a density plot of the grades of the students in the `gg_students` dataset. Add the argument `fill = "light seagreen"` to `geom_density()`.**
+
+```{r}
+?geom_density
+density <-
+  ggplot(gg_students, aes(student_grade)) +
+  geom_density(fill = "light seagreen")
+density
+```
+
+8. **Add rug marks to the density plot through `geom_rug()`. You can edit the `colour` and `size` of the rug marks using those arguments within the `geom_rug()` function.**
+
+```{r}
+density <- density +
+  geom_rug()
+density
+```
+
