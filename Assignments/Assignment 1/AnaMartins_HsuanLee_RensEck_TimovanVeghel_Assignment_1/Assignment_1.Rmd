@@ -120,3 +120,27 @@ So, our starting point data is:
 rat_dataset
 ```
 
+## Where are the sightings more concentrated?
+
+To answer this question, we will import an extension of the `ggplot2` library, the `ggmap` library. If you don't have the `ggmap` package installed, please do so by running `install.packages("ggmap")` on your R console. 
+
+```{r}
+library("ggmap")
+```
+
+```{r}
+# register_google(key = KEY)
+```
+
+
+Next, we choose the map we want to use:
+
+```{r}
+
+#newyork.map <- get_map(location= 'New York', zoom = 10)
+#ggmap(newyork.map) +
+#  geom_point(rat_dataset, mapping = aes(x=Longitude,y=Latitude), alpha= 0.5)
+  
+  
+```
+
