@@ -98,8 +98,110 @@ density
 8. **Add rug marks to the density plot through `geom_rug()`. You can edit the `colour` and `size` of the rug marks using those arguments within the `geom_rug()` function.**
 
 ```{r}
-density <- density +
-  geom_rug()
+density <- 
+  density +
+  geom_rug(color = "Coral", size = 1)
 density
 ```
 
+9. **Increase the data to ink ratio by removing the y axis label, setting the theme to `theme_minimal()`, and removing the border of the density polygon. Also set the limits of the x-axis to go from 0 to 10 using the `xlim()` function, because those are the plausible values for a student grade.**
+
+Here, we have to redefine density as geoms overlay, so we would never be able to "take out" the border of the density polygon.
+
+```{r}
+density <-
+  ggplot(gg_students, aes(student_grade)) +
+  geom_density(fill = "light seagreen", color = NA) +
+  geom_rug(color = "Coral", size = 1) +
+  ylab(element_blank()) +
+  theme_minimal() +
+  xlim(0, 10)
+density
+```
+
+## Boxplot
+
+10. **Create a boxplot of student grades per programme in the `gg_students` dataset you made earlier: map the programme variable to the x position and the grade to the y position. For extra visual aid, you can additionally map the programme variable to the fill aesthetic.**
+
+```{r}
+bxplt <- 
+  ggplot(gg_students, aes(x = programme, y = student_grade, fill = programme)) +
+  geom_boxplot()
+bxplt
+```
+
+11. **What do each of the horizontal lines in the boxplot mean? What do the vertical lines (whiskers) mean?**
+
+The lower and upper horizontal lines (hinges) correspond to the first and third quartiles and the central one corresponds to the median. The vertical lines (whiskers) go from the minimum to the maximum values (excluding outliers, which are shown as points).
+
+## Two densities
+
+12 **Comparison of distributions across categories can also be done by adding a fill aesthetic to the density plot you made earlier. Try this out. To take care of the overlap, you might want to add some transparency in the geom_density() function using the alpha argument.**
+
+```{r}
+density <-
+  ggplot(gg_students, aes(student_grade, fill = programme)) +
+  geom_density(color = NA, alpha = 0.5) +
+  geom_rug() +
+  ylab(element_blank()) +
+  theme_minimal() +
+  xlim(0, 10)
+density
+```
+
+## Bar plot
+
+13. **Create a bar plot of the variable Years from the Hitters dataset.**
+
+```{r}
+?geom_bar
+brplt <- 
+  ggplot(Hitters, aes(Years)) +
+  geom_bar()
+brplt
+```
+
+## Line plot
+
+14. **Use `geom_line()` to make a line plot out of the first 200 observations of the variable `Volume` (the number of trades made on each day) of the `Smarket` dataset. You will need to create a `Day` variable using `mutate()` to map to the x-position. This variable can simply be the integers from 1 to 200. Remember, you can select the first 200 rows using `Smarket[1:200, ]`.**
+
+```{r}
+Smarket
+?geom_line
+?mutate
+nSmarket <- 
+  Smarket %>% 
+  mutate(Day = c(1:1250))
+ln <- 
+  ggplot(nSmarket[1:200, ], aes(x = Day, y = Volume)) +
+  geom_line()
+ln
+```
+
+15. **Give the line a nice `colour` and increase its `size`. Also add points of the same colour on top.**
+
+```{r}
+ln <- 
+  ggplot(nSmarket[1:200, ], aes(x = Day, y = Volume)) +
+  geom_line(colour = "Antique White 4", size = 1) + 
+  geom_point(colour = "Antique White 4")
+ln
+```
+
+16. **Use the function `which.max()` to find out which of the first 200 days has the highest trade volume and use the function `max()` to find out how large this volume was**
+
+```{r}
+day <- which.max(nSmarket[1:200, ]$Volume)
+volume <- max(nSmarket[1:200, ]$Volume)
+```
+
+17. **Use `geom_label(aes(x = your_x, y = your_y, label = "Peak volume"))` to add a label to this day. You can use either the values or call the functions. Place the label near the peak!**
+
+```{r}
+ln <-
+  ln +
+  geom_label(aes(x = day, y = volume, label = "Peak volume"))
+ln
+```
+
+MUDAR SECÇÕES PARA SUBSECÇÕES
