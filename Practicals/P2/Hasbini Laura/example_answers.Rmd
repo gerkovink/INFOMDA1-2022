@@ -337,8 +337,9 @@ carseat_income <-
 
 ```{r}
 carseat_income %>%
-  ggplot(aes(x=Sales, y=Price, colour=Population)) +
+  ggplot(aes(x=CompPrice, y=Price, colour=Advertising)) +
   geom_point() +
   theme_minimal() + facet_wrap(~Income_range)
 ```
 
+From the previous graph we can see the relation between the Price and the CompPrice, for several income categories and as a function of the advertising. First of all we can note that there is not huge difference of price between the 3 income categories, however it still seems that, in the high income category, sales are done with higher price. Also we can note that more advertisement is used in the high income category. 
