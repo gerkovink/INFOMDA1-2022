@@ -54,9 +54,6 @@ get.number <- function(string1, string2){
 }
 ```
 
-
-
-
 ```{r}
 #Second attempt at a function that could split "Incident_Address":
 get.number2 <- function(address){
@@ -72,7 +69,7 @@ The dataset initially looks like this:
 ```{r}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE)
-rat_dataset
+head(rat_dataset)
 ```
 
 with many empty features or with one single value. In this next step, we will be taking these features out and separating some interesting data in more features:
@@ -117,7 +114,7 @@ rat_dataset$Borough <-
 So, our starting point data is:
 
 ```{r}
-rat_dataset
+head(rat_dataset)
 summary(rat_dataset)
 ```
 
@@ -183,3 +180,47 @@ min_lon <- min(data4lon)
 #location_map
 ```
 
+
+## Locatoin Type and Rat number
+
+```{r}
+unique(rat_dataset$Location_Type)
+# 20 location types
+```
+
+```{r}
+# create the proportion for each location type
+loc_per <- rat_dataset %>%
+  group_by(Location_Type) %>%
+  summarise(Percentage = round(100*(n() / nrow(.)), 1))
+
+loc_per
+```
+
+```{r, fig.width=10, fig.height=7}
+# Plot the Pie Chart
+loc_per %>%
+  ggplot(aes(x = "", y = Percentage, fill = Location_Type)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste(Percentage, "%")),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
+                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
+                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
+                             "#ee7d00", "#45902c", "#e94067", "#002a54",
+                             "black")) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type" )
+```
+
+## Time and Rat number
+
+```{r}
+
+```
