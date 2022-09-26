@@ -8,7 +8,7 @@ date: "September 2022"
 
 ## Data Description
 
-The NYC Rat Sightings dataset describes mostly the location where there are rat sightings, the dates when it happened and which type of building it happened on. In the original dataset there are also many empty columns or columns with only one value.
+The NYC Rat Sightings dataset describes mostly the location where there are rat sightings, the dates when it happened and which type of building it happened on. In the original dataset there are also many empty columns or columns with only one value, which just means the data was organised poorly, and we will not use these.
 
 We will analyse if sightings depend on the month they happen. Additionally, we will analyse a dataset that describes borough populations so we can analyse if population density compares to number of rat sightings and which boroughs have more density of rat sightings. 
 
@@ -129,7 +129,16 @@ library("ggmap")
 ```
 
 ```{r}
-# register_google(key = KEY)
+#KEY = 
+#register_google(key = KEY)
+```
+
+
+```{r}
+ggplot(rat_dataset, mapping = aes(y = Longitude)) +
+  geom_boxplot()
+ggplot(rat_dataset, mapping = aes(y = Latitude)) +
+  geom_boxplot()
 ```
 
 
@@ -137,10 +146,12 @@ Next, we choose the map we want to use:
 
 ```{r}
 
-#newyork.map <- get_map(location= 'New York', zoom = 10)
+#newyork.map <- get_map(location= 'New York')
 #ggmap(newyork.map) +
-#  geom_point(rat_dataset, mapping = aes(x=Longitude,y=Latitude), alpha= 0.5)
-  
+#  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
+#  stat_density2d(data = rat_dataset, mapping = aes(x=Longitude, y=Latitude)) +
+#  ylim(min(rat_dataset$Latitude), max(rat_dataset$Latitude)) +
+#  xlim(min(rat_dataset$Longitude), max(rat_dataset$Longitude))
   
 ```
 
