@@ -118,6 +118,7 @@ So, our starting point data is:
 
 ```{r}
 rat_dataset
+summary(rat_dataset)
 ```
 
 ## Where are the sightings more concentrated?
@@ -129,7 +130,7 @@ library("ggmap")
 ```
 
 ```{r}
-#KEY = 
+KEY = 
 #register_google(key = KEY)
 ```
 
@@ -146,12 +147,39 @@ Next, we choose the map we want to use:
 
 ```{r}
 
+data4lat <-
+  rat_dataset %>% 
+  select(Latitude) %>% 
+  filter(!is.na(Latitude))
+
+max_lat <- max(data4lat)
+min_lat <- min(data4lat)
+
+data4lon <-
+  rat_dataset %>% 
+  select(Longitude) %>% 
+  filter(!is.na(Longitude))
+
+max_lon <- max(data4lon)
+min_lon <- min(data4lon)
+
 #newyork.map <- get_map(location= 'New York')
-#ggmap(newyork.map) +
+#sightings_map <-
+#  ggmap(newyork.map) +
 #  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
 #  stat_density2d(data = rat_dataset, mapping = aes(x=Longitude, y=Latitude)) +
-#  ylim(min(rat_dataset$Latitude), max(rat_dataset$Latitude)) +
-#  xlim(min(rat_dataset$Longitude), max(rat_dataset$Longitude))
+#  ylim(min_lat, max_lat) +
+#  xlim(min_lon, max_lon)
   
+```
+
+```{r}
+#location_map <-
+#  ggmap(newyork.map) +
+#  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.1) +
+#  facet_wrap(~ Location_Type)
+
+#ggsave("location-map.png", width = 20, height = 20, units = "cm")
+#location_map
 ```
 
