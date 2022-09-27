@@ -91,7 +91,7 @@ rat_dataset <-
   select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Address_Number, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
 ```
 
-We also want to make sure that all of the features have the proper type.
+We also want to make sure that all of the features have the proper value type.
 
 ```{r}
 rat_dataset$Location_Type <- 
@@ -179,7 +179,7 @@ location_map
 ```
 
 
-## Locatoin Type and Rat number
+## Location Type and Rat number
 
 ```{r}
 unique(rat_dataset$Location_Type)
@@ -222,3 +222,31 @@ loc_per %>%
 ```{r}
 
 ```
+
+## Is the number of rat sightings in a given borough proportional to its population?
+
+```{r}
+Borough_Rats <- 
+  rat_dataset %>% 
+  group_by(Borough, Created_Year) %>% 
+  tally(sort = TRUE) %>% 
+  pivot_wider(names_from = Created_Year, values_from = n) %>% 
+  select(Borough, "2010") %>% 
+  drop_na() #%>% 
+  #add_row(Borough = "NYC TOTAL", "2010" = sum(Borough_Rats$`2010`))
+
+head(Borough_Rats)
+
+
+Borough_Population_2010 <- 
+  read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
+  select("Borough", "2010") %>% 
+  mutate(Borough = toupper(Borough)) %>% 
+  inner_join(Borough_Rats, by = "Borough") %>% 
+  rename(Borough = "Borough", Population = "2010.x", Rat_Sightings = "2010.y") %>% 
+  mutate(Sightings_Rate = round(((Rat_Sightings / Population) * 100000), digits = 2))
+  
+
+head(Borough_Population_2010)
+```
+
