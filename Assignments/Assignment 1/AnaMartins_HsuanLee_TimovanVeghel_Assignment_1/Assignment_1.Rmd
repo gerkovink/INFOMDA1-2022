@@ -128,7 +128,7 @@ library("ggmap")
 
 ```{r}
 KEY = 
-#register_google(key = KEY)
+register_google(key = KEY)
 ```
 
 
@@ -143,7 +143,6 @@ ggplot(rat_dataset, mapping = aes(y = Latitude)) +
 Next, we choose the map we want to use:
 
 ```{r}
-
 data4lat <-
   rat_dataset %>% 
   select(Latitude) %>% 
@@ -160,24 +159,23 @@ data4lon <-
 max_lon <- max(data4lon)
 min_lon <- min(data4lon)
 
-#newyork.map <- get_map(location= 'New York')
-#sightings_map <-
-#  ggmap(newyork.map) +
-#  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
-#  stat_density2d(data = rat_dataset, mapping = aes(x=Longitude, y=Latitude)) +
-#  ylim(min_lat, max_lat) +
-#  xlim(min_lon, max_lon)
-  
+newyork.map <- get_map(location= 'New York')
+sightings_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
+  stat_density2d(data = rat_dataset, mapping = aes(x=Longitude, y=Latitude)) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+sightings_map
 ```
 
 ```{r}
-#location_map <-
-#  ggmap(newyork.map) +
-#  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.1) +
-#  facet_wrap(~ Location_Type)
+location_map <-
+  ggmap(newyork.map) +
+  geom_point(data = filter(rat_dataset, Latitude, Longitude, Location_Type %in% c("1-2 Family Dwelling", "3+ Family Mixed Use Building")), mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.1) +
+  facet_wrap(~ Location_Type)
 
-#ggsave("location-map.png", width = 20, height = 20, units = "cm")
-#location_map
+location_map
 ```
 
 
