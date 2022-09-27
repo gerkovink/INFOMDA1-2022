@@ -302,6 +302,25 @@ year_count %>%
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+```{r}
+# Number of Rat Sighting in each Months of Each Year
+year_month_count <- rat_dataset %>%
+  group_by(Created_Year) %>%
+  count(Created_Month)
+```
+
+```{r}
+# Number of Rat Sighting in each Months of Each Year
+year_month_count %>%
+  ggplot(aes(x = Created_Month, y = n, color = Created_Year, group = Created_Year)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Month", y = "Number of Rat Sighting", 
+       title = "Number of Rat Sighting", color = "Year") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
 ## Is the number of rat sightings in a given borough proportional to its population?
 
 ```{r}
