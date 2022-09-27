@@ -214,13 +214,92 @@ loc_per %>%
         axis.line = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank()) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type" )
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
+       fill = "Location Type")
 ```
 
 ## Time and Rat number
 
 ```{r}
+# month with rat sighting (number)
+rat_dataset %>%
+  ggplot(aes(x = Created_Month, fill = Created_Month)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
+                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A")) +
+  ylim(0, 15000) +
+  labs(x = "Month", y = "Total Number of Rat Sighting", 
+       title = "Number of Rat Sighting Each Month", fill = "Month") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
 
+```{r}
+# month with rat sighting (percentage)
+month_per <- rat_dataset %>%
+  group_by(Created_Month) %>%
+  summarise(Percentage = round(100*(n() / nrow(.)),1))
+
+month_per
+```
+
+```{r, fig.width=10, fig.height=7}
+month_per %>%
+  ggplot(aes(x = "", y = Percentage, fill = Created_Month)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste(Percentage, "%")),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
+                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A")) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Each Month",
+       fill = "Month")
+```
+
+
+```{r}
+# Year with rat sighting (bar chart)
+rat_dataset %>%
+  ggplot(aes(x = Created_Year, fill = Created_Year)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0")) +
+  ylim(0, 20000) +
+  labs(x = "Year", y = "Total Number of Rat Sighting", 
+       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+
+```
+
+```{r}
+# Year with rat sighting (count)
+year_count <- rat_dataset %>%
+  group_by(Created_Year) %>%
+  summarise(Number = n())
+
+year_count
+```
+
+```{r}
+# Year with rat sighting (count)
+year_count %>%
+  ggplot(aes(x = Created_Year, y = Number, group = 1)) +
+  geom_point() +
+  geom_line(color = "dark blue") +
+  labs(x = "Year", y = "Number of Rat Sighting", 
+       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
 ```
 
 ## Is the number of rat sightings in a given borough proportional to its population?
