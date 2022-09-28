@@ -131,6 +131,7 @@ KEY =
 register_google(key = KEY)
 ```
 
+Firstly, we take a look at how the signthings are distributed:
 
 ```{r}
 ggplot(rat_dataset, mapping = aes(y = Longitude)) +
@@ -139,8 +140,7 @@ ggplot(rat_dataset, mapping = aes(y = Latitude)) +
   geom_boxplot()
 ```
 
-
-Next, we choose the map we want to use:
+Translating this into a map, we get:
 
 ```{r}
 data4lat <-
@@ -162,21 +162,143 @@ min_lon <- min(data4lon)
 newyork.map <- get_map(location= 'New York')
 sightings_map <-
   ggmap(newyork.map) +
-  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
-  stat_density2d(data = rat_dataset, mapping = aes(x=Longitude, y=Latitude)) +
   ylim(min_lat, max_lat) +
   xlim(min_lon, max_lon)
 sightings_map
 ```
 
+From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings:
+
+```{r}
+sightings_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
+  stat_density2d(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude)) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+sightings_map
+```
+
+And what type of location do these happen in, and how are they distributed on the map?
+
 ```{r}
 location_map <-
   ggmap(newyork.map) +
-  geom_point(data = filter(rat_dataset, Latitude, Longitude, Location_Type %in% c("1-2 Family Dwelling", "3+ Family Mixed Use Building")), mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.1) +
-  facet_wrap(~ Location_Type)
-
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
 location_map
 ```
+
+That does not seem like a great visualization (as you really can't see anything), let's divide our facets into multiple plots so we can take a closer look at each of them.
+
+```{r}
+location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building"))
+location_map1 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Dark2")
+location_map1
+
+location_subset2 <- subset(rat_dataset, Location_Type %in% c("3+ Family Mixed Use Building", "Catch Basin/Sewer", "Commercial Building"))
+location_map2 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Paired")
+location_map2
+
+location_subset3 <- subset(rat_dataset, Location_Type %in% c("Construction Site", "Day Care/Nursery", "Government Building"))
+location_map3 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Set2")
+location_map3
+
+location_subset4 <- subset(rat_dataset, Location_Type %in% c("Hospital", "Office Building", "Other (Explain Below)"))
+location_map4 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Accent")
+location_map4
+
+location_subset5 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs"))
+location_map5 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Pastel1")
+location_map5
+
+location_subset6 <- subset(rat_dataset, Location_Type %in% c("School/Pre-School", "Single Room Occupancy (SRO)", "Summer Camp"))
+location_map6 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset6, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Set1")
+location_map6
+
+location_subset7 <- subset(rat_dataset, Location_Type %in% c("Vacant Building", "Vacant Lot", "NA"))
+location_map7 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset7, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  scale_color_brewer(palette = "Set3")
+location_map7
+```
+
+```{r}
+
+#since brooklyn is the borough with more rats, it might be useful to take a closer look at the map
+
+data4lat_brooklyn <-
+  rat_dataset %>% 
+  filter(!is.na(Latitude)) %>% 
+  filter(Borough == "BROOKLYN") %>% 
+  select(Latitude)
+
+max_brooklyn_lat <- max(data4lat_brooklyn)
+min_brooklyn_lat <- min(data4lat_brooklyn)
+
+data4lon_brooklyn <-
+  rat_dataset %>% 
+  filter(!is.na(Longitude)) %>% 
+  filter(Borough == "BROOKLYN") %>% 
+  select(Longitude)
+
+max_brooklyn_lon <- max(data4lon_brooklyn)
+min_brooklyn_lon <- min(data4lon_brooklyn)
+
+brooklyn_rats <-
+  rat_dataset %>% 
+  filter(Borough == "BROOKLYN")
+
+brooklyn_map <-
+  ggmap(newyork.map) +
+  geom_point(data = brooklyn_rats, mapping = aes(x = Longitude, y = Latitude), color = "Red", size = 0.1) +
+  ylim(min_brooklyn_lat, max_brooklyn_lat) +
+  xlim(min_brooklyn_lon, max_brooklyn_lon)
+brooklyn_map
+```
+
 
 
 ## Location Type and Rat number
