@@ -498,28 +498,32 @@ solved_duration %>%
 
 ## Is the number of rat sightings in a given borough proportional to its population?
 
+Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
+
+
+
 ```{r}
 Borough_Rats <- 
   rat_dataset %>% 
-  group_by(Borough, Created_Year) %>% 
+  group_by(Borough, Due_Year) %>% 
   tally(sort = TRUE) %>% 
-  pivot_wider(names_from = Created_Year, values_from = n) %>% 
-  select(Borough, "2010") %>% 
-  drop_na() #%>% 
-  #add_row(Borough = "NYC TOTAL", "2010" = sum(Borough_Rats$`2010`))
+  pivot_wider(names_from = Due_Year, values_from = n) %>% 
+  select(Borough, "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
+  drop_na()
 
 head(Borough_Rats)
 
 
-Borough_Population_2010 <- 
+Borough_Population <- 
   read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
-  select("Borough", "2010") %>% 
+  select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
   mutate(Borough = toupper(Borough)) %>% 
   inner_join(Borough_Rats, by = "Borough") %>% 
-  rename(Borough = "Borough", Population = "2010.x", Rat_Sightings = "2010.y") %>% 
-  mutate(Sightings_Rate = round(((Rat_Sightings / Population) * 100000), digits = 2))
+  rename(Borough = "Borough", Area = "Area", Population_2010 = "2010.x", Rat_Sightings_2010 = "2010.y", Population_2011 = "2011.x", Rat_Sightings_2011 = "2011.y", Population_2012 = "2012.x", Rat_Sightings_2012 = "2012.y", Population_2013 = "2013.x", Rat_Sightings_2013 = "2013.y", Population_2014 = "2014.x", Rat_Sightings_2014 = "2014.y", Population_2015 = "2015.x", Rat_Sightings_2015 = "2015.y", Population_2016 = "2016.x", Rat_Sightings_2016 = "2016.y", Population_2017 = "2017.x", Rat_Sightings_2017 = "2017.y") %>%
+  relocate(Borough, Area, Population_2010, Rat_Sightings_2010, Population_2011, Rat_Sightings_2011, Population_2012, Rat_Sightings_2012, Population_2013, Rat_Sightings_2013, Population_2014, Rat_Sightings_2014, Population_2015, Rat_Sightings_2015, Population_2016, Rat_Sightings_2016, Population_2017, Rat_Sightings_2017) #%>% 
+  #mutate(Sightings_Rate = round(((Rat_Sightings / Population) * 100000), digits = 2))
   
 
-head(Borough_Population_2010)
+head(Borough_Population)
 ```
 
