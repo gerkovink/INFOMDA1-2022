@@ -457,6 +457,9 @@ solved_duration <- data.frame(difftime(endtime,starttime,units = "days"))
 colnames(solved_duration)[1] <- "duration"
 solved_duration$duration <- as.numeric(solved_duration$duration)
 
+# merge it to the original dataset
+rat_dataset <- cbind(rat_dataset, solved_duration)
+
 # remove the negative number, as it cannot be negative time to solve the issue
 solved_duration <- solved_duration %>%
   drop_na() %>%
