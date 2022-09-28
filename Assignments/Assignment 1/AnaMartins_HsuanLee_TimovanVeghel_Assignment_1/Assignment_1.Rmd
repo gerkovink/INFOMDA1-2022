@@ -112,7 +112,7 @@ library("ggmap")
 ```
 
 ```{r}
-KEY = "AIzaSyBFcsbXVgK4KC-fdMPSC-WkPiyapZdOA1A"
+KEY = 
 register_google(key = KEY)
 ```
 
