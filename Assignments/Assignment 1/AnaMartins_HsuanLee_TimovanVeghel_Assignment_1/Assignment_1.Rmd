@@ -26,8 +26,8 @@ First, we create a function to use for splitting up the different dates.
 date.split <- function(txtdate, x){
   date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   time <- parse_time(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
-  year <- as.numeric(format(date, format = "%Y"))
-  month <- as.numeric(format(date, format = "%m"))
+  year <- as.factor(format(date, format = "%Y"))
+  month <- as.factor(format(date, format = "%m"))
   day <- as.numeric(format(date, format = "%d"))
   
   if (x == 1) {value <- year}
