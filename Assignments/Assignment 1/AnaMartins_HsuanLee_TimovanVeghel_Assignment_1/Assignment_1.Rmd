@@ -43,20 +43,8 @@ date.split <- function(txtdate, x){
 Secondly, we create a function to use when splitting a specific number from a data point, as used for both the address and the community boards.
 
 ```{r}
-get.number <- function(string1, string2){
-  
-  split_1 <- strsplit(string1, split = " ")
-  split_2 <- strsplit(string2, split = " ")
-  
-  unique_values <- Map(setdiff, split_1, split_2)
-  to_be_returned <- unlist(unique_values)
-  return(to_be_returned)
-}
-```
-
-```{r}
-#Second attempt at a function that could split "Incident_Address":
-get.number2 <- function(address){
+#Second attempt at a function that could split "Incident_Address" and "Community Board":
+get.number <- function(address){
   if(!identical(address, NA)){
     nums <- str_extract(address, "[0-9]+")
     return(nums)
@@ -83,11 +71,8 @@ rat_dataset <-
   mutate(Closed_Year = date.split(Closed_Date, 1), Closed_Month = date.split(Closed_Date, 2), Closed_Day = date.split(Closed_Date, 3)) %>%
   mutate(Due_Year = date.split(Due_Date, 1), Due_Month = date.split(Due_Date, 2), Due_Day = date.split(Due_Date, 3), Due_Time = date.split(Due_Date, 4)) %>%
   mutate(RAU_Year = date.split(RAU_Date, 1), RAU_Month = date.split(RAU_Date, 2), RAU_Day = date.split(RAU_Date, 3), RAU_Time = date.split(RAU_Date, 4)) %>% 
-  ##These two lines handled the NAs in both columns, specifically to fit the get.number function
-  #mutate(Incident_Address = replace_na(Incident_Address, "None")) %>% 
-  #mutate(Street_Name = replace_na(Street_Name, "None")) %>% 
-  mutate(Address_Number = get.number2(Incident_Address)) %>% 
-  mutate(Community_Board_Number = get.number(Community_Board, Borough)) %>% 
+  mutate(Address_Number = get.number(Incident_Address)) %>% 
+  mutate(Community_Board_Number = get.number(Community_Board)) %>% 
   select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Address_Number, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
 ```
 
