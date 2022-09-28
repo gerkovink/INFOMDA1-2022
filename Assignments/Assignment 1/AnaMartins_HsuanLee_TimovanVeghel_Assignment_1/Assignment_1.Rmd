@@ -443,6 +443,48 @@ year_month_count %>%
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+```{r}
+# combine the year, month, and day of started day
+starttime <- as.Date(with(rat_dataset, paste(Created_Year, Created_Month, 
+                                             Created_Day, sep = "-")), "%Y-%m-%d")
+
+# combine the year, month, and day of closed day
+endtime <- as.Date(with(rat_dataset, paste(Closed_Year, Closed_Month, 
+                                             Closed_Day, sep = "-")), "%Y-%m-%d")
+
+# compute for the duration taken to solve
+solved_duration <- data.frame(difftime(endtime,starttime,units = "days"))
+colnames(solved_duration)[1] <- "duration"
+solved_duration$duration <- as.numeric(solved_duration$duration)
+
+# remove the negative number, as it cannot be negative time to solve the issue
+solved_duration <- solved_duration %>%
+  drop_na() %>%
+  filter(duration > 0) %>%
+  mutate(month_cat <- cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
+                          labels = c("one_mon", "two_mon", "three_mon", 
+                                     "four_mon", "five_mon", "half_year",
+                                     "more_than_half_year")))
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Is the number of rat sightings in a given borough proportional to its population?
 
 ```{r}
