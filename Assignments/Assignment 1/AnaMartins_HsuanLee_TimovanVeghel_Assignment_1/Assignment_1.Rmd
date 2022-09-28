@@ -445,20 +445,43 @@ solved_duration$duration <- as.numeric(solved_duration$duration)
 # merge it to the original dataset
 rat_dataset <- cbind(rat_dataset, solved_duration)
 
+# merge year created year with solved time, in order to see if the government's efficient improve
+solved_duration <- cbind(rat_dataset$Created_Year, solved_duration)
+
 # remove the negative number, as it cannot be negative time to solve the issue
 solved_duration <- solved_duration %>%
   drop_na() %>%
   filter(duration > 0) %>%
-  mutate(month_cat <- cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
+  mutate(month_cat = cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
                           labels = c("one_mon", "two_mon", "three_mon", 
                                      "four_mon", "five_mon", "half_year",
                                      "more_than_half_year")))
 ```
 
 ```{r}
-
+# plot the duration taken to solved the issue
+solved_duration %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 70000) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
 ```
 
+```{r}
+
+```
 
 
 
