@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(magrittr)
 library(here)
+library(gridExtra)
+
 options(dplyr.summarise.inform = FALSE)
 ```
 
@@ -19,7 +21,7 @@ data<-read.csv(file="Data/ICAO_accidents.csv",header = T)
 
 ```{r}
 
-summary(data)
+head(data)
 ```
 
 ### In this part I would like to decode the missing name of the factors to Unknown or somthing more informative
@@ -118,9 +120,11 @@ ggplot(data = data[data$InjuryLevel %in% c("Fatal", "Minor", "Serious", "None", 
 
 ```
 ```{r}
-#order of the legend could be changed
+#order of the legend could be changed here is my proposition of a graph. The bad thing is that they are faced wraped but the frequencies are for whole dataset 
 data %>% ggplot( aes(x=FlightPhase, fill=InjuryLevel)) + 
-  geom_bar(aes(y = (..count..)/sum(..count..)),position = "dodge") +scale_y_continuous(labels=scales::percent)+facet_wrap(~AircraftType,scales = "free_y")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  geom_bar(aes(y = (..count..)/sum(..count..)),position = "dodge") +scale_y_continuous(labels=scales::percent)+facet_wrap(~AircraftType,scales = "free_y")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),panel.grid.major = element_line(colour = "grey"),panel.grid.minor = element_line(colour = "grey"),panel.grid.major.x = element_blank(),
+  panel.grid.minor.x = element_blank()
+, panel.background = element_blank())
 ```
 
 
@@ -150,10 +154,26 @@ data_ac_ct %>% ggplot(aes(x=Year, y=count,color=AircraftType)) +
 
 #there was a major drop in the number of accidents from 2012 onwards, so maybe split the data to before and after 2012 and investigate what else changed
 ```
-
-## My research questions 
-
+## Investigatio of the drop
 ```{r}
+
 ```
 
+## My research questions 
+### How many people died “depending on some factors” or over time? (I would not include helicopters, since they only can carry a few people in them)
+
+```{r}
+#distribution of number of engines
+table<-data %>%subset(AircraftType=="Airplane" & InjuryLevel=="Fatal") %$% table(Engines) %>% transform() %>% rename("Count" ="Freq" )
+table
+#since only one with 6 engines I checked how many people died (15) we can directly report where it happened and we wont include it in the next graph
+data %>%subset(AircraftType=="Airplane" & InjuryLevel=="Fatal") %>% group_by(Engines) %>% summarise(sum(Fatalities,na.rm = T))
+
+```
+
+```{r}
+#since there was only one plane with 6 engenes I droped it and 
+data %>%subset(AircraftType=="Airplane" & InjuryLevel=="Fatal"& Engines<6) %>% ggplot(aes(x=as.factor(Engines),y=Fatalities))+geom_boxplot()+geom_jitter()+theme_minimal() 
+
+```
 
