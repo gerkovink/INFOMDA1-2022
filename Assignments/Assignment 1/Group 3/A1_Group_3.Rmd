@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(magrittr)
 library(here)
+options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r}
@@ -17,8 +18,11 @@ data<-read.csv(file="Data/ICAO_accidents.csv",header = T)
 ```
 
 ```{r}
-head(data)
+
+summary(data)
 ```
+
+### In this part I would like to decode the missing name of the factors to Unknown or somthing more informative
 ```{r}
 #to limit ourselves 
 #remove to specific information and duplicates
@@ -26,11 +30,16 @@ data %<>% mutate("AircraftType"=case_when(Airplane=="True"~"Airplane",
                                      Helicopter=="True"~"Helicopter"),
                 "WeightCat"=case_when(Over5700=="True"~">5700",
                                         Over2250=="False" ~ "<2250",
-                                        Over2250=="True" & Over5700=="False" ~"2250-5700")) %>%   select(!c("Location","Operator","Date","Model","StateOfOperator","Class","ScheduledCommercial","Official","OccCats","Over2250","Over5700","Helicopter","Airplane","Registration","X"))%>% 
-  mutate_if(is.character, as.factor) 
+                                        Over2250=="True" & Over5700=="False" ~"2250-5700"))%>% 
+  select(!c("Location","Operator","Date","Model","StateOfOperator","Class","ScheduledCommercial","Official","OccCats","Over2250","Over5700","Helicopter","Airplane","Registration","X")) %>% mutate_if(is.character, as.factor) 
+
+levels(data$Risk)[1]<-"Unknown"
+levels(data$StateOfOccurrence)[1]<-"Unknown"
+levels(data$StateOfRegistry)[1]<-"Unknown"
+levels(data$FlightPhase)[1]<-"Unknown"
+levels(data$InjuryLevel)[1]<-"Unknown"
 
 str(data)
-
 
 
 ```
@@ -41,23 +50,19 @@ data %$% table(AircraftType)
 
 frq.per.country<-data %>% group_by(StateOfOccurrence) %>% 
   summarise(count=n()) %>% 
-  arrange(count)
+  arrange(.,desc(count))
 
 frq.per.FlightPhase<-data %>% group_by(FlightPhase) %>% 
   summarise(count=n()) %>% 
-  arrange(count)
+  arrange(.,desc(count))
 
 data %>% group_by(InjuryLevel) %>% 
   summarise(count=n()) %>% 
-  arrange(count)
+  arrange(.,desc(count))
 
 data %>% group_by(Risk) %>% 
   summarise(count=n()) %>% 
-  arrange(count)
-
-data %>% group_by(Risk) %>% 
-  summarise(count=n()) %>% 
-  arrange(count)
+  arrange(.,desc(count))
 
 
 
@@ -70,12 +75,15 @@ frq.flightPhase.by.InjuryLevel<-data %>% group_by(FlightPhase, InjuryLevel) %>%
 #plots
 
 # frequency of accidents by flight phase (Landing, Take-off, etc.) grouped by aircraft type (Airplane, Helicopter)
-FlightPhase.order<-data %>% group_by(FlightPhase) %>% 
+FlightPhase.order.ap<-data %>%subset(AircraftType=="Airplane") %>% group_by(FlightPhase) %>% 
   summarise(count=n()) %>% 
-  arrange(-count) %$% FlightPhase
+  arrange(.,count) %$% FlightPhase
+FlightPhase.order.hel<-data %>%subset(AircraftType=="Helicopter") %>% group_by(FlightPhase) %>% 
+  summarise(count=n()) %>% 
+  arrange(.,count) %$% FlightPhase
 
 ggplot(data = data, aes(x=factor(FlightPhase, FlightPhase.order), group=AircraftType)) + 
-  geom_bar(mapping = aes(y=..prop..), stat="count") +
+  geom_bar(mapping = aes(y=..prop..)) +
   coord_flip() +
   facet_wrap(~ AircraftType)+
   geom_text(aes(label = scales::percent(..prop..), y= ..prop..), stat= "count", size=3, hjust = -0.2 )  +
@@ -87,6 +95,7 @@ subset(data, AircraftType=="Airplane" & FlightPhase=="Take-off") %>% nrow / subs
 subset(data, AircraftType=="Helicopter" & FlightPhase=="Take-off") %>% nrow / subset(data, AircraftType=="Helicopter") %>% nrow
 
 ```
+
 ```{r}
 # frequency of accidents in each flight pahse grouped by InjuryLevel
 ggplot(data = data[data$InjuryLevel %in% c("Fatal", "Minor", "Serious", "None", "Unknown", ""),], aes(x=FlightPhase, group=InjuryLevel)) + 
@@ -111,22 +120,23 @@ ggplot(data = data, aes(x=FlightPhase, group=WeightCat)) +
 
 
 ```{r}
-
 #number of accidents per year - trend
-data %>% group_by(Year) %>% 
-  summarise(count=n()) %>% 
-  arrange(Year)%$%
-  plot(Year, count, type="l")
+data_ac_ct<- data %>% group_by(Year,AircraftType) %>% 
+  summarise(count=n())
+data_ac_ct
+```
 
-ggplot(data = data, aes(x=Year)) + 
-  geom_line(mapping = aes(y=..count..), stat="count") +
-  labs(x = "Year", y="Count")
+
+```{r}
+data_ac_ct %>% ggplot(aes(x=Year, y=count,color=AircraftType)) + 
+  geom_line() +
+  labs(x = "Year", y="Count")+theme_minimal()+ ggtitle("The accident count")
 
 #there was a major drop in the number of accidents from 2012 onwards, so maybe split the data to before and after 2012 and investigate what else changed
+```
 
 
-
-
+```{r}
 ```
 
 
