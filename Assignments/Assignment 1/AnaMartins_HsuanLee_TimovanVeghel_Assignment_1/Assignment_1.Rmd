@@ -527,3 +527,21 @@ Borough_Population <-
 head(Borough_Population)
 ```
 
+##Creating two new databases; one for rats per population and one for rats per area
+
+```{r}
+Rats_Per_Pop <-
+  Borough_Population %>% 
+  mutate(P_Rate_2010 = round(((Rat_Sightings_2010 / Population_2010) * 100000), digits = 2), P_Rate_2011 = round(((Rat_Sightings_2011 / Population_2011) * 100000), digits = 2), P_Rate_2012 = round(((Rat_Sightings_2012 / Population_2012) * 100000), digits = 2), P_Rate_2013 = round(((Rat_Sightings_2013 / Population_2013) * 100000), digits = 2), P_Rate_2014 = round(((Rat_Sightings_2014 / Population_2014) * 100000), digits = 2), P_Rate_2015 = round(((Rat_Sightings_2015 / Population_2015) * 100000), digits = 2), P_Rate_2016 = round(((Rat_Sightings_2016 / Population_2016) * 100000), digits = 2), P_Rate_2017 = round(((Rat_Sightings_2017 / Population_2017) * 100000), digits = 2)) %>% 
+  select(Borough, P_Rate_2010, P_Rate_2011, P_Rate_2012, P_Rate_2013, P_Rate_2014, P_Rate_2015, P_Rate_2016, P_Rate_2017)
+
+head(Rats_Per_Pop)
+
+Rats_Per_Km <-
+  Borough_Population %>% 
+  mutate(A_Rate_2010 = round((Rat_Sightings_2010 / Area), digits = 2), A_Rate_2011 = round((Rat_Sightings_2011 / Area), digits = 2), A_Rate_2012 = round((Rat_Sightings_2012 / Area), digits = 2), A_Rate_2013 = round((Rat_Sightings_2013 / Area), digits = 2), A_Rate_2014 = round((Rat_Sightings_2014 / Area), digits = 2), A_Rate_2015 = round((Rat_Sightings_2015 / Area), digits = 2), A_Rate_2016 = round((Rat_Sightings_2016 / Area), digits = 2), A_Rate_2017 = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
+  select(Borough, A_Rate_2010, A_Rate_2011, A_Rate_2012, A_Rate_2013, A_Rate_2014, A_Rate_2015, A_Rate_2016, A_Rate_2017)
+
+head(Rats_Per_Km)
+```
+
