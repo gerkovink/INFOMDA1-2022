@@ -447,6 +447,7 @@ rat_dataset <- cbind(rat_dataset, solved_duration)
 
 # merge year created year with solved time, in order to see if the government's efficient improve
 solved_duration <- cbind(rat_dataset$Created_Year, solved_duration)
+colnames(solved_duration)[1] <- "Sighting_Year"
 
 # remove the negative number, as it cannot be negative time to solve the issue
 solved_duration <- solved_duration %>%
@@ -480,12 +481,48 @@ solved_duration %>%
 ```
 
 ```{r}
-
+# plot the duration taken to solved the issue of each year
+solved_duration %>%
+  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                               "#F26419", "#999999", "#0073C2FF"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 2500) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(.~Sighting_Year) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
 ```
 
-
-
-
+```{r}
+# plot the duration taken to solved the issue of each year
+solved_duration %>%
+  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                               "#F26419", "#999999", "#0073C2FF"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 3500) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(.~Sighting_Year) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
 
 
 
