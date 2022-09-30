@@ -480,7 +480,7 @@ solved_duration %>%
         plot.title = element_text(hjust=0.5))
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=6}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
@@ -493,7 +493,7 @@ solved_duration %>%
                                "less than 3 month", "less than 4 month",
                                "less than 5 month", "less than half year",
                                "more than half year")) +
-  ylim(0, 2500) +
+  ylim(0, 2300) +
   labs(x = "Time to Solve", y = "Cases Count", 
        title = "Time to Solve Rat Sighting", fill = "Month") +
   facet_grid(.~Sighting_Year) +
@@ -502,7 +502,7 @@ solved_duration %>%
         plot.title = element_text(hjust=0.5))
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=6}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
@@ -515,7 +515,7 @@ solved_duration %>%
                                "less than 3 month", "less than 4 month",
                                "less than 5 month", "less than half year",
                                "more than half year")) +
-  ylim(0, 3500) +
+  ylim(0, 3000) +
   labs(x = "Time to Solve", y = "Cases Count", 
        title = "Time to Solve Rat Sighting", fill = "Month") +
   facet_grid(.~Sighting_Year) +
