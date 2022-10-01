@@ -576,8 +576,8 @@ head(Rats_Per_Pop)
 
 Rats_Per_Km <-
   Borough_Population %>% 
-  mutate(A_Rate_2010 = round((Rat_Sightings_2010 / Area), digits = 2), A_Rate_2011 = round((Rat_Sightings_2011 / Area), digits = 2), A_Rate_2012 = round((Rat_Sightings_2012 / Area), digits = 2), A_Rate_2013 = round((Rat_Sightings_2013 / Area), digits = 2), A_Rate_2014 = round((Rat_Sightings_2014 / Area), digits = 2), A_Rate_2015 = round((Rat_Sightings_2015 / Area), digits = 2), A_Rate_2016 = round((Rat_Sightings_2016 / Area), digits = 2), A_Rate_2017 = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
-  select(Borough, A_Rate_2010, A_Rate_2011, A_Rate_2012, A_Rate_2013, A_Rate_2014, A_Rate_2015, A_Rate_2016, A_Rate_2017)
+  mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
+  select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
 
 head(Rats_Per_Km)
 ```
@@ -591,23 +591,44 @@ head(Rats_Per_Km)
 ##Visualization for above
 
 ```{r}
-New_Data_Org <-
+P_Rates <-
   Rats_Per_Pop %>% 
   pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
 
-as.factor(New_Data_Org$Year)
+as.factor(P_Rates$Year)
 
-head(New_Data_Org, n = 20)
+head(P_Rates, n = 20)
 
-New_Data_Org %>% 
+P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough)) +
   geom_point()
 
-New_Data_Org %>% 
+P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
   geom_line()
 
-New_Data_Org %>% 
+P_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, group = Borough)) +
+  geom_line() +
+  facet_wrap(~ Borough)
+
+A_Rates <-
+  Rats_Per_Km %>% 
+  pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
+
+as.factor(A_Rates$Year)
+
+head(A_Rates, n = 20)
+
+A_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, color = Borough)) +
+  geom_point()
+
+A_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
+  geom_line()
+
+A_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
   geom_line() +
   facet_wrap(~ Borough)
