@@ -288,13 +288,16 @@ brooklyn_map
 
 ## Location Type and Rat number
 
+**Check how many location types it is.**
 ```{r}
 unique(rat_dataset$Location_Type)
 # 20 location types
 ```
 
+There are 20 location types.
+
+**Compute the percantage of rat sighting in each location type**
 ```{r}
-# create the proportion for each location type
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
   summarise(Percentage = round(100*(n() / nrow(.)), 1))
@@ -302,94 +305,26 @@ loc_per <- rat_dataset %>%
 loc_per
 ```
 
-```{r, fig.width=10, fig.height=7}
-# Plot the Pie Chart
+**Plot the Pie Chart that reveals the occupation of rat sighting in each location type**
+```{r, fig.width= 10, fig.height=7}
+
+library(ggcharts)
+
 loc_per %>%
-  ggplot(aes(x = "", y = Percentage, fill = Location_Type)) +
-  geom_bar(stat = "identity") +
-  coord_polar("y", start = 0) +
+  bar_chart(Location_Type, Percentage,
+            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
+                          "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
+                          "#77AADD", "#117755", "#44AA88", "#99CCBB", 
+                          "#777711")) +
   geom_text(aes(label = paste(Percentage , "%")),
-            position = position_stack(vjust = 0.5)) +
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
-                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
-                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
-                             "#ee7d00", "#45902c", "#e94067", "#002a54",
-                             "black")) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank()) +
+            hjust = -0.2) +
+  ylim(NA, 45) +
+  theme(plot.title = element_text(hjust=0.5)) +
   labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
        fill = "Location Type")
-
-
-
-library(webr)
-loc_per %>%
-PieDonut(aes(pie = Percentage))
-
-rat_dataset %>%
-PieDonut(aes(pie = Location_Type))
-
-
-
-
-
-
-loc_per %>%
-  ggplot(aes(x = "", y = Percentage, fill = Location_Type)) +
-  geom_bar(stat = "identity") +
-  coord_polar("y", start = 0) +
-  geom_text(aes(label = "19.3%", "1.7%"),
-            position = position_stack(vjust = 0.5)) +
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
-                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
-                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
-                             "#ee7d00", "#45902c", "#e94067", "#002a54",
-                             "black")) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank()) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
-       fill = "Location Type") 
-
-
-
-  geom_segment(aes(x=x,xend=xend,y=y,yend=yend),
-             data = tibble(x=1.5,xend=c(1.6,1.55,1.6,1.55),
-                           y=c(0.5,1.5,2.5,3.7),yend=c(0.5,1.5,2.5,3.7)))
-
-
-
-
-
-
-
-loc_per %>%
-  ggplot(aes(x = 1, y = Percentage, fill = Location_Type)) +
-  geom_col(stat = "identity", position = "stack") +
-  geom_text_repel(aes(x = 1.4, y = Percentage, label = paste(Percentage , "%")), 
-                    nudge_x = .3, 
-                    segment.size = .7, 
-                    show.legend = FALSE)+
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
-                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
-                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
-                             "#ee7d00", "#45902c", "#e94067", "#002a54",
-                             "black")) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank()) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
-       fill = "Location Type")
+  
 ```
 
 ## Time and Rat number
@@ -400,9 +335,12 @@ rat_dataset %>%
   ggplot(aes(x = Created_Month, fill = Created_Month)) +
   geom_bar() +
   geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
-                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A")) +
+  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
+                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
+                             "#777711")) +
   ylim(0, 15000) +
   labs(x = "Month", y = "Total Number of Rat Sighting", 
        title = "Number of Rat Sighting Each Month", fill = "Month") +
@@ -419,22 +357,22 @@ month_per <- rat_dataset %>%
 month_per
 ```
 
-```{r, fig.width=10, fig.height=7}
+```{r}
 month_per %>%
-  ggplot(aes(x = "", y = Percentage, fill = Created_Month)) +
-  geom_bar(stat = "identity") +
-  coord_polar("y", start = 0) +
-  geom_text(aes(label = paste(Percentage, "%")),
-            position = position_stack(vjust = 0.5)) +
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
-                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A")) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank()) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Each Month",
+  mutate(Month = Created_Month,
+         Month = recode_factor(Month, '01' = "January", '02' = "Febuary",
+                        '03' = "March", '04' = "April", '05' = "May", '06' = "June",
+                        '07' = "July", '08' = "August", '09' = "September", 
+                        '10' = "October", '11' = "November", '12' = "December")) %>%
+  bar_chart(Month, Percentage,
+            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D")) +
+  geom_text(aes(label = paste(Percentage , "%")),
+            hjust = -0.2) +
+  ylim(NA, 15) +
+  theme(plot.title = element_text(hjust=0.5)) +
+  labs(x = "", y = "Percentage", title = "Percentage of Rat Sighting in Each Month",
        fill = "Month")
 ```
 
@@ -445,8 +383,8 @@ rat_dataset %>%
   ggplot(aes(x = Created_Year, fill = Created_Year)) +
   geom_bar() +
   geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF", "#55DDE0")) +
+  scale_fill_manual(values=c("#882E72", "#B178A6", "#5289C7", "#7BAFDE", 
+                             "#CAE0AB", "#F7EE55", "#E8601C", "#DC050C"))  +
   ylim(0, 20000) +
   labs(x = "Year", y = "Total Number of Rat Sighting", 
        title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
@@ -468,11 +406,11 @@ year_count
 # Year with rat sighting (count)
 year_count %>%
   ggplot(aes(x = Created_Year, y = Number, group = 1)) +
-  geom_point() +
-  geom_line(color = "dark blue") +
+  geom_point(size = 1.5) +
+  geom_line(color = "dark blue", size = 1) +
   labs(x = "Year", y = "Number of Rat Sighting", 
        title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
-  theme_minimal() +
+  theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
@@ -521,9 +459,10 @@ solved_duration <- solved_duration %>%
   drop_na() %>%
   filter(duration > 0) %>%
   mutate(month_cat = cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
-                          labels = c("one_mon", "two_mon", "three_mon", 
-                                     "four_mon", "five_mon", "half_year",
-                                     "more_than_half_year")))
+                          labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")))
 ```
 
 ```{r}
@@ -532,12 +471,8 @@ solved_duration %>%
   ggplot(aes(x = month_cat, fill = month_cat)) +
   geom_bar() +
   geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                             "#F26419", "#999999", "#0073C2FF"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
+  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
   ylim(0, 70000) +
   labs(x = "Time to Solve", y = "Cases Count", 
        title = "Time to Solve Rat Sighting", fill = "Month") +
@@ -547,19 +482,15 @@ solved_duration %>%
         plot.title = element_text(hjust=0.5))
 ```
 
-```{r, fig.width=10, fig.height=6}
+```{r, fig.width=10, fig.height=7}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
   ggplot(aes(x = month_cat, fill = month_cat)) +
   geom_bar(position=position_dodge(preserve = "single"), stat='count') +
   geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                               "#F26419", "#999999", "#0073C2FF"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
+  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
   ylim(0, 2300) +
   labs(x = "Time to Solve", y = "Cases Count", 
        title = "Time to Solve Rat Sighting", fill = "Month") +
@@ -569,15 +500,15 @@ solved_duration %>%
         plot.title = element_text(hjust=0.5))
 ```
 
-```{r, fig.width=10, fig.height=6}
+```{r, fig.width=10, fig.height=7}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
   ggplot(aes(x = month_cat, fill = month_cat)) +
   geom_bar(position=position_dodge(preserve = "single"), stat='count') +
   geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values = c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
-                               "#F26419", "#999999", "#0073C2FF"),
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
                     labels = c("less than 1 month", "less than 2 month",
                                "less than 3 month", "less than 4 month",
                                "less than 5 month", "less than half year",
