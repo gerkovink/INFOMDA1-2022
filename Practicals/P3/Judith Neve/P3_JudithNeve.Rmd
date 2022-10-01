@@ -1,0 +1,200 @@
+---
+title: "Practical 3"
+author: "Judith Neve"
+date: '2022-10-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exploratory Data Analysis
+
+## Introduction
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+## The boys data
+
+```{r}
+head(boys)
+tail(boys)
+```
+
+```{r}
+!is.unsorted(boys$age)
+```
+
+```{r}
+summary(boys)
+```
+
+### 1. Create a histogram of the variable age using the function geom_histogram()
+
+```{r}
+boys %>%
+  ggplot(aes(x = age)) +
+  geom_histogram()
+```
+
+### 2. Create a bar chart of the variable gen using the function geom_bar()
+
+```{r}
+boys %>%
+  ggplot(aes(x = gen)) +
+  geom_bar()
+```
+
+## Assessing missing data
+
+```{r}
+md.pattern(boys)
+```
+
+### 3. Create a missingness indicator for the variables gen, phb and tv
+
+```{r}
+boys_missing <- boys %>% 
+  mutate(gen_missing = is.na(gen),
+         phb_missing = is.na(phb),
+         tv_missing = is.na(tv))
+
+head(boys_missing)
+```
+
+### 4. Assess whether missingness in the variabels gen, phb and tv is related to someone's age.
+
+```{r}
+boys_missing %>%
+  group_by(gen_missing, phb_missing, tv_missing) %>% 
+  summarise(age = mean(age))
+# none missing are on average oldest, all missing are on average youngest
+```
+
+### 5. Create a histogram for the variable age, faceted by whether or not someone has a missing value on gen.
+
+```{r}
+boys_missing %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram() +
+  facet_wrap(~ gen_missing)
+```
+
+### 6. Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function geom_point().
+
+```{r}
+boys_missing %>%
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point()
+```
+
+### 7. Ass a colour aesthetic to the previous plot using the missingness indicator of the variable gen.
+
+```{r}
+boys_missing %>%
+  ggplot(aes(x = age, y = bmi, col = gen_missing)) +
+  geom_point()
+```
+
+## Visualising the boys data
+
+### 8. Visualise the relationship between reg and age using a boxplot
+
+```{r}
+boys %>% 
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot()
+```
+
+### 9. Create a density plot of age, splitting the densities by gen using the fill aesthetic
+
+```{r}
+boys %>% 
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.2)
+```
+
+### 10. Create a diverging bar chart for hgt in the boys dataset, that displays for every age year that year's mean height in deviations from the ovarall average hgt
+
+```{r}
+boys %>% 
+  mutate(age_cat = factor(floor(age)),
+         dev_hgt = hgt - mean(hgt, na.rm = TRUE)) %>% 
+  group_by(age_cat) %>% 
+  summarise(hgt = mean(dev_hgt, na.rm = TRUE)) %>% 
+  ggplot(aes(x = hgt, y = age_cat)) +
+  geom_bar(stat = "identity")
+```
+
+## Regression visalisation
+
+### 11. Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2
+
+```{r}
+elastic <- bind_rows(elastic1 %>%
+                       mutate(origin = "elastic1"),
+                     elastic2 %>% 
+                       mutate(origin = "elastic2"))
+```
+
+### 12. Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic
+
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, col = origin)) +
+  geom_point()
+```
+
+### 13. Recreate the previous plot, but now assess whether the results of the two datasets appear consistent by adding a linear regression line
+
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, col = origin)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+# looks consistent
+```
+
+### 14. For each of the data sets elastic1 and elastic2, fit a regression model with y = distance on x = stretch using lm()
+
+```{r}
+mod1 <- lm(distance ~ stretch, elastic1)
+mod2 <- lm(distance ~ stretch, elastic2)
+```
+
+### 15. For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance
+
+```{r}
+predict(mod1, se.fit = FALSE)
+summary(mod1)
+
+predict(mod2, se.fit = FALSE)
+summary(mod2)
+```
+
+### 16. Study the residual versus leverage plots for both models
+
+```{r}
+plot(mod1, which = 5)
+plot(mod2, which = 5)
+```
+
+### 17. Use the elastic2 variable stretch to obtain predictions on the model fitted on elastic1
+
+```{r}
+pred <- predict(mod1, newdata = data.frame(stretch = elastic2$stretch))
+pred
+```
+
+### 18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for elastic2
+
+```{r}
+plot(elastic2$distance, pred)
+```
+
