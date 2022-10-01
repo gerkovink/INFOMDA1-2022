@@ -308,8 +308,75 @@ loc_per %>%
   ggplot(aes(x = "", y = Percentage, fill = Location_Type)) +
   geom_bar(stat = "identity") +
   coord_polar("y", start = 0) +
-  geom_text(aes(label = paste(Percentage, "%")),
+  geom_text(aes(label = paste(Percentage , "%")),
             position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
+                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
+                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
+                             "#ee7d00", "#45902c", "#e94067", "#002a54",
+                             "black")) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
+       fill = "Location Type")
+
+
+
+library(webr)
+loc_per %>%
+PieDonut(aes(pie = Percentage))
+
+rat_dataset %>%
+PieDonut(aes(pie = Location_Type))
+
+
+
+
+
+
+loc_per %>%
+  ggplot(aes(x = "", y = Percentage, fill = Location_Type)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = "19.3%", "1.7%"),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
+                             "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
+                             "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
+                             "#EACF65", "#3C8D53", "#ebf2ff", "#009dd1",
+                             "#ee7d00", "#45902c", "#e94067", "#002a54",
+                             "black")) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
+       fill = "Location Type") 
+
+
+
+  geom_segment(aes(x=x,xend=xend,y=y,yend=yend),
+             data = tibble(x=1.5,xend=c(1.6,1.55,1.6,1.55),
+                           y=c(0.5,1.5,2.5,3.7),yend=c(0.5,1.5,2.5,3.7)))
+
+
+
+
+
+
+
+loc_per %>%
+  ggplot(aes(x = 1, y = Percentage, fill = Location_Type)) +
+  geom_col(stat = "identity", position = "stack") +
+  geom_text_repel(aes(x = 1.4, y = Percentage, label = paste(Percentage , "%")), 
+                    nudge_x = .3, 
+                    segment.size = .7, 
+                    show.legend = FALSE)+
   scale_fill_manual(values=c("#EFC000FF", "#33658A", "#2F4858", "#F6AE2D", 
                              "#F26419", "#999999", "#0073C2FF", "#55DDE0", 
                              "#868686FF", "#CD534CFF", "#BE2A3E", "#EC754A",
