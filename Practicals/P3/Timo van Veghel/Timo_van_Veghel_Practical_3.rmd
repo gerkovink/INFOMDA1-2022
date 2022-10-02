@@ -1,0 +1,124 @@
+```{r}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+
+```{r}
+?mice::boys
+```
+
+##Question 1:
+
+```{r}
+boys %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(binwidth = 0.5) +
+  labs(title = "Age Distribution") +
+  theme_minimal()
+```
+
+##Question 2:
+
+```{r}
+boys %>% 
+  ggplot(aes(x = gen)) +
+  geom_bar() +
+  labs(title = "Genital Tanner Stage") +
+  theme_minimal()
+```
+
+##Question 3:
+
+```{r}
+missing <-
+  boys %>% 
+  mutate(gen_missing = is.na(gen),
+         phb_missing = is.na(phb), 
+         tv_missing = is.na(tv))
+```
+
+##Question 4:
+
+```{r}
+missing %>% 
+  group_by(gen_missing) %>% 
+  summarize(age = mean(age))
+
+missing %>% 
+  group_by(phb_missing) %>% 
+  summarize(age = mean(age))
+
+missing %>% 
+  group_by(tv_missing) %>% 
+  summarize(age = mean(age))
+```
+
+##Question 5:
+
+```{r}
+missing %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(binwidth = 0.5) +
+  labs(title = "Age Distribution") +
+  theme_minimal() +
+  facet_wrap(~gen_missing)
+```
+
+##Question 6:
+
+```{r}
+missing %>% 
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point() +
+  labs(x = "Age", y = "BMI", title = "BMI by age") +
+  theme_minimal()
+```
+
+##Question 7:
+
+```{r}
+missing %>% 
+  ggplot(aes(x = age, y = bmi, colour = gen_missing)) +
+  geom_point() +
+  labs(x = "Age", y = "BMI", title = "BMI by age") +
+  theme_minimal()
+```
+
+##Question 8:
+
+```{r}
+boys %>% 
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot() +
+  labs(x = "Region", y = "Age", title = "Age by region") +
+  theme_minimal()
+```
+##Question 9:
+
+```{r}
+boys %>% 
+  ggplot(aes(x = gen, fill = gen)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Genital Tanner Stage") +
+  theme_minimal()
+```
+
+##Question 10:
+
+```{r}
+boys %>% 
+  mutate(Age = cut(age, 0:22, labels = paste0(0:21, "years")), Height = hgt - mean(hgt, na.rm = TRUE)) %>% 
+  group_by(Age) %>% 
+  summarize(Height = mean(Height, na.rm = TRUE)) %>% 
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>% 
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+```
+
