@@ -284,8 +284,6 @@ brooklyn_map <-
 brooklyn_map
 ```
 
-
-
 ## Location Type and Rat number
 
 **Check how many location types it is.**
@@ -296,7 +294,7 @@ unique(rat_dataset$Location_Type)
 
 There are 20 location types.
 
-**Compute the percantage of rat sighting in each location type**
+**Compute the percentage of rat sighting in each location type**
 ```{r}
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
@@ -305,7 +303,7 @@ loc_per <- rat_dataset %>%
 loc_per
 ```
 
-**Plot the Pie Chart that reveals the occupation of rat sighting in each location type**
+**Plot the bar chart that reveals the occupation of rat sighting in each location type**
 ```{r, fig.width= 10, fig.height=7}
 
 library(ggcharts)
@@ -327,10 +325,12 @@ loc_per %>%
   
 ```
 
+Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
+
 ## Time and Rat number
 
+**Plot the number of rat sightings each month**
 ```{r}
-# month with rat sighting (number)
 rat_dataset %>%
   ggplot(aes(x = Created_Month, fill = Created_Month)) +
   geom_bar() +
@@ -348,8 +348,11 @@ rat_dataset %>%
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+In July, the highest number of rat sightings was recorded, with 11,982 cases, followed by August and June. In general, the number of rat sightings can be identified in relation to fluctuations in temperature, as in winter months, i.e. November, December, January and February, the number of rat sightings are the lowest. With rising temperatures, however, the number of rat sightings increased markedly.
+
+**Plot the Percentage of rat sightings by month**
 ```{r}
-# month with rat sighting (percentage)
+# compute the percentage of each month on rat sighting
 month_per <- rat_dataset %>%
   group_by(Created_Month) %>%
   summarise(Percentage = round(100*(n() / nrow(.)),1))
@@ -376,9 +379,12 @@ month_per %>%
        fill = "Month")
 ```
 
+A monthly percentage of rat sightings clearly reveals that rat sightings can be roughly divided by season. Rat sightings are highest in the summer months, followed by spring and fall, and lowest in the winter months.
 
+## Determine whether the cases of rat sightings evolve with the year
+
+**Plot the number of rat sightings versus year** 
 ```{r}
-# Year with rat sighting (bar chart)
 rat_dataset %>%
   ggplot(aes(x = Created_Year, fill = Created_Year)) +
   geom_bar() +
@@ -390,9 +396,13 @@ rat_dataset %>%
        title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
   theme_minimal() +
   theme(plot.title = element_text(hjust=0.5))
-
 ```
 
+Since 2010 to 2013, the number of rat sighting cases did not fluctuate measurably. Yet, the number of rat sightings escalated yearly after 2013, from 2014 to 2016, with the number of rat sightings growing from 10,534 cases in 2010 to 17,230 cases in 2016. Possible reasons behind this are that New York residents tend to report rat sightings to the administration year by year or that the population of New York rises over the period of the years, thus causing the rat population to rise with it. 
+
+Another thing that needs to be mentioned here is that data collection was interrupted in September 2017, hence the drop in rat sightings in 2017.
+
+**Plot the line chart of rat sightings versus year to more easily observe changes**
 ```{r}
 # Year with rat sighting (count)
 year_count <- rat_dataset %>%
@@ -414,6 +424,14 @@ year_count %>%
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+
+
+
+
+
+
+
+
 ```{r}
 # Number of Rat Sighting in each Months of Each Year
 year_month_count <- rat_dataset %>%
@@ -432,6 +450,11 @@ year_month_count %>%
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
 ```
+
+
+
+
+
 
 ```{r}
 # combine the year, month, and day of started day
