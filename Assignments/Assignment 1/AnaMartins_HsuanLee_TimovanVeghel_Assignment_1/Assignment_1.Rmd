@@ -112,20 +112,23 @@ library("ggmap")
 ```
 
 ```{r}
-KEY = 
+KEY = "AIzaSyBgqJ9C7Hf825H8AnFRcHrgdyxOrUF4yBY"
 register_google(key = KEY)
 ```
 
-Firstly, we take a look at how the signthings are distributed:
+Firstly, we take a look at how the sightings are distributed:
 
 ```{r}
 ggplot(rat_dataset, mapping = aes(y = Longitude)) +
-  geom_boxplot()
+  geom_boxplot() +
+  theme_minimal()
 ggplot(rat_dataset, mapping = aes(y = Latitude)) +
-  geom_boxplot()
+  geom_boxplot() +
+  theme_minimal()
 ```
 
-Translating this into a map, we get:
+
+There is a concentration in the middle of the range, with many of what `geom_boxplot()` considers outliers. So the part of New York we will be looking at is:
 
 ```{r}
 data4lat <-
@@ -152,7 +155,7 @@ sightings_map <-
 sightings_map
 ```
 
-From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings:
+From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings. There is also a smaller concentration at the top middle of the map.
 
 ```{r}
 sightings_map <-
@@ -164,95 +167,36 @@ sightings_map <-
 sightings_map
 ```
 
-And what type of location do these happen in, and how are they distributed on the map?
+It seems like the sightings are mostly concentrated in 3 boroughs: Manhatten, Bronx and Brooklyn, with Staten Island having the least concentration by far.
+
+## We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).
 
 ```{r}
-location_map <-
-  ggmap(newyork.map) +
-  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map
+
+borough_population <-
+  rat_dataset %>%
+  ggplot(aes(x = Borough, fill = Borough)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
+                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
+                             "#777711")) +
+  ylim(0, 40000) +
+  labs(x = "Borough", y = "Total Number of Rat Sightings", 
+       title = "Number of Rat Sightings in Each Borough") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+borough_population
 ```
 
-That does not seem like a great visualization (as you really can't see anything), let's divide our facets into multiple plots so we can take a closer look at each of them.
+It looks like Brooklyn is the borough with the most rat sightings. Even though the map shows that Manhatten, for example, looks more densely populated, Manhatten is also a bigger borough, so the sightings are more evenly distributed throughout it.
+
+## How evenly exactly?
 
 ```{r}
-location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building"))
-location_map1 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Dark2")
-location_map1
-
-location_subset2 <- subset(rat_dataset, Location_Type %in% c("3+ Family Mixed Use Building", "Catch Basin/Sewer", "Commercial Building"))
-location_map2 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Paired")
-location_map2
-
-location_subset3 <- subset(rat_dataset, Location_Type %in% c("Construction Site", "Day Care/Nursery", "Government Building"))
-location_map3 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Set2")
-location_map3
-
-location_subset4 <- subset(rat_dataset, Location_Type %in% c("Hospital", "Office Building", "Other (Explain Below)"))
-location_map4 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Accent")
-location_map4
-
-location_subset5 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs"))
-location_map5 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Pastel1")
-location_map5
-
-location_subset6 <- subset(rat_dataset, Location_Type %in% c("School/Pre-School", "Single Room Occupancy (SRO)", "Summer Camp"))
-location_map6 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset6, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Set1")
-location_map6
-
-location_subset7 <- subset(rat_dataset, Location_Type %in% c("Vacant Building", "Vacant Lot", "NA"))
-location_map7 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset7, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon) +
-  scale_color_brewer(palette = "Set3")
-location_map7
-```
-
-```{r}
-
-#since brooklyn is the borough with more rats, it might be useful to take a closer look at the map
 
 data4lat_brooklyn <-
   rat_dataset %>% 
@@ -283,6 +227,89 @@ brooklyn_map <-
   xlim(min_brooklyn_lon, max_brooklyn_lon)
 brooklyn_map
 ```
+
+The rats seem to stand away from the beach and the parks (they probably have work to do, like us). The denser the subway lines get, the denser the rat population too, it seems. 
+
+## And what type of location do these happen in, and how are they distributed on the map?
+
+```{r}
+location_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map
+```
+
+That does not seem like a great visualization (as you really can't see anything), let's divide our facets into multiple plots so we can take a closer look at each of them.
+
+```{r}
+location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building", "3+ Family Mixed Use Building"))
+location_map1 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map1
+
+location_subset2 <- subset(rat_dataset, Location_Type %in% c("Catch Basin/Sewer", "Commercial Building", "Construction Site", "Day Care/Nursery"))
+location_map2 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map2
+
+location_subset3 <- subset(rat_dataset, Location_Type %in% c("Government Building", "Hospital", "Office Building", "Other (Explain Below)"))
+location_map3 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map3
+
+location_subset4 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs", "School/Pre-School"))
+location_map4 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map4
+
+location_subset5 <- subset(rat_dataset, Location_Type %in% c("Single Room Occupancy (SRO)", "Summer Camp", "Vacant Building", "Vacant Lot"))
+location_map5 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+location_map5
+```
+
+Looking at the Family Buildings, it is actually scary how evenly spread out (and still, always concentrated) around the maps. Even in Staten Island, which we already saw had the least concentration, we can still see that most of them were in Family Buildings.
+Looking at the map for the sightings at Sewers, it is no surprise the bigest concentration is in Manhatten, which is famously known in movies for having rats come out of sewers, as well as walking around stealing Dolar Slices, so you can see that Manhatten is also the one with more concentration in Public Spaces.
+It is also no surprise most of the sightings at Government Buildings are in Manhatten, as [most of the Government buildings in New York are in Downtown Manhatten](https://www.tripadvisor.com/Attractions-g60763-Activities-c47-t15-New_York_City_New_York.html).
+There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
+For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
+
+## Do the sighting locations change over the years?
+
+```{r}
+years_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Created_Year), alpha = 0.3) +
+  facet_wrap(~ Created_Year) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+years_map
+```
+
+It definitely looks like that is not the case, as the maps all look basically exactly the same, meaning the actual locations of the sightings are constant, which may indicate to no interventions ever having been done in any of the places.
 
 ## Location Type and Rat number
 
@@ -467,22 +494,24 @@ solved_duration <- data.frame(difftime(endtime,starttime,units = "days"))
 colnames(solved_duration)[1] <- "duration"
 solved_duration$duration <- as.numeric(solved_duration$duration)
 
-# merge it to the original dataset
-rat_dataset <- cbind(rat_dataset, solved_duration)
-
 # merge year created year with solved time, in order to see if the government's efficient improve
 solved_duration <- cbind(rat_dataset$Created_Year, solved_duration)
 colnames(solved_duration)[1] <- "Sighting_Year"
 
 # remove the negative number, as it cannot be negative time to solve the issue
 solved_duration <- solved_duration %>%
-  drop_na() %>%
-  filter(duration > 0) %>%
   mutate(month_cat = cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
                           labels = c("less than 1 month", "less than 2 month",
                                "less than 3 month", "less than 4 month",
                                "less than 5 month", "less than half year",
                                "more than half year")))
+
+# merge it to the original dataset
+rat_dataset <- cbind(rat_dataset, solved_duration)
+
+solved_duration <-
+  solved_duration %>% 
+  drop_na()
 ```
 
 **Plot the time required to solve the problem**
@@ -503,6 +532,20 @@ solved_duration %>%
 ```
 
 Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
+
+## Does the location matter when it comes to how long they take to solve a case?
+
+```{r}
+duration_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset %>% filter_at(vars(Longitude, Latitude, month_cat),all_vars(!is.na(.))), mapping = aes(x = Longitude, y = Latitude, color = month_cat), alpha = 0.3) +
+  facet_wrap(~ month_cat) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+duration_map
+```
+
+The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
 
 **Plot the number of rat sighting case resolution times by year.**
 ```{r, fig.width=10, fig.height=7, warning=FALSE}
@@ -552,7 +595,7 @@ On balance, from 2010 to 2017, an increasing number of sighting cases were solve
 library(scales)
 
 solved_duration %>%
-  filter(Sighting_Year == c(2010, 2011, 2012)) %>%
+  filter(Sighting_Year == c(2010, 2011, 2012), duration > 0) %>%
   ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
   geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
   geom_text(aes(label = scales::percent(round((..prop..),3)),
