@@ -296,7 +296,7 @@ unique(rat_dataset$Location_Type)
 
 There are 20 location types.
 
-**Compute the percantage of rat sighting in each location type**
+**Compute the percentage of rat sighting in each location type**
 ```{r}
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
@@ -598,17 +598,22 @@ as.factor(P_Rates$Year)
 head(P_Rates, n = 20)
 
 P_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, color = Borough)) +
-  geom_point()
-
-P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
-  geom_line()
+  geom_point() +
+  geom_line() +
+  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population", color = "Borough") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
+
 
 P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
+  geom_point() +
   geom_line() +
-  facet_wrap(~ Borough)
+  facet_wrap(~ Borough) + 
+  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
 
 A_Rates <-
   Rats_Per_Km %>% 
@@ -619,17 +624,21 @@ as.factor(A_Rates$Year)
 head(A_Rates, n = 20)
 
 A_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, color = Borough)) +
-  geom_point()
-
-A_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
-  geom_line()
+  geom_point() +
+  geom_line() +
+  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
 
 A_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
+  geom_point() +
   geom_line() +
-  facet_wrap(~ Borough)
+  facet_wrap(~ Borough) +
+  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
 
 ```
 
