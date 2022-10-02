@@ -360,7 +360,7 @@ month_per <- rat_dataset %>%
 month_per
 ```
 
-```{r}
+```{r, warning=FALSE}
 month_per %>%
   mutate(Month = Created_Month,
          Month = recode_factor(Month, '01' = "January", '02' = "Febuary",
@@ -505,7 +505,7 @@ solved_duration %>%
 Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
 
 **Plot the number of rat sighting case resolution times by year.**
-```{r, fig.width=10, fig.height=7}
+```{r, fig.width=10, fig.height=7, warning=FALSE}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
@@ -523,13 +523,13 @@ solved_duration %>%
         plot.title = element_text(hjust=0.5))
 ```
 
-```{r, fig.width=10, fig.height=7}
+```{r, fig.width=10, fig.height=7, warning=FALSE}
 # plot the duration taken to solved the issue of each year
 solved_duration %>%
   filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
   ggplot(aes(x = month_cat, fill = month_cat)) +
   geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  geom_text(stat='count', aes(label=..count..), vjust= -1) +
   scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
                              "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
                     labels = c("less than 1 month", "less than 2 month",
@@ -548,118 +548,84 @@ solved_duration %>%
 On balance, from 2010 to 2017, an increasing number of sighting cases were solved within 1 month, with the number of cases requiring more than 2 months to be closed decreasing each year.
 
 **Plot the percentage of rat sighting case resolution times by year**
-```{r}
-# compute the percentage of "time to resolution of rat sightings" by year 
-solved_duration.1 <- solved_duration %>%
-  group_by(Sighting_Year) %>%
-  count(month_cat) %>%
-  mutate(mon_solve_per = round(100*(n / sum(n)),1))
-
-df <- data.frame(Sighting_Year = as.factor(2017), 
-                 month_cat = as.factor("more than half year"), 
-                 n = 0, mon_solve_per = 0)
-
-solved_dur <- data.frame(Sighting_Year = solved_duration.1$Sighting_Year,
-                         month_cat = solved_duration.1$month_cat,
-                         n = solved_duration.1$n,
-                         mon_solve_per = solved_duration.1$mon_solve_per)
-
-solved_dur <- rbind(solved_dur, df)
-```
-
-```{r}
+```{r, fig.width=10, fig.height=7, warning=FALSE}
 library(scales)
-ggplot(solved_duration, aes(x= month_cat,  group=Sighting_Year)) + 
-    geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
-    geom_text(aes(label = scales::percent(..prop..),
-                   y= ..prop.. ), stat= "count", vjust = -.5) +
-    labs(y = "Percent", fill="test2") +
-    facet_grid(~Sighting_Year) +
-    scale_y_continuous(labels=percent)
 
-
-
-solved_duration.1 %>%
-  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
-  ggplot(aes(x = month_cat, y = mon_solve_per)) +
-  geom_bar(stat="identity") +
-  facet_grid(. ~ Sighting_Year) +
-  scale_y_continuous(labels=percent, limits=c(0,0.9)) + 
-  geom_text(aes(label=paste0((mon_solve_per),"%")), size=4)
-
-
-
-ggplot(test.pct, aes(x=test2, y=pct, colour=test2, fill=test2)) +
-  geom_bar(stat="identity") +
-  facet_grid(. ~ test1) +
-  scale_y_continuous(labels=percent, limits=c(0,0.27)) + 
-  geom_text(data=test.pct, aes(label=paste0(round(pct*100,1),"%"),
-                               y=pct+0.012), size=4)
-
-
-
-
-
-
-solved_dur %>%
-  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
-  ggplot(aes(x = month_cat, y = mon_solve_per, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='identity') +
-  geom_text(aes(y = mon_solve_per,label = paste0((mon_solve_per),"%")),
-            vjust=-1) +
+solved_duration %>%
+  filter(Sighting_Year == c(2010, 2011, 2012)) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 3) +
   scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
                                "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
                     labels = c("less than 1 month", "less than 2 month",
                                "less than 3 month", "less than 4 month",
                                "less than 5 month", "less than half year",
                                "more than half year")) +
+  ylim(0, 100) +
   labs(x = "Time to Solve", y = "Cases Count", 
        title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  ylim(0, 100) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-
-
-
-
-
-
-
-
-
-
-
-
-
-solved_dur %>%
-  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
-  ggplot(aes(x = month_cat, y = mon_solve_per, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='identity') +
-  geom_text(aes(y = mon_solve_per,label = paste0((mon_solve_per),"%")),
-            vjust=-1) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  ylim(0, 100) +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
   theme(axis.text.x = element_text(angle = 90, 
                                    hjust = 1, vjust = 0),
         plot.title = element_text(hjust=0.5))
 ```
 
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+solved_duration %>%
+  filter(Sighting_Year == c(2013, 2014, 2015)) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 3) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 100) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
 
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+solved_duration %>%
+  filter(Sighting_Year == c(2016, 2017)) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 4) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 100) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
 
-
-
-
-
+As seen in the graph, the overall efficiency of solving rat sighting cases has improved year by year, from 73.2% of cases resolved within 1 month in 2010 to approximately 80% of cases closed within 1 month in 2011, 2012, and further to 90% of cases settled within 1 month in 2013 to 2017.
 
 ## Is the number of rat sightings in a given borough proportional to its population?
 
