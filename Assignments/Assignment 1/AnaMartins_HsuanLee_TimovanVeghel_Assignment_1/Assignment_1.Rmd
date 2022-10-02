@@ -394,7 +394,7 @@ rat_dataset %>%
   ylim(0, 20000) +
   labs(x = "Year", y = "Total Number of Rat Sighting", 
        title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
-  theme_minimal() +
+  theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
@@ -424,14 +424,9 @@ year_count %>%
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+The line graph offers a better experience in observing the trend of rat sightings by year. The line graph reaffirms the above discussion, with an alarming increase in rat sightings from 2013 to 2016.
 
-
-
-
-
-
-
-
+**Mapping the number of rat sightings for each month of each year**
 ```{r}
 # Number of Rat Sighting in each Months of Each Year
 year_month_count <- rat_dataset %>%
@@ -445,6 +440,8 @@ year_month_count %>%
   ggplot(aes(x = Created_Month, y = n, color = Created_Year, group = Created_Year)) +
   geom_point() +
   geom_line() +
+  scale_color_manual(values=c("#882E72", "black", "#EEA236", "#5CB85C", 
+                              "#46B8DA", "#9632B8", "dark green", "#DC050C")) +
   labs(x = "Month", y = "Number of Rat Sighting", 
        title = "Number of Rat Sighting", color = "Year") +
   theme_classic() +
@@ -546,6 +543,86 @@ solved_duration %>%
 ```
 
 
+**by percentage**
+```{r}
+solved_duration.1 <- solved_duration %>%
+  group_by(Sighting_Year) %>%
+  count(month_cat) %>%
+  mutate(mon_solve_per = round(100*(n / sum(n)),1))
+
+df <- data.frame(Sighting_Year = as.factor(2017), 
+                 month_cat = as.factor("more than half year"), 
+                 n = 0, mon_solve_per = 0)
+
+solved_dur <- data.frame(Sighting_Year = solved_duration.1$Sighting_Year,
+                         month_cat = solved_duration.1$month_cat,
+                         n = solved_duration.1$n,
+                         mon_solve_per = solved_duration.1$mon_solve_per)
+
+solved_dur <- rbind(solved_dur, df)
+```
+
+```{r}
+library(scales)
+ggplot(solved_duration, aes(x= month_cat,  group=Sighting_Year)) + 
+    geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+    geom_text(aes(label = scales::percent(..prop..),
+                   y= ..prop.. ), stat= "count", vjust = -.5) +
+    labs(y = "Percent", fill="test2") +
+    facet_grid(~Sighting_Year) +
+    scale_y_continuous(labels=percent)
+
+
+
+solved_duration.1 %>%
+  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
+  ggplot(aes(x = month_cat, y = mon_solve_per)) +
+  geom_bar(stat="identity") +
+  facet_grid(. ~ Sighting_Year) +
+  scale_y_continuous(labels=percent, limits=c(0,0.9)) + 
+  geom_text(aes(label=paste0((mon_solve_per),"%")), size=4)
+
+
+
+
+
+
+
+
+
+
+
+
+ggplot(test.pct, aes(x=test2, y=pct, colour=test2, fill=test2)) +
+  geom_bar(stat="identity") +
+  facet_grid(. ~ test1) +
+  scale_y_continuous(labels=percent, limits=c(0,0.27)) + 
+  geom_text(data=test.pct, aes(label=paste0(round(pct*100,1),"%"),
+                               y=pct+0.012), size=4)
+
+
+
+
+solved_dur %>%
+  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
+  ggplot(aes(x = month_cat, y = mon_solve_per, fill = month_cat)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='identity') +
+  geom_text(aes(y = mon_solve_per,label = paste0((mon_solve_per),"%")),
+            vjust=-1) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(.~Sighting_Year) +
+  ylim(0, 100) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
 
 
 
