@@ -33,8 +33,20 @@ data %<>% mutate("AircraftType"=case_when(Airplane=="True"~"Airplane",
                                      Helicopter=="True"~"Helicopter"),
                 "WeightCat"=case_when(Over5700=="True"~">5700",
                                         Over2250=="False" ~ "<2250",
-                                        Over2250=="True" & Over5700=="False" ~"2250-5700"))%>% 
+                                        Over2250=="True" & Over5700=="False" ~"2250-5700"),
+                "RiskCat"=case_when(Risk %in% c("AMAN","MAC","CFIT","FUEL",'GTOW',"LOC-I","LOLI","LALT","UIMC")~"Airborne",
+                                    Risk %in% c("F-NI","SCF-NP","SCF-PP","SCF")~"Aircraft" ,
+                                    Risk %in% c("EVAC","F–POST","GCOL","RAMP","LOC–G","RE","RI–A","RI–VAP")~"Ground Operations",
+                                    Risk %in% c("CABIN","EXTL","OTHR","OTH","SEC","GS","OD")~"Miscellaneous",
+                                    Risk %in% c("Unknown","UNK","unk")~"Unknown/Undefined",
+                                    Risk %in% c("RS")~"Runway Safety",
+                                    Risk %in% c("BIRD","WILD")~"Wildlife",
+                                    Risk %in% c("ADRM","ATM")~"Non-aircraft-related",
+                                    Risk %in% c("ARC","CTOL","USOS")~"Takeoff and Landing",
+                                    Risk %in% c("ICE","TURB","WSTRW","TUBR")~"Weather", #wrongly codded "TURB" spoted and added to the 
+                                    Risk %in% c("MED")~"Injuries of Persons")) %>% mutate(RiskCat= replace_na(RiskCat, "Multiple") )%>% 
   select(!c("Location","Operator","Date","Model","StateOfOperator","Class","ScheduledCommercial","Official","OccCats","Over2250","Over5700","Helicopter","Airplane","Registration","X")) %>% mutate_if(is.character, as.factor) 
+
 
 levels(data$Risk)[1]<-"Unknown"
 levels(data$StateOfOccurrence)[1]<-"Unknown"
@@ -196,18 +208,6 @@ In addition:
 * Since RS was not included in the report mention above we made a separate category out of it named "Runway Safety"
 * If there was more than 1 accident reason defined we classified as "Multiple" category
 ```{r}
-
-data%<>% mutate("RiskCat"=case_when(Risk %in% c("AMAN","MAC","CFIT","FUEL",'GTOW',"LOC-I","LOLI","LALT","UIMC")~"Airborne",
-Risk %in% c("F-NI","SCF-NP","SCF-PP","SCF")~"Aircraft" ,Risk %in% c("EVAC","F–POST","GCOL","RAMP","LOC–G","RE","RI–A","RI–VAP")~"Ground Operations",
-Risk %in% c("CABIN","EXTL","OTHR","OTH","SEC","GS","OD")~"Miscellaneous",
-Risk %in% c("Unknown","UNK","unk")~"Unknown/Undefined",
-Risk %in% c("RS")~"Runway Safety",
-Risk %in% c("BIRD","WILD")~"Wildlife",
-Risk %in% c("ADRM","ATM")~"Non-aircraft-related",
-Risk %in% c("ARC","CTOL","USOS")~"Takeoff and Landing",
-Risk %in% c("ICE","TURB","WSTRW","TUBR")~"Weather", #wrongly codded "TURB" spoted and added to the 
-Risk %in% c("MED")~"Injuries of Persons"
-))%>%  mutate(RiskCat= replace_na(RiskCat, "Multiple") ) 
 
 #risks involved in the accidents in more being a cause of at least 10 accidents
 data%>% group_by(RiskCat) %>% summarise(count=n())%>% arrange(.,desc(count))
