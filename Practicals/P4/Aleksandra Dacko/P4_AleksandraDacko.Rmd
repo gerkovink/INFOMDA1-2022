@@ -1,0 +1,219 @@
+---
+title: "P4_ADacko"
+author: "Aleksandra Dacko"
+date: "10/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,message=FALSE,warning=FALSE}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+library(magrittr)
+```
+
+# Regression in R
+
+```{r}
+some_formula <- outcome ~ predictor_1 + predictor_2 
+class(some_formula)
+as.character(some_formula)
+summary(Boston)
+```
+
+### 1. Create a linear model object called lm_ses using the formula medv ~ lstat and the Boston dataset.
+
+```{r ex1}
+lm_ses<-lm(data=Boston,medv~lstat)
+```
+
+### 2. Use the function coef() to extract the intercept and slope from the lm_ses object. Interpret the slope coefficient.
+
+```{r ex2}
+lm_ses %>% coef()
+```
+The housing value (`medv`) is equal to on average 34.55 when `lstat` is held 0. With one point rise in `lstat` the housing value (`medv`) is going to decrease of about 0.95.
+
+### 3.Use summary() to get a summary of the lm_ses object. What do you see? You can use the help file ?summary.lm.
+
+```{r}
+lm_ses %>%  summary()
+```
+
+We can see the following in the output:
+
+* coefficients: a named vector of coefficients
+
+* residuals: the residuals, that is response minus fitted values.
+
+* fitted.values: the fitted mean values.
+
+* df.residual: the residual degrees of freedom.
+
+### 4. Save the predicted y values to a variable called y_pred
+
+```{r}
+y_pred<-lm_ses %>% predict()
+```
+
+### 5.Create a scatter plot with y_pred mapped to the x position and the true y value (Boston$medv) mapped to the y value. What do you see? What would this plot look like if the fit were perfect?
+
+```{r}
+data.frame(medv=Boston$medv,pred=y_pred) %>% ggplot(aes(x=pred,y=medv)) + geom_point()
+```
+
+
+### 6.Use the seq() function to generate a sequence of 1000 equally spaced values from 0 to 40. Store this vector in a data frame with (data.frame() or tibble()) as its column name lstat. Name the data frame pred_dat.
+
+```{r}
+pred_dat<-data.frame(lstat=seq(length.out=1000,from=0,to=40))
+```
+
+### 7.Use the newly created data frame as the newdata argument to a predict() call for lm_ses. Store it in a variable named y_pred_new
+
+```{r}
+y_pred_new<- predict(lm_ses, newdata = pred_dat)
+```
+
+# Plotting lm() in ggplot
+
+### 8.Create a scatter plot from the Boston dataset with lstat mapped to the x position and medv mapped to the y position. Store the plot in an object called p_scatter.
+
+```{r}
+p_scatter<-Boston %>% ggplot(aes(y=medv,x=lstat))+geom_point()+theme_minimal()
+```
+
+
+
+### 9. Add the vector y_pred_new to the pred_dat data frame with the name medv
+
+```{r}
+pred_dat %<>% mutate(medv=y_pred_new)
+```
+
+### 10. Add a geom_line() to p_scatter, with pred_dat as the data argument. What does this line represent?
+
+```{r}
+p_scatter+geom_line(data=pred_dat)
+```
+
+
+The points represents the true data while the line is a linear regression approximation of the data. 
+
+
+### 11. The interval argument can be used to generate confidence or prediction intervals. Create a new object called y_pred_95 using predict() (again with the pred_dat data) with the interval argument set to “confidence”. What is in this object?
+
+
+```{r}
+y_pred_95<-predict(lm_ses,data.frame(lstat=seq(length.out=1000,from=0,to=40)),interval = "confidence")
+y_pred_95<-as.data.frame(y_pred_95)
+```
+
+### 12.Create a data frame with 4 columns: medv, lstat, lower, and upper.
+
+```{r}
+pred_dat_95<-data.frame(medv=y_pred_95$fit,lstat=seq(length.out=1000,from=0,to=40),lower=y_pred_95$lwr,upper=y_pred_95$upr)
+
+head(pred_dat_95)
+```
+
+### 13.Add a geom_ribbon() to the plot with the data frame you just made. The ribbon geom requires three aesthetics: x (lstat, already mapped), ymin (lower), and ymax (upper). Add the ribbon below the geom_line() and the geom_points() of before to make sure those remain visible. Give it a nice colour and clean up the plot, too!
+
+```{r}
+Boston %>% ggplot(aes(y=medv,x=lstat))+geom_ribbon(aes(ymin=lower,ymax=upper),data=pred_dat_95,fill="#EFD0CA")+geom_point(colour="#979B8D")+geom_line(data = pred_dat,colour="#214E34",size=1)+theme_minimal()+labs(x    = "Proportion of low SES households",
+       y    = "Median house value",
+       title = "Boston house prices")
+```
+
+
+### 14.Explain in your own words what the ribbon represents.
+
+The ribbon represents the 95% confidence interval of the fit line.
+The uncertainty in the estimates of the coefficients are taken into account with 
+this ribbon. 
+
+
+### 15.Do the same thing, but now with the prediction interval instead of the confidence interval.
+
+```{r}
+y_pred_int_95<-predict(lm_ses,data.frame(lstat=seq(length.out=1000,from=0,to=40)),interval = "prediction")
+y_pred_int_95<-as.data.frame(y_pred_int_95)
+head(y_pred_int_95)
+```
+```{r}
+pred_int_95<-data.frame(medv=y_pred_int_95$fit,lstat=seq(length.out=1000,from=0,to=40),lower=y_pred_int_95$lwr,upper=y_pred_int_95$upr)
+
+head(pred_int_95)
+```
+```{r}
+Boston %>% ggplot(aes(y=medv,x=lstat))+geom_ribbon(aes(ymin=lower,ymax=upper),data=pred_int_95,fill=alpha(colour = "#EFD0CA",alpha = 0.4))+geom_point(colour="#979B8D")+geom_line(data = pred_dat,colour="#214E34",size=1)+theme_minimal()+labs(x    = "Proportion of low SES households",
+       y    = "Median house value",
+       title = "Boston house prices")
+```
+
+# Mean square error
+
+
+### 16.Write a function called mse() that takes in two vectors: true y values and predicted y values, and which outputs the mean square error.
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mes<-round(1/length(y_true)*sum((y_true-y_pred)^2),3)
+  return(mes)
+}
+```
+
+
+###17.Make sure your mse() function works correctly by running the following code.
+
+```{r}
+mse(1:10, 10:1)
+```
+
+
+### 18.Calculate the mean square error of the lm_ses model. Use the medv column as y_true and use the predict() method to generate y_pred.
+
+```{r}
+mse(Boston$medv,predict(lm_ses))
+```
+# Train-validation-test split\
+
+Now we will use the `sample()` function to randomly select observations from the `Boston` dataset to go into a training, test, and validation set. The training set will be used to fit our model, the validation set will be used to calculate the out-of sample prediction error during model building, and the test set will be used to estimate the true out-of-sample MSE.
+
+### 19.The `Boston` dataset has 506 observations. Use `c()` and `rep()` to create a vector with 253 times the word “train”, 152 times the word “validation”, and 101 times the word “test”. Call this vector `splits.`
+```{r}
+splits<-c(rep("train",253),rep("validation",152),rep("test",101))
+head(splits)
+tail(splits)
+```
+### 20.Use the function `sample()` to randomly order this vector and add it to the Boston dataset using `mutate()`. Assign the newly created dataset to a variable called `boston_master`.
+
+```{r}
+Boston%<>%mutate(boston_master=sample(splits))
+head(Boston)
+```
+
+### 21.Now use `filter()` to create a training, validation, and test set from the boston_master data. Call these datasets `boston_train`, `boston_valid`, and `boston_test`
+```{r}
+boston_train<-Boston %>% filter(boston_master=="train")
+boston_valid<-Boston %>% filter(boston_master=="validation")
+boston_test<-Boston %>% filter(boston_master=="test")
+```
+
+### 22.Train a linear regression model called `model_1 `using the training dataset. Use the formula `medv ~ lstat` like in the first lm() exercise. Use `summary()` to check that this object is as you expect.
+```{r}
+model1<-lm(data=boston_train,medv ~ lstat)
+summary(model1)
+```
+
+### 23.Calculate the MSE with this object. Save this value as model_1_mse_train.
+```{r}
+model_1_mse_train<-mse(boston_train$medv,predict(model1))
+model_1_mse_train
+```
+
+
