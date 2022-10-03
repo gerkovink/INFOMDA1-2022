@@ -47,13 +47,16 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-<<<<<<< HEAD
 .DS_Store
 Assignments/.DS_Store
 Assignments/Assignment 1/.DS_Store
 Assignments/Assignment 2/.DS_Store
 Practicals/.DS_Store
 Practicals/P1/.DS_Store
+Practicals/P1/Florian van Leeuwen/.DS_Store
+Practicals/P1/Florian van Leeuwen/SLV_practical1/.DS_Store
+Practicals/P1/Gerko Vink/.DS_Store
+Practicals/P3/Florian van Leeuwen/.DS_Store
 Practicals/P1/Gerko Vink/.DS_Store
 Practicals/P2/.DS_Store
 Practicals/P2/Remove/.DS_Store
@@ -63,6 +66,5 @@ Practicals/P5/.DS_Store
 Practicals/P6/.DS_Store
 Practicals/P7/.DS_Store
 Practicals/P8/.DS_Store
-=======
 Assignments/Assignment 1/Work info.xlsx
->>>>>>> 5340ecaf8713ad56151fe7d685248a98871dbe0a
+
