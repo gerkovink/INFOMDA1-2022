@@ -177,6 +177,7 @@ It definitely looks like that is not the case, as the maps all look basically ex
 Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
 
 **Summarize Rat Sightings per borough per year from the original dataset**
+
 ```{r warning=FALSE}
 Borough_Rats <- 
   rat_dataset %>% 
@@ -190,12 +191,8 @@ head(Borough_Rats)
 ```
 
 **Combining the summarized dataset with a dataset of borough populations**
-<<<<<<< Updated upstream
-```{r}
-=======
 
 ```{r warning=FALSE}
->>>>>>> Stashed changes
 Borough_Population <- 
   read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
   select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
@@ -220,12 +217,8 @@ head(Rats_Per_Pop)
 ```
 
 **Creating a database for rats per area**
-<<<<<<< Updated upstream
-```{r}
-=======
 
 ```{r warning=FALSE}
->>>>>>> Stashed changes
 Rats_Per_Km <-
   Borough_Population %>% 
   mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
@@ -309,7 +302,6 @@ A_Rates %>%
 
 **We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
 ```{r, warning=FALSE}
-
 borough_population <-
   rat_dataset %>%
   ggplot(aes(x = Borough, fill = Borough)) +
