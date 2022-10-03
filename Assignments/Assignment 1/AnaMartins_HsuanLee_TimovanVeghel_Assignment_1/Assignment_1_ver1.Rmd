@@ -69,6 +69,7 @@ The second function can be used to isolate a specific number from a data point (
 ```
 
 With the necessary tools prepared, the dataset can be cleaned and prepared for further analysis. Empty columns and columns with only a single value represented are filtered, and the columns that are left are renamed to remove spaces. Next we split dates with the aforementioned .DateSplit() function, and use the .GetNumber() function to isolate relevant numeric values from strings. Following the use of these functions, the now redundant columns are removed. 
+
 ```{r warning=FALSE}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE) %>% 
@@ -480,7 +481,8 @@ In July, the highest number of rat sightings was recorded, with 11,982 cases, fo
 # compute the percentage of each month on rat sighting
 month_per <- rat_dataset %>%
   group_by(Created_Month) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)),1))
+  summarise(Percentage = round(100*(n() / nrow(.)),1)) %>%
+  arrange(desc(Percentage))
 
 month_per
 ```
@@ -781,7 +783,8 @@ There are 20 location types.
 ```{r warning=FALSE}
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)), 1))
+  summarise(Percentage = round(100*(n() / nrow(.)), 1)) %>%
+  arrange(desc(Percentage))
 
 loc_per
 ```
