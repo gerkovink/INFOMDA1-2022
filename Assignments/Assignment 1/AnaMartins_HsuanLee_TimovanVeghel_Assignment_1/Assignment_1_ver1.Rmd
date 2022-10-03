@@ -213,8 +213,6 @@ Borough_Population <-
 head(Borough_Population)
 ```
 
-
-
 **Creating a database for rats per population**
 ```{r warning=FALSE}
 Rats_Per_Pop <-
@@ -235,9 +233,6 @@ Rats_Per_Km <-
 
 head(Rats_Per_Km)
 ```
-
-
-
 
 **Visualization for above**
 ```{r , warning=FALSE}
