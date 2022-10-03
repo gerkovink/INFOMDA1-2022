@@ -190,7 +190,12 @@ head(Borough_Rats)
 ```
 
 **Combining the summarized dataset with a dataset of borough populations**
+<<<<<<< Updated upstream
 ```{r}
+=======
+
+```{r warning=FALSE}
+>>>>>>> Stashed changes
 Borough_Population <- 
   read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
   select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
@@ -215,7 +220,12 @@ head(Rats_Per_Pop)
 ```
 
 **Creating a database for rats per area**
+<<<<<<< Updated upstream
 ```{r}
+=======
+
+```{r warning=FALSE}
+>>>>>>> Stashed changes
 Rats_Per_Km <-
   Borough_Population %>% 
   mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
@@ -225,6 +235,8 @@ head(Rats_Per_Km)
 ```
 
 **Visualization for above**
+
+**Rat/population rates**
 ```{r , warning=FALSE}
 P_Rates <-
   Rats_Per_Pop %>% 
@@ -233,7 +245,11 @@ P_Rates <-
 as.factor(P_Rates$Year)
 
 head(P_Rates, n = 20)
+```
 
+**Population plots** 
+
+```{r warning=FALSE}
 P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
   geom_point() +
@@ -241,8 +257,9 @@ P_Rates %>%
   labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population", color = "Borough") +
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
+```
 
-
+```{r warning=FALSE}
 P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
   geom_point() +
@@ -251,7 +268,12 @@ P_Rates %>%
   labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population") +
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
+```
 
+
+**Rat/Area rates**
+
+```{r warning=FALSE}
 A_Rates <-
   Rats_Per_Km %>% 
   pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
@@ -259,7 +281,11 @@ A_Rates <-
 as.factor(A_Rates$Year)
 
 head(A_Rates, n = 20)
+```
 
+**Area plots**
+
+```{r warning=FALSE}
 A_Rates %>% 
   ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
   geom_point() +
@@ -267,7 +293,9 @@ A_Rates %>%
   labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
+```
 
+```{r warning=FALSE}
 A_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
   geom_point() +
@@ -276,8 +304,8 @@ A_Rates %>%
   labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
-
 ```
+
 
 **We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
 ```{r, warning=FALSE}
