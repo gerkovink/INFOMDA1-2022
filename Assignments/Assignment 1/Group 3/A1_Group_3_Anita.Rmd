@@ -148,12 +148,17 @@ Fatalities, see Table 1 and Figure 1 below.
 
 ```{r table 1}
 data %>%
+  ## Through CreateTableOne, we create a table that includes these variables
   CreateTableOne(vars = c("FlightPhase", "InjuryLevel","Engines", 
                           "Year", "EngineType",
                           "WeightCat"), 
+                 ## we want all variables to be stratified by type of aircraft
                  strata = "AircraftType",
+                 ## and we want engines and year to be noted as factor variables
                  factorVars = c("Engines", "Year"), data =  .,
+                 ## it should not perform a t-test
                  test = FALSE) %>%
+  ## Styling done thorugh kableone and the package KableExtra
   kableone(., format = "html",
     caption = 
     c("Table 1. Summary statistics for included variables per type of aircaft")) %>%
@@ -163,7 +168,7 @@ data %>%
 
 ```
 
-The distribution of number of fatalities was very skewed and consisted of 62% zeros (Table 2),indicating no deaths during the accident. Additionally there was a large proportion (19%) of missing values. Among the fatal accidents  the number of deaths were most frequently between 1 and 25 (Figure 1) with median = 2. However, there are many individual accidents with the number of victims ranging from 25 to 300.
+The distribution of number of fatalities was very skewed and consisted of 62% zeros (see Table 2), indicating no deaths during the accident. Additionally there was a large proportion (19%) of missing values. Among the fatal accidents, the number of deaths were most frequently between 1 and 25 (Figure 1) with median = 2. However, there are many individual accidents with the number of victims ranging from 25 to 300.
 
 ```{r}
 #proportion of 0 fatalities and missing values
@@ -264,7 +269,7 @@ c<-data %>% filter(Fatalities >0) %>% group_by(Year,AircraftType) %>%
 ggarrange(a,c, common.legend = TRUE,legend = "bottom")
 ```
 
-The plots for the fatal accident and accident count show a large drop in the 
+Figure 3 shows a large drop in the 
 number of accidents after 2010. Hence, we wished to explore what might have 
 caused this drop.
 
@@ -292,10 +297,10 @@ data %>%subset(AircraftType=="Airplane" ) %>% group_by(Year,Engines) %>%
   ggtitle("The accident count depending on the number of engines")+
   theme_minimal()
 ```
-The first two plots show that for the type of engine, piston-type engines had 
+Figure 4 shows that for the type of engine, piston-type engines had 
 the largest difference in the amount of accidents between 2010 and 2012. As for 
 the number of engines, we find that single engine machines had the largest 
-difference in the amount of accidents between 2010 and 2012. 
+difference in the amount of accidents between 2010 and 2012 (see Figure 5). 
 
 ```{r third time plot,fig.align='center',fig.cap="Figure 6"}
 data %>%filter(AircraftType=="Airplane" , EngineType=="Piston") %>% 
@@ -308,7 +313,7 @@ data %>%filter(AircraftType=="Airplane" , EngineType=="Piston") %>%
   theme_minimal() 
 ```
 
-Combining the two plots, we indeed find that the largest difference in the 
+Combining the two plots in Figure 6, we indeed find that the largest difference in the 
 amount of accidents is in single-piston engines. This could be indicative of 
 perhaps an interaction effect between engine-type and number of engines on 
 the number of accidents. 
@@ -346,8 +351,8 @@ data %>% subset(Year %in% c("2010","2011","2012")) %>%
   ggtitle("Weight cathegories of aircrafts participated in accidents (2010-2012)")
 ```
 
-The next two plots look at the relation between flightphase and weight categories 
-respectively and the proportion of accidents per year. The first plot shows 
+Figure 7 and 8 look at the relation between flightphase and weight categories 
+respectively and the proportion of accidents per year. Figure 7 shows 
 that the proportion of accidents per flightphase are quite consistent over the years. 
 The latter plot, however, does show that in 2012, there was a much lower 
 proportion of accidents in the lowest weight category, and a much higher 
@@ -361,7 +366,7 @@ necessary for proper conclusions.
 
 #### 2.2.1: How frequent are fatal accidents compared to the other Injury Level categories?
 
-To investigate the fatality of aircraft accidents, we made the following plot 
+To investigate the fatality of aircraft accidents, we made the following plot (see Figure 9) 
 which shows that one fifth of all aircraft accidents result in a fatal injury.
 
 ```{r Proportion of accidents that occured per injury level,fig.align='center',fig.cap="Figure 9"}
@@ -388,7 +393,7 @@ data  %>%
 #### 2.2.2: Fatality by type of aircraft
 
 We investigated fatality further by looking at the proportion of injury level 
-per type of aircraft. The plot shows that helicopters might be more fatal, as 
+per type of aircraft. Figure 10 shows that helicopters might be more fatal, as
 there seems to be a large difference in the proportion of fatal injuries between 
 airplanes and helicopters. 
 
@@ -425,12 +430,7 @@ data  %>%
 
 Since we want to focus more on the differences between fatal and non-fatal accidents, 
 from now on we categorise InjuryLevel as: Fatal, Non-Fatal 
-(None, Minor, Serious combined) and Unknown. Then, we investigate fatality in 
-even more depth by looking at which flight stage the most accidents occur and 
-what their fatality per flight stage is while also looking at the type of aircraft? \
-Which flight stage is most dangerous? Danger can be operationalized (1) as the 
-proportion of accidents occuring in the flight stage but also (2) as the 
-proportion of fatal accidents occuring in the flight stage.
+(None, Minor, Serious combined) and Unknown. Then, we explored fatality in even more depth by looking at during which flight stages the most accidents occur proportionally per aircraft. The plot below, Figure 11, shows that for helicopters, most accidents tend to happen en route for both fatal and non-fatal accidents. Interesting to note is that for airplanes, fatal accidents also happen most often en route. Non-fatal accidents, however, seem to happen most often during the landing phase. \
 
 ```{r fatality plot three,fig.align='center',fig.cap="Figure 11"}
 #order of the FlightPhase factor with decreasing frequency of occurrence(for airplanes) 
