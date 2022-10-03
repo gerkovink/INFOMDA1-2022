@@ -103,6 +103,396 @@ head(rat_dataset)
 summary(rat_dataset)
 ```
 
+## Time and Rat number
+
+**Plot the number of rat sightings each month**
+```{r}
+rat_dataset %>%
+  ggplot(aes(x = Created_Month, fill = Created_Month)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
+                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
+                             "#777711")) +
+  ylim(0, 15000) +
+  labs(x = "Month", y = "Total Number of Rat Sighting", 
+       title = "Number of Rat Sighting Each Month", fill = "Month") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+In July, the highest number of rat sightings was recorded, with 11,982 cases, followed by August and June. In general, the number of rat sightings can be identified in relation to fluctuations in temperature, as in winter months, i.e. November, December, January and February, the number of rat sightings are the lowest. With rising temperatures, however, the number of rat sightings increased markedly.
+
+**Plot the Percentage of rat sightings by month**
+```{r}
+# compute the percentage of each month on rat sighting
+month_per <- rat_dataset %>%
+  group_by(Created_Month) %>%
+  summarise(Percentage = round(100*(n() / nrow(.)),1))
+
+month_per
+```
+
+```{r, warning=FALSE}
+month_per %>%
+  mutate(Month = Created_Month,
+         Month = recode_factor(Month, '01' = "January", '02' = "Febuary",
+                        '03' = "March", '04' = "April", '05' = "May", '06' = "June",
+                        '07' = "July", '08' = "August", '09' = "September", 
+                        '10' = "October", '11' = "November", '12' = "December")) %>%
+  bar_chart(Month, Percentage,
+            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D")) +
+  geom_text(aes(label = paste(Percentage , "%")),
+            hjust = -0.2) +
+  ylim(NA, 15) +
+  theme(plot.title = element_text(hjust=0.5)) +
+  labs(x = "", y = "Percentage", title = "Percentage of Rat Sighting in Each Month",
+       fill = "Month")
+```
+
+A monthly percentage of rat sightings clearly reveals that rat sightings can be roughly divided by season. Rat sightings are highest in the summer months, followed by spring and fall, and lowest in the winter months.
+
+## Determine whether the cases of rat sightings evolve with the year
+
+**Plot the number of rat sightings versus year** 
+```{r}
+rat_dataset %>%
+  ggplot(aes(x = Created_Year, fill = Created_Year)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#882E72", "#B178A6", "#5289C7", "#7BAFDE", 
+                             "#CAE0AB", "#F7EE55", "#E8601C", "#DC050C"))  +
+  ylim(0, 20000) +
+  labs(x = "Year", y = "Total Number of Rat Sighting", 
+       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+Since 2010 to 2013, the number of rat sighting cases did not fluctuate measurably. Yet, the number of rat sightings escalated yearly after 2013, from 2014 to 2016, with the number of rat sightings growing from 10,534 cases in 2010 to 17,230 cases in 2016. Possible reasons behind this are that New York residents tend to report rat sightings to the administration year by year or that the population of New York rises over the period of the years, thus causing the rat population to rise with it. 
+
+Another thing that needs to be mentioned here is that data collection was interrupted in September 2017, hence the drop in rat sightings in 2017.
+
+**Plot the line chart of rat sightings versus year to more easily observe changes**
+```{r}
+# Year with rat sighting (count)
+year_count <- rat_dataset %>%
+  group_by(Created_Year) %>%
+  summarise(Number = n())
+
+year_count
+```
+
+```{r}
+# Year with rat sighting (count)
+year_count %>%
+  ggplot(aes(x = Created_Year, y = Number, group = 1)) +
+  geom_point(size = 1.5) +
+  geom_line(color = "dark blue", size = 1) +
+  labs(x = "Year", y = "Number of Rat Sighting", 
+       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+The line graph offers a better experience in observing the trend of rat sightings by year. The line graph reaffirms the above discussion, with an alarming increase in rat sightings from 2013 to 2016.
+
+**Mapping the number of rat sightings for each month of each year**
+```{r}
+# Number of Rat Sighting in each Months of Each Year
+year_month_count <- rat_dataset %>%
+  group_by(Created_Year) %>%
+  count(Created_Month)
+```
+
+```{r}
+# Number of Rat Sighting in each Months of Each Year
+year_month_count %>%
+  ggplot(aes(x = Created_Month, y = n, color = Created_Year, group = Created_Year)) +
+  geom_point() +
+  geom_line() +
+  scale_color_manual(values=c("#882E72", "black", "#EEA236", "#5CB85C", 
+                              "#46B8DA", "#9632B8", "dark green", "#DC050C")) +
+  labs(x = "Month", y = "Number of Rat Sighting", 
+       title = "Number of Rat Sighting", color = "Year") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+The graph reflects that the profile of the number of rat sightings is similar from year to year, with the most frequent rat sightings usually happening in the summer months as opposed to the less frequent rat sightings usually falling in the winter months. On the other hand, the number of rat sightings rose over time, in the case of 2017, even though the data are not yet complete, it remained noticeable that the overall number of rat sightings per month was much higher than in previous years.
+
+## Check how long it took the administration to solve a case of rat sighting
+
+**Compute the length of time to solve a complaint of a rat sighting**
+```{r}
+# combine the year, month, and day of started day
+starttime <- as.Date(with(rat_dataset, paste(Created_Year, Created_Month, 
+                                             Created_Day, sep = "-")), "%Y-%m-%d")
+
+# combine the year, month, and day of closed day
+endtime <- as.Date(with(rat_dataset, paste(Closed_Year, Closed_Month, 
+                                             Closed_Day, sep = "-")), "%Y-%m-%d")
+
+# compute for the duration taken to solve
+solved_duration <- data.frame(difftime(endtime,starttime,units = "days"))
+colnames(solved_duration)[1] <- "duration"
+solved_duration$duration <- as.numeric(solved_duration$duration)
+
+# merge year created year with solved time, in order to see if the government's efficient improve
+solved_duration <- cbind(rat_dataset$Created_Year, solved_duration)
+colnames(solved_duration)[1] <- "Sighting_Year"
+
+# remove the negative number, as it cannot be negative time to solve the issue
+solved_duration <- solved_duration %>%
+  mutate(month_cat = cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
+                          labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")))
+
+# merge it to the original dataset
+rat_dataset <- cbind(rat_dataset, solved_duration)
+
+solved_duration <-
+  solved_duration %>% 
+  drop_na()
+```
+
+**Plot the time required to solve the problem**
+```{r}
+solved_duration %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
+  ylim(0, 70000) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Does the location matter when it comes to how long they take to solve a case?
+
+```{r}
+duration_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset %>% filter_at(vars(Longitude, Latitude, month_cat),all_vars(!is.na(.))), mapping = aes(x = Longitude, y = Latitude, color = month_cat), alpha = 0.3) +
+  facet_wrap(~ month_cat) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon)
+duration_map
+```
+
+The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
+
+**Plot the number of rat sighting case resolution times by year.**
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+# plot the duration taken to solved the issue of each year
+solved_duration %>%
+  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
+  ylim(0, 2300) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(.~Sighting_Year) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+# plot the duration taken to solved the issue of each year
+solved_duration %>%
+  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
+  ggplot(aes(x = month_cat, fill = month_cat)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
+  geom_text(stat='count', aes(label=..count..), vjust= -1) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 3000) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(.~Sighting_Year) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+On balance, from 2010 to 2017, an increasing number of sighting cases were solved within 1 month, with the number of cases requiring more than 2 months to be closed decreasing each year.
+
+**Plot the percentage of rat sighting case resolution times by year**
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+library(scales)
+
+solved_duration %>%
+  filter(Sighting_Year == c(2010, 2011, 2012), duration > 0) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 3) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 100) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+solved_duration %>%
+  filter(Sighting_Year == c(2013, 2014, 2015)) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 3) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 100) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+```{r, fig.width=10, fig.height=7, warning=FALSE}
+solved_duration %>%
+  filter(Sighting_Year == c(2016, 2017)) %>%
+  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  geom_text(aes(label = scales::percent(round((..prop..),3)),
+                y= ..prop.. ), 
+            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
+            posistion = position_dodge(width=0.9),  size = 4) +
+  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
+                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
+                    labels = c("less than 1 month", "less than 2 month",
+                               "less than 3 month", "less than 4 month",
+                               "less than 5 month", "less than half year",
+                               "more than half year")) +
+  ylim(0, 100) +
+  labs(x = "Time to Solve", y = "Cases Count", 
+       title = "Time to Solve Rat Sighting", fill = "Month") +
+  facet_grid(~Sighting_Year) +
+  scale_y_continuous(labels=percent) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0),
+        plot.title = element_text(hjust=0.5))
+```
+
+As seen in the graph, the overall efficiency of solving rat sighting cases has improved year by year, from 73.2% of cases resolved within 1 month in 2010 to approximately 80% of cases closed within 1 month in 2011, 2012, and further to 90% of cases settled within 1 month in 2013 to 2017.
+
+## Location Type and Rat number
+
+**Check how many location types it is.**
+```{r}
+unique(rat_dataset$Location_Type)
+# 20 location types
+```
+
+There are 20 location types.
+
+**Compute the percentage of rat sighting in each location type**
+```{r}
+loc_per <- rat_dataset %>%
+  group_by(Location_Type) %>%
+  summarise(Percentage = round(100*(n() / nrow(.)), 1))
+
+loc_per
+```
+
+**Plot the bar chart that reveals the occupation of rat sighting in each location type**
+```{r, fig.width= 10, fig.height=7}
+
+library(ggcharts)
+
+loc_per %>%
+  bar_chart(Location_Type, Percentage,
+            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
+                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
+                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
+                          "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
+                          "#77AADD", "#117755", "#44AA88", "#99CCBB", 
+                          "#777711")) +
+  geom_text(aes(label = paste(Percentage , "%")),
+            hjust = -0.2) +
+  ylim(NA, 45) +
+  theme(plot.title = element_text(hjust=0.5)) +
+  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
+       fill = "Location Type")
+  
+```
+
+Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
+
+
 ## Where are the sightings more concentrated?
 
 To answer this question, we will import an extension of the `ggplot2` library, the `ggmap` library. If you don't have the `ggmap` package installed, please do so by running `install.packages("ggmap")` on your R console. 
@@ -111,8 +501,8 @@ To answer this question, we will import an extension of the `ggplot2` library, t
 library("ggmap")
 ```
 
-```{r}
-KEY = 
+```{r message=FALSE, warning=FALSE}
+KEY = "AIzaSyDZb4hXrsdgQ7zjHoT1h6A26G7YbCV2jBc"
 register_google(key = KEY)
 ```
 
@@ -311,364 +701,17 @@ years_map
 
 It definitely looks like that is not the case, as the maps all look basically exactly the same, meaning the actual locations of the sightings are constant, which may indicate to no interventions ever having been done in any of the places.
 
-## Location Type and Rat number
 
-**Check how many location types it is.**
-```{r}
-unique(rat_dataset$Location_Type)
-# 20 location types
-```
 
-There are 20 location types.
 
-**Compute the percentage of rat sighting in each location type**
-```{r}
-loc_per <- rat_dataset %>%
-  group_by(Location_Type) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)), 1))
 
-loc_per
-```
 
-**Plot the bar chart that reveals the occupation of rat sighting in each location type**
-```{r, fig.width= 10, fig.height=7}
 
-library(ggcharts)
 
-loc_per %>%
-  bar_chart(Location_Type, Percentage,
-            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                          "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                          "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                          "#777711")) +
-  geom_text(aes(label = paste(Percentage , "%")),
-            hjust = -0.2) +
-  ylim(NA, 45) +
-  theme(plot.title = element_text(hjust=0.5)) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
-       fill = "Location Type")
-  
-```
 
-Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
 
-## Time and Rat number
 
-**Plot the number of rat sightings each month**
-```{r}
-rat_dataset %>%
-  ggplot(aes(x = Created_Month, fill = Created_Month)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                             "#777711")) +
-  ylim(0, 15000) +
-  labs(x = "Month", y = "Total Number of Rat Sighting", 
-       title = "Number of Rat Sighting Each Month", fill = "Month") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust=0.5))
-```
 
-In July, the highest number of rat sightings was recorded, with 11,982 cases, followed by August and June. In general, the number of rat sightings can be identified in relation to fluctuations in temperature, as in winter months, i.e. November, December, January and February, the number of rat sightings are the lowest. With rising temperatures, however, the number of rat sightings increased markedly.
-
-**Plot the Percentage of rat sightings by month**
-```{r}
-# compute the percentage of each month on rat sighting
-month_per <- rat_dataset %>%
-  group_by(Created_Month) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)),1))
-
-month_per
-```
-
-```{r, warning=FALSE}
-month_per %>%
-  mutate(Month = Created_Month,
-         Month = recode_factor(Month, '01' = "January", '02' = "Febuary",
-                        '03' = "March", '04' = "April", '05' = "May", '06' = "June",
-                        '07' = "July", '08' = "August", '09' = "September", 
-                        '10' = "October", '11' = "November", '12' = "December")) %>%
-  bar_chart(Month, Percentage,
-            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D")) +
-  geom_text(aes(label = paste(Percentage , "%")),
-            hjust = -0.2) +
-  ylim(NA, 15) +
-  theme(plot.title = element_text(hjust=0.5)) +
-  labs(x = "", y = "Percentage", title = "Percentage of Rat Sighting in Each Month",
-       fill = "Month")
-```
-
-A monthly percentage of rat sightings clearly reveals that rat sightings can be roughly divided by season. Rat sightings are highest in the summer months, followed by spring and fall, and lowest in the winter months.
-
-## Determine whether the cases of rat sightings evolve with the year
-
-**Plot the number of rat sightings versus year** 
-```{r}
-rat_dataset %>%
-  ggplot(aes(x = Created_Year, fill = Created_Year)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#B178A6", "#5289C7", "#7BAFDE", 
-                             "#CAE0AB", "#F7EE55", "#E8601C", "#DC050C"))  +
-  ylim(0, 20000) +
-  labs(x = "Year", y = "Total Number of Rat Sighting", 
-       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-```
-
-Since 2010 to 2013, the number of rat sighting cases did not fluctuate measurably. Yet, the number of rat sightings escalated yearly after 2013, from 2014 to 2016, with the number of rat sightings growing from 10,534 cases in 2010 to 17,230 cases in 2016. Possible reasons behind this are that New York residents tend to report rat sightings to the administration year by year or that the population of New York rises over the period of the years, thus causing the rat population to rise with it. 
-
-Another thing that needs to be mentioned here is that data collection was interrupted in September 2017, hence the drop in rat sightings in 2017.
-
-**Plot the line chart of rat sightings versus year to more easily observe changes**
-```{r}
-# Year with rat sighting (count)
-year_count <- rat_dataset %>%
-  group_by(Created_Year) %>%
-  summarise(Number = n())
-
-year_count
-```
-
-```{r}
-# Year with rat sighting (count)
-year_count %>%
-  ggplot(aes(x = Created_Year, y = Number, group = 1)) +
-  geom_point(size = 1.5) +
-  geom_line(color = "dark blue", size = 1) +
-  labs(x = "Year", y = "Number of Rat Sighting", 
-       title = "Number of Rat Sighting 2010 - 2017", fill = "Year") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-```
-
-The line graph offers a better experience in observing the trend of rat sightings by year. The line graph reaffirms the above discussion, with an alarming increase in rat sightings from 2013 to 2016.
-
-**Mapping the number of rat sightings for each month of each year**
-```{r}
-# Number of Rat Sighting in each Months of Each Year
-year_month_count <- rat_dataset %>%
-  group_by(Created_Year) %>%
-  count(Created_Month)
-```
-
-```{r}
-# Number of Rat Sighting in each Months of Each Year
-year_month_count %>%
-  ggplot(aes(x = Created_Month, y = n, color = Created_Year, group = Created_Year)) +
-  geom_point() +
-  geom_line() +
-  scale_color_manual(values=c("#882E72", "black", "#EEA236", "#5CB85C", 
-                              "#46B8DA", "#9632B8", "dark green", "#DC050C")) +
-  labs(x = "Month", y = "Number of Rat Sighting", 
-       title = "Number of Rat Sighting", color = "Year") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-```
-
-The graph reflects that the profile of the number of rat sightings is similar from year to year, with the most frequent rat sightings usually happening in the summer months as opposed to the less frequent rat sightings usually falling in the winter months. On the other hand, the number of rat sightings rose over time, in the case of 2017, even though the data are not yet complete, it remained noticeable that the overall number of rat sightings per month was much higher than in previous years.
-
-## Check how long it took the administration to solve a case of rat sighting
-
-**Compute the length of time to solve a complaint of a rat sighting**
-```{r}
-# combine the year, month, and day of started day
-starttime <- as.Date(with(rat_dataset, paste(Created_Year, Created_Month, 
-                                             Created_Day, sep = "-")), "%Y-%m-%d")
-
-# combine the year, month, and day of closed day
-endtime <- as.Date(with(rat_dataset, paste(Closed_Year, Closed_Month, 
-                                             Closed_Day, sep = "-")), "%Y-%m-%d")
-
-# compute for the duration taken to solve
-solved_duration <- data.frame(difftime(endtime,starttime,units = "days"))
-colnames(solved_duration)[1] <- "duration"
-solved_duration$duration <- as.numeric(solved_duration$duration)
-
-# merge year created year with solved time, in order to see if the government's efficient improve
-solved_duration <- cbind(rat_dataset$Created_Year, solved_duration)
-colnames(solved_duration)[1] <- "Sighting_Year"
-
-# remove the negative number, as it cannot be negative time to solve the issue
-solved_duration <- solved_duration %>%
-  mutate(month_cat = cut(duration, breaks = c(0, 30, 60, 90, 120, 150, 180, 1000), 
-                          labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")))
-
-# merge it to the original dataset
-rat_dataset <- cbind(rat_dataset, solved_duration)
-
-solved_duration <-
-  solved_duration %>% 
-  drop_na()
-```
-
-**Plot the time required to solve the problem**
-```{r}
-solved_duration %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
-  ylim(0, 70000) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
-
-## Does the location matter when it comes to how long they take to solve a case?
-
-```{r}
-duration_map <-
-  ggmap(newyork.map) +
-  geom_point(data = rat_dataset %>% filter_at(vars(Longitude, Latitude, month_cat),all_vars(!is.na(.))), mapping = aes(x = Longitude, y = Latitude, color = month_cat), alpha = 0.3) +
-  facet_wrap(~ month_cat) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-duration_map
-```
-
-The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
-
-**Plot the number of rat sighting case resolution times by year.**
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
-  ylim(0, 2300) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust= -1) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 3000) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-On balance, from 2010 to 2017, an increasing number of sighting cases were solved within 1 month, with the number of cases requiring more than 2 months to be closed decreasing each year.
-
-**Plot the percentage of rat sighting case resolution times by year**
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-library(scales)
-
-solved_duration %>%
-  filter(Sighting_Year == c(2010, 2011, 2012), duration > 0) %>%
-  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
-  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
-  geom_text(aes(label = scales::percent(round((..prop..),3)),
-                y= ..prop.. ), 
-            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
-            posistion = position_dodge(width=0.9),  size = 3) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 100) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(~Sighting_Year) +
-  scale_y_continuous(labels=percent) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-solved_duration %>%
-  filter(Sighting_Year == c(2013, 2014, 2015)) %>%
-  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
-  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
-  geom_text(aes(label = scales::percent(round((..prop..),3)),
-                y= ..prop.. ), 
-            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
-            posistion = position_dodge(width=0.9),  size = 3) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 100) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(~Sighting_Year) +
-  scale_y_continuous(labels=percent) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-solved_duration %>%
-  filter(Sighting_Year == c(2016, 2017)) %>%
-  ggplot(aes(x= month_cat,  group=Sighting_Year)) + 
-  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
-  geom_text(aes(label = scales::percent(round((..prop..),3)),
-                y= ..prop.. ), 
-            stat= "count", vjust = -0.5, hjust = 0.5, angle = 0, 
-            posistion = position_dodge(width=0.9),  size = 4) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                               "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 100) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(~Sighting_Year) +
-  scale_y_continuous(labels=percent) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-As seen in the graph, the overall efficiency of solving rat sighting cases has improved year by year, from 73.2% of cases resolved within 1 month in 2010 to approximately 80% of cases closed within 1 month in 2011, 2012, and further to 90% of cases settled within 1 month in 2013 to 2017.
 
 ## Is the number of rat sightings in a given borough proportional to its population?
 
@@ -717,12 +760,6 @@ Rats_Per_Km <-
   select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
 
 head(Rats_Per_Km)
-```
-
-##Summary statistics for above
-
-```{r}
-
 ```
 
 ##Visualization for above
