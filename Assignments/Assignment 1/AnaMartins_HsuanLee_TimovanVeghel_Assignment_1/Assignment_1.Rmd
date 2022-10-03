@@ -25,16 +25,26 @@ library("ggmap")
 
 ```{r include=FALSE}
 # the key for reaching the map
-KEY = ""
+KEY = "AIzaSyDZb4hXrsdgQ7zjHoT1h6A26G7YbCV2jBc"
 register_google(key = KEY)
 ```
 
 ## Data cleaning
 
-First, we create a function to use for splitting up the different dates.
+The dataset initially looks like this:
 
 ```{r warning=FALSE}
-date.split <- function(txtdate, x){
+rat_dataset <-
+  read_csv("Rat_Sightings.csv", show_col_types = FALSE)
+head(rat_dataset)
+```
+
+In order to start cleaning up the dataset, a few custom functions need to be written in order to split out information from several columns. 
+
+First off, we have written a function to split a date into its constituent components. The function, as seen below, takes a date string and a specified x value. It formats the input date as an ISO8601 date-time and subsequently isolates each component. Based on the provided x-value, the function puts out the required component. 
+
+```{r warning=FALSE}
+.DateSplit <- function(txtdate, x){
   date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   time <- parse_time(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   year <- as.factor(format(date, format = "%Y"))
@@ -50,12 +60,10 @@ date.split <- function(txtdate, x){
 }
 ```
 
-
-Secondly, we create a function to use when splitting a specific number from a data point, as used for both the address and the community boards.
+The second function can be used to isolate a specific number from a data point (in our case, this is either a house number of a community board number). The function only takes an address string. It first filters out NA values, after which it extracts and returns numerals from the input string. 
 
 ```{r warning=FALSE}
-#Second attempt at a function that could split "Incident_Address" and "Community Board":
-get.number <- function(address){
+.GetNumber <- function(address){
   if(!identical(address, NA)){
     nums <- str_extract(address, "[0-9]+")
     return(nums)
@@ -63,27 +71,18 @@ get.number <- function(address){
 }
 ```
 
-The dataset initially looks like this:
-
-```{r warning=FALSE}
-rat_dataset <-
-  read_csv("Rat_Sightings.csv", show_col_types = FALSE)
-head(rat_dataset)
-```
-
-with many empty features or with one single value. In this next step, we will be taking these features out and separating some interesting data in more features:
+With the necessary tools prepared, the dataset can be cleaned and prepared for further analysis. Empty columns and columns with only a single value represented are filtered, and the columns that are left are renamed to remove spaces. Next we split dates with the aforementioned .DateSplit() function, and use the .GetNumber() function to isolate relevant numeric values from strings. Following the use of these functions, the now redundant columns are removed. 
 
 ```{r warning=FALSE}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE) %>% 
-  #select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
   rename(Unique_Key = "Unique Key", Created_Date = "Created Date", Closed_Date = "Closed Date", Location_Type = "Location Type", Incident_Zip = "Incident Zip", Incident_Address = "Incident Address", Street_Name = "Street Name", Cross_Street_1 = "Cross Street 1", Cross_Street_2 = "Cross Street 2", Intersection_Street_1 = "Intersection Street 1", Intersection_Street_2 = "Intersection Street 2", Address_Type = "Address Type", Status = "Status", Due_Date = "Due Date", RAU_Date = "Resolution Action Updated Date", Community_Board = "Community Board", Borough = "Borough", Latitude = "Latitude", Longitude = "Longitude") %>% 
-  mutate(Created_Year = date.split(Created_Date, 1), Created_Month = date.split(Created_Date, 2), Created_Day = date.split(Created_Date, 3)) %>% 
-  mutate(Closed_Year = date.split(Closed_Date, 1), Closed_Month = date.split(Closed_Date, 2), Closed_Day = date.split(Closed_Date, 3)) %>%
-  mutate(Due_Year = date.split(Due_Date, 1), Due_Month = date.split(Due_Date, 2), Due_Day = date.split(Due_Date, 3), Due_Time = date.split(Due_Date, 4)) %>%
-  mutate(RAU_Year = date.split(RAU_Date, 1), RAU_Month = date.split(RAU_Date, 2), RAU_Day = date.split(RAU_Date, 3), RAU_Time = date.split(RAU_Date, 4)) %>% 
-  mutate(Address_Number = get.number(Incident_Address)) %>% 
-  mutate(Community_Board_Number = get.number(Community_Board)) %>% 
+  mutate(Created_Year = .DateSplit(Created_Date, 1), Created_Month = .DateSplit(Created_Date, 2), Created_Day = .DateSplit(Created_Date, 3)) %>% 
+  mutate(Closed_Year = .DateSplit(Closed_Date, 1), Closed_Month = .DateSplit(Closed_Date, 2), Closed_Day = .DateSplit(Closed_Date, 3)) %>%
+  mutate(Due_Year = DateSplit(Due_Date, 1), Due_Month = .DateSplit(Due_Date, 2), Due_Day = .DateSplit(Due_Date, 3), Due_Time = .DateSplit(Due_Date, 4)) %>%
+  mutate(RAU_Year = .DateSplit(RAU_Date, 1), RAU_Month = .DateSplit(RAU_Date, 2), RAU_Day = .DateSplit(RAU_Date, 3), RAU_Time = .DateSplit(RAU_Date, 4)) %>% 
+  mutate(Address_Number = .GetNumber(Incident_Address)) %>% 
+  mutate(Community_Board_Number = .GetNumber(Community_Board)) %>% 
   select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Address_Number, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
 ```
 
@@ -106,48 +105,12 @@ rat_dataset$Borough <-
   as.factor(rat_dataset$Borough)
 ```
 
-So, our starting point data is:
+So, our dataset after cleaning is as follows:
 
 ```{r warning=FALSE}
 head(rat_dataset)
 summary(rat_dataset)
 ```
-
-## The distribution of Rat sighting
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## Time and Rat number
 
@@ -466,7 +429,7 @@ The cases that take longer than 4 months to be closed are mostly localised in Ma
 
 ## Location Type and Rat number
 
-**Check how many location types it is**
+**Check how many location types it is.**
 ```{r warning=FALSE}
 unique(rat_dataset$Location_Type)
 # 20 location types
@@ -503,60 +466,6 @@ loc_per %>%
 ```
 
 Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
-
-**What type of location do these happen in, and how are they distributed on the map?**
-```{r ,fig.width=10, fig.height=7, warning=FALSE}
-location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building", "3+ Family Mixed Use Building"))
-location_map1 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map1
-
-location_subset2 <- subset(rat_dataset, Location_Type %in% c("Catch Basin/Sewer", "Commercial Building", "Construction Site", "Day Care/Nursery"))
-location_map2 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map2
-
-location_subset3 <- subset(rat_dataset, Location_Type %in% c("Government Building", "Hospital", "Office Building", "Other (Explain Below)"))
-location_map3 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map3
-
-location_subset4 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs", "School/Pre-School"))
-location_map4 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map4
-
-location_subset5 <- subset(rat_dataset, Location_Type %in% c("Single Room Occupancy (SRO)", "Summer Camp", "Vacant Building", "Vacant Lot"))
-location_map5 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map5
-```
-
-Looking at the Family Buildings, it is actually scary how evenly spread out (and still, always concentrated) around the maps. Even in Staten Island, which we already saw had the least concentration, we can still see that most of them were in Family Buildings.
-Looking at the map for the sightings at Sewers, it is no surprise the bigest concentration is in Manhatten, which is famously known in movies for having rats come out of sewers, as well as walking around stealing Dolar Slices, so you can see that Manhatten is also the one with more concentration in Public Spaces.
-It is also no surprise most of the sightings at Government Buildings are in Manhatten, as [most of the Government buildings in New York are in Downtown Manhatten](https://www.tripadvisor.com/Attractions-g60763-Activities-c47-t15-New_York_City_New_York.html).
-There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
-For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
 
 ## Is the number of rat sightings in a given borough proportional to its population?
 
@@ -658,62 +567,6 @@ A_Rates %>%
 
 ```
 
-**We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
-```{r, warning=FALSE}
-
-borough_population <-
-  rat_dataset %>%
-  ggplot(aes(x = Borough, fill = Borough)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                             "#777711")) +
-  ylim(0, 40000) +
-  labs(x = "Borough", y = "Total Number of Rat Sightings", 
-       title = "Number of Rat Sightings in Each Borough") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-borough_population
-```
-
-It looks like Brooklyn is the borough with the most rat sightings. Even though the map shows that Manhatten, for example, looks more densely populated, Manhatten is also a bigger borough, so the sightings are more evenly distributed throughout it.
-
-**How evenly exactly?**
-```{r ,fig.width=10, fig.height=7, warning=FALSE}
-
-data4lat_brooklyn <-
-  rat_dataset %>% 
-  filter(!is.na(Latitude)) %>% 
-  filter(Borough == "BROOKLYN") %>% 
-  select(Latitude)
-
-max_brooklyn_lat <- max(data4lat_brooklyn)
-min_brooklyn_lat <- min(data4lat_brooklyn)
-
-data4lon_brooklyn <-
-  rat_dataset %>% 
-  filter(!is.na(Longitude)) %>% 
-  filter(Borough == "BROOKLYN") %>% 
-  select(Longitude)
-
-max_brooklyn_lon <- max(data4lon_brooklyn)
-min_brooklyn_lon <- min(data4lon_brooklyn)
-
-brooklyn_rats <-
-  rat_dataset %>% 
-  filter(Borough == "BROOKLYN")
-
-brooklyn_map <-
-  ggmap(newyork.map) +
-  geom_point(data = brooklyn_rats, mapping = aes(x = Longitude, y = Latitude), color = "Red", size = 0.1) +
-  ylim(min_brooklyn_lat, max_brooklyn_lat) +
-  xlim(min_brooklyn_lon, max_brooklyn_lon)
-brooklyn_map
-```
 
 
 
@@ -736,11 +589,8 @@ brooklyn_map
 
 
 
+## Where are the sightings more concentrated?
 
-
-
----------------------------------------------------------------------------------------------------------------
-**Where are the sightings more concentrated?**
 
 Firstly, we take a look at how the sightings are distributed:
 ```{r warning=FALSE}
@@ -753,6 +603,7 @@ ggplot(rat_dataset, mapping = aes(y = Latitude)) +
 ```
 
 There is a concentration in the middle of the range, with many of what `geom_boxplot()` considers outliers. So the part of New York we will be looking at is:
+
 ```{r ,fig.width=10, fig.height=7, warning=FALSE}
 data4lat <-
   rat_dataset %>% 
@@ -790,13 +641,10 @@ sightings_map <-
 sightings_map
 ```
 
-It seems like the sightings are mostly concentrated in 3 boroughs: Manhatten, Bronx and Brooklyn, with Staten Island having the least concentration by far.
+It seems like the sightings are mostly concentrated in 3 boroughs: Manhattan, Bronx and Brooklyn, with Staten Island having the least concentration by far.
 
+## We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).
 
-
-
----------------------------------- Borough Part
-**We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
 ```{r, warning=FALSE}
 
 borough_population <-
@@ -820,7 +668,8 @@ borough_population
 
 It looks like Brooklyn is the borough with the most rat sightings. Even though the map shows that Manhatten, for example, looks more densely populated, Manhatten is also a bigger borough, so the sightings are more evenly distributed throughout it.
 
-**How evenly exactly?**
+## How evenly exactly?
+
 ```{r ,fig.width=10, fig.height=7, warning=FALSE}
 
 data4lat_brooklyn <-
@@ -854,12 +703,8 @@ brooklyn_map
 ```
 
 The rats seem to stand away from the beach and the parks (they probably have work to do, like us). The denser the subway lines get, the denser the rat population too, it seems. 
-----------------------------------------
 
-
-
-----------------------------------------Location Types Part
-**What type of location do these happen in, and how are they distributed on the map?**
+## And what type of location do these happen in, and how are they distributed on the map?
 
 ```{r ,fig.width=10, fig.height=7, warning=FALSE}
 location_map <-
@@ -925,11 +770,6 @@ Looking at the map for the sightings at Sewers, it is no surprise the bigest con
 It is also no surprise most of the sightings at Government Buildings are in Manhatten, as [most of the Government buildings in New York are in Downtown Manhatten](https://www.tripadvisor.com/Attractions-g60763-Activities-c47-t15-New_York_City_New_York.html).
 There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
 For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
--------------------------------------------------------------------------------
-
-
-
-
 
 ## Do the sighting locations change over the years?
 
