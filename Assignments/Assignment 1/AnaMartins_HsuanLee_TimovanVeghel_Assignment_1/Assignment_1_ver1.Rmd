@@ -16,6 +16,8 @@ The dataset we will be using can be found on [kaggle](https://www.kaggle.com/dat
 ```{r warning=FALSE}
 library(tidyverse)
 library(ggcharts) # for bar_chart() function
+library(pander) # for pander() function, make the descriptive stat have pretty output
+library(psych) # for psych() function, for descriptive stat
 ```
 
 We will import an extension of the `ggplot2` library, the `ggmap` library. If you don't have the `ggmap` package installed, please do so by running `install.packages("ggmap")` on your R console. 
@@ -104,7 +106,7 @@ rat_dataset$Borough <-
 So, our dataset after cleaning is as follows:
 ```{r warning=FALSE}
 head(rat_dataset)
-summary(rat_dataset)
+pander(describe(rat_dataset), caption="Descriptive statistics")
 ```
 
 ## The distribution of Rat sightings on the NYC map
