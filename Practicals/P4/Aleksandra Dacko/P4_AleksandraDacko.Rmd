@@ -23,6 +23,8 @@ some_formula <- outcome ~ predictor_1 + predictor_2
 class(some_formula)
 as.character(some_formula)
 summary(Boston)
+
+some_formula[2]
 ```
 
 ### 1. Create a linear model object called lm_ses using the formula medv ~ lstat and the Boston dataset.
@@ -215,5 +217,61 @@ summary(model1)
 model_1_mse_train<-mse(boston_train$medv,predict(model1))
 model_1_mse_train
 ```
+### 24.Now calculate the MSE on the validation set and assign it to variable model_1_mse_valid. Hint: use the newdata argument in predict()
+```{r}
+pred_val<-predict(model1,newdata = boston_valid)
+model_1_mse_valid<-mse(boston_valid$medv,pred_val)
+model_1_mse_valid
+```
+### 25.Create a second model model_2 for the train data which includes age and tax as predictors. Calculate the train and validation MSE.
 
+```{r}
+model_2<-lm(medv~age+tax,data=boston_train)
+mse(boston_train$medv,predict(model_2))
+mse(boston_valid$medv,predict(model_2,newdata =boston_valid ))
+
+```
+
+### 26.Compare model 1 and model 2 in terms of their training and validation MSE. Which would you choose and why?
+model1 has both lower training and validation MSE so I chose the one.
+
+### 27.Calculate the test MSE for the model of your choice in the previous question. What does this number tell you?
+```{r}
+sqrt(mse(boston_test$medv,predict(model1,newdata =boston_test )))
+```
+### 28.Create a function that performs k-fold cross-validation for linear models.
+```{r}
+cross_val<-function(formula,data,k){
+  stopifnot(is_formula(formula))
+  stopifnot(is.data.frame(data))
+  stopifnot(is.integer(as.integer(k)))
+  
+  nsize<-nrow(data)
+  folds<-rep(1:k,length.out=nsize)
+  dat<-data %>% mutate(folds=sample(folds))
+  mse_cal<-c(rep(0,k))
+  for(i in 1:k){
+    val<-dat %>%filter(folds==i) 
+    train<-dat %>% filter(folds!=i)
+    model1<-lm(data=train,formula = formula)
+    name_dep<-as.character(formula[2])
+    mse_cal[i]<-mse(y_true =val[[name_dep]] ,y_pred = predict(model1,newdata = val))
+  }
+  mean(mse_cal)
+  
+}
+
+cross_val(medv~age+tax,Boston,5)
+```
+
+
+### 29 Use your function to perform 9-fold cross validation with a linear model with as its formula medv ~ lstat + age + tax. Compare it to a model with as formulat medv ~ lstat + I(lstat^2) + age + tax.
+```{r}
+cross_val(formula = medv ~ lstat + age + tax, data = Boston, k = 9)
+
+```
+```{r}
+
+cross_val(formula = medv ~ lstat + I(lstat^2) + age + tax, data = Boston, k = 9)
+```
 

@@ -216,6 +216,8 @@ class(some_formula)</code></pre>
 ##  Mean   :12.65   Mean   :22.53  
 ##  3rd Qu.:16.95   3rd Qu.:25.00  
 ##  Max.   :37.97   Max.   :50.00</code></pre>
+<pre class="r"><code>some_formula[2]</code></pre>
+<pre><code>## outcome()</code></pre>
 <div id="create-a-linear-model-object-called-lm_ses-using-the-formula-medv-lstat-and-the-boston-dataset." class="section level3">
 <h3>1. Create a linear model object called lm_ses using the formula medv ~ lstat and the Boston dataset.</h3>
 <pre class="r"><code>lm_ses&lt;-lm(data=Boston,medv~lstat)</code></pre>
@@ -352,18 +354,140 @@ head(pred_int_95)</code></pre>
 <div id="write-a-function-called-mse-that-takes-in-two-vectors-true-y-values-and-predicted-y-values-and-which-outputs-the-mean-square-error." class="section level3">
 <h3>16.Write a function called mse() that takes in two vectors: true y values and predicted y values, and which outputs the mean square error.</h3>
 <pre class="r"><code>mse &lt;- function(y_true, y_pred) {
-  mse&lt;-round(1/length(y_true)*sum((y_true-y_pred)^2),3)
-  mes&lt;-paste(&quot;MSE:&quot;,mse)
+  mes&lt;-round(1/length(y_true)*sum((y_true-y_pred)^2),3)
   return(mes)
 }</code></pre>
 <p>###17.Make sure your mse() function works correctly by running the following code.</p>
 <pre class="r"><code>mse(1:10, 10:1)</code></pre>
-<pre><code>## [1] &quot;MSE: 33&quot;</code></pre>
+<pre><code>## [1] 33</code></pre>
 </div>
 <div id="calculate-the-mean-square-error-of-the-lm_ses-model.-use-the-medv-column-as-y_true-and-use-the-predict-method-to-generate-y_pred." class="section level3">
 <h3>18.Calculate the mean square error of the lm_ses model. Use the medv column as y_true and use the predict() method to generate y_pred.</h3>
 <pre class="r"><code>mse(Boston$medv,predict(lm_ses))</code></pre>
-<pre><code>## [1] &quot;MSE: 38.483&quot;</code></pre>
+<pre><code>## [1] 38.483</code></pre>
+</div>
+</div>
+<div id="train-validation-test-split" class="section level1">
+<h1>Train-validation-test split<br />
+</h1>
+<p>Now we will use the <code>sample()</code> function to randomly select observations from the <code>Boston</code> dataset to go into a training, test, and validation set. The training set will be used to fit our model, the validation set will be used to calculate the out-of sample prediction error during model building, and the test set will be used to estimate the true out-of-sample MSE.</p>
+<div id="the-boston-dataset-has-506-observations.-use-c-and-rep-to-create-a-vector-with-253-times-the-word-train-152-times-the-word-validation-and-101-times-the-word-test.-call-this-vector-splits." class="section level3">
+<h3>19.The <code>Boston</code> dataset has 506 observations. Use <code>c()</code> and <code>rep()</code> to create a vector with 253 times the word “train”, 152 times the word “validation”, and 101 times the word “test”. Call this vector <code>splits.</code></h3>
+<pre class="r"><code>splits&lt;-c(rep(&quot;train&quot;,253),rep(&quot;validation&quot;,152),rep(&quot;test&quot;,101))
+head(splits)</code></pre>
+<pre><code>## [1] &quot;train&quot; &quot;train&quot; &quot;train&quot; &quot;train&quot; &quot;train&quot; &quot;train&quot;</code></pre>
+<pre class="r"><code>tail(splits)</code></pre>
+<pre><code>## [1] &quot;test&quot; &quot;test&quot; &quot;test&quot; &quot;test&quot; &quot;test&quot; &quot;test&quot;</code></pre>
+</div>
+<div id="use-the-function-sample-to-randomly-order-this-vector-and-add-it-to-the-boston-dataset-using-mutate.-assign-the-newly-created-dataset-to-a-variable-called-boston_master." class="section level3">
+<h3>20.Use the function <code>sample()</code> to randomly order this vector and add it to the Boston dataset using <code>mutate()</code>. Assign the newly created dataset to a variable called <code>boston_master</code>.</h3>
+<pre class="r"><code>Boston%&lt;&gt;%mutate(boston_master=sample(splits))
+head(Boston)</code></pre>
+<pre><code>##      crim zn indus chas   nox    rm  age    dis rad tax ptratio  black lstat
+## 1 0.00632 18  2.31    0 0.538 6.575 65.2 4.0900   1 296    15.3 396.90  4.98
+## 2 0.02731  0  7.07    0 0.469 6.421 78.9 4.9671   2 242    17.8 396.90  9.14
+## 3 0.02729  0  7.07    0 0.469 7.185 61.1 4.9671   2 242    17.8 392.83  4.03
+## 4 0.03237  0  2.18    0 0.458 6.998 45.8 6.0622   3 222    18.7 394.63  2.94
+## 5 0.06905  0  2.18    0 0.458 7.147 54.2 6.0622   3 222    18.7 396.90  5.33
+## 6 0.02985  0  2.18    0 0.458 6.430 58.7 6.0622   3 222    18.7 394.12  5.21
+##   medv boston_master
+## 1 24.0         train
+## 2 21.6    validation
+## 3 34.7          test
+## 4 33.4         train
+## 5 36.2         train
+## 6 28.7         train</code></pre>
+</div>
+<div id="now-use-filter-to-create-a-training-validation-and-test-set-from-the-boston_master-data.-call-these-datasets-boston_train-boston_valid-and-boston_test" class="section level3">
+<h3>21.Now use <code>filter()</code> to create a training, validation, and test set from the boston_master data. Call these datasets <code>boston_train</code>, <code>boston_valid</code>, and <code>boston_test</code></h3>
+<pre class="r"><code>boston_train&lt;-Boston %&gt;% filter(boston_master==&quot;train&quot;)
+boston_valid&lt;-Boston %&gt;% filter(boston_master==&quot;validation&quot;)
+boston_test&lt;-Boston %&gt;% filter(boston_master==&quot;test&quot;)</code></pre>
+</div>
+<div id="train-a-linear-regression-model-called-model_1using-the-training-dataset.-use-the-formula-medv-lstat-like-in-the-first-lm-exercise.-use-summary-to-check-that-this-object-is-as-you-expect." class="section level3">
+<h3>22.Train a linear regression model called <code>model_1</code>using the training dataset. Use the formula <code>medv ~ lstat</code> like in the first lm() exercise. Use <code>summary()</code> to check that this object is as you expect.</h3>
+<pre class="r"><code>model1&lt;-lm(data=boston_train,medv ~ lstat)
+summary(model1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = medv ~ lstat, data = boston_train)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -10.36  -4.38  -1.19   2.13  21.94 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 35.45165    0.77356   45.83   &lt;2e-16 ***
+## lstat       -0.99331    0.05486  -18.11   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 6.324 on 251 degrees of freedom
+## Multiple R-squared:  0.5664, Adjusted R-squared:  0.5647 
+## F-statistic: 327.9 on 1 and 251 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div id="calculate-the-mse-with-this-object.-save-this-value-as-model_1_mse_train." class="section level3">
+<h3>23.Calculate the MSE with this object. Save this value as model_1_mse_train.</h3>
+<pre class="r"><code>model_1_mse_train&lt;-mse(boston_train$medv,predict(model1))
+model_1_mse_train</code></pre>
+<pre><code>## [1] 39.676</code></pre>
+</div>
+<div id="now-calculate-the-mse-on-the-validation-set-and-assign-it-to-variable-model_1_mse_valid.-hint-use-the-newdata-argument-in-predict" class="section level3">
+<h3>24.Now calculate the MSE on the validation set and assign it to variable model_1_mse_valid. Hint: use the newdata argument in predict()</h3>
+<pre class="r"><code>pred_val&lt;-predict(model1,newdata = boston_valid)
+model_1_mse_valid&lt;-mse(boston_valid$medv,pred_val)
+model_1_mse_valid</code></pre>
+<pre><code>## [1] 35.135</code></pre>
+</div>
+<div id="create-a-second-model-model_2-for-the-train-data-which-includes-age-and-tax-as-predictors.-calculate-the-train-and-validation-mse." class="section level3">
+<h3>25.Create a second model model_2 for the train data which includes age and tax as predictors. Calculate the train and validation MSE.</h3>
+<pre class="r"><code>model_2&lt;-lm(medv~age+tax,data=boston_train)
+mse(boston_train$medv,predict(model_2))</code></pre>
+<pre><code>## [1] 71.729</code></pre>
+<pre class="r"><code>mse(boston_valid$medv,predict(model_2,newdata =boston_valid ))</code></pre>
+<pre><code>## [1] 54.394</code></pre>
+</div>
+<div id="compare-model-1-and-model-2-in-terms-of-their-training-and-validation-mse.-which-would-you-choose-and-why" class="section level3">
+<h3>26.Compare model 1 and model 2 in terms of their training and validation MSE. Which would you choose and why?</h3>
+<p>model1 has both lower training and validation MSE so I chose the one.</p>
+</div>
+<div id="calculate-the-test-mse-for-the-model-of-your-choice-in-the-previous-question.-what-does-this-number-tell-you" class="section level3">
+<h3>27.Calculate the test MSE for the model of your choice in the previous question. What does this number tell you?</h3>
+<pre class="r"><code>sqrt(mse(boston_test$medv,predict(model1,newdata =boston_test )))</code></pre>
+<pre><code>## [1] 6.451666</code></pre>
+</div>
+<div id="create-a-function-that-performs-k-fold-cross-validation-for-linear-models." class="section level3">
+<h3>28.Create a function that performs k-fold cross-validation for linear models.</h3>
+<pre class="r"><code>cross_val&lt;-function(formula,data,k){
+  stopifnot(is_formula(formula))
+  stopifnot(is.data.frame(data))
+  stopifnot(is.integer(as.integer(k)))
+  
+  nsize&lt;-nrow(data)
+  folds&lt;-rep(1:k,length.out=nsize)
+  dat&lt;-data %&gt;% mutate(folds=sample(folds))
+  mse_cal&lt;-c(rep(0,k))
+  for(i in 1:k){
+    val&lt;-dat %&gt;%filter(folds==i) 
+    train&lt;-dat %&gt;% filter(folds!=i)
+    model1&lt;-lm(data=train,formula = formula)
+    name_dep&lt;-as.character(formula[2])
+    mse_cal[i]&lt;-mse(y_true =val[[name_dep]] ,y_pred = predict(model1,newdata = val))
+  }
+  mean(mse_cal)
+  
+}
+
+cross_val(medv~age+tax,Boston,5)</code></pre>
+<pre><code>## [1] 64.5654</code></pre>
+</div>
+<div id="use-your-function-to-perform-9-fold-cross-validation-with-a-linear-model-with-as-its-formula-medv-lstat-age-tax.-compare-it-to-a-model-with-as-formulat-medv-lstat-ilstat2-age-tax." class="section level3">
+<h3>29 Use your function to perform 9-fold cross validation with a linear model with as its formula medv ~ lstat + age + tax. Compare it to a model with as formulat medv ~ lstat + I(lstat^2) + age + tax.</h3>
+<pre class="r"><code>cross_val(formula = medv ~ lstat + age + tax, data = Boston, k = 9)</code></pre>
+<pre><code>## [1] 37.72711</code></pre>
+<pre class="r"><code>cross_val(formula = medv ~ lstat + I(lstat^2) + age + tax, data = Boston, k = 9)</code></pre>
+<pre><code>## [1] 28.32556</code></pre>
 </div>
 </div>
 
