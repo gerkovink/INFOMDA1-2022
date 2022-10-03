@@ -1,0 +1,161 @@
+---
+title: "Supervised Learning and Visualisation"
+subtitle: "Assignment 1"
+author: "Abdool Al-Khaledi, Amalia Tsakali, Li-Yeun Xu, Willem van Veluw"
+date: "2022-09-19"
+output: html_document
+---
+
+## Introduction
+For the purpose of this assignment, exploratory data analysis will be performed on the data set “Spotify top chart songs 2022”, which was obtained from Kaggle and uploaded by user “SVETA151”. The dataset is a collection of top charting songs in 2022 according to the weekly Spotify Top 200 Global chart. Each of the songs listed in the dataset has charted in the top 200 according to Spotify for a minimum of one week. That being said, the dataset contains 646 rows along with 17 columns. Each row lists a unique song while each column outlines a different feature of the song. These features include necessary identifying information such as artist(s) and song name. Moreover, these features include numerical measures such as weeks on chart, loudness, tempo and duration. Along with categorical measures such as the key of the song, the time signature and modality (major/minor). For this assignment, various factettes of the dataset will be analyzed. Focus will be placed on comparing features to determine if any correlate with each other. Furthermore, we will also investigate whether any feature correlates with the number of weeks charted, or the peak rank.
+
+## Libraries & Packages
+
+```{r, message = FALSE, warning = FALSE}
+list.of.packages <- c("ggpubr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) 
+  install.packages(new.packages)
+
+library(ggpubr)
+library(tidyverse)
+```
+
+## Load the data
+In this section we load and pre-process the data. This means that we define which variables are factors and change their labels. We will also add some variables in order to make pretty plots.\\
+
+```{r, message = FALSE}
+data <- 
+  read_csv("data/spotify_top_charts_22.csv") %>% 
+  select(-uri) %>% 
+  mutate(key = recode(key, 
+                      "0"="C","1"="C#","2"="D","3"="D#","4"="E","5"="F","6"="F#","7"="G","8"="G#","9"="A",
+                      "10"="A#","11"="B") 
+                      %>% as.factor()) %>% 
+  mutate(mode = recode(mode, 
+                      "0" = "minor", "1" = "major") 
+                      %>% as.factor()) %>% 
+  mutate(time_signature = recode(time_signature, 
+                      "1" = "1/4", "3" = "3/4", "4" = "4/4", "5" = "5/4") 
+                      %>% as.factor()) %>% 
+  mutate(colab = case_when(grepl(",", artist_names) ~ "YES", !grepl(",", artist_names) ~ "NO") %>% as.factor())
+
+```
+
+
+## Inspect the data
+```{r}
+View(data)
+```
+
+## Transform and Clean the data
+```{r}
+```
+
+## Create Tables
+In the dataset we have 11 numerical variables and four categorical variables. The summary statistics of 10 of the numerical variables are listed in the table below. 
+
+| Variable         | Mean     | Std      | Min      | Q1      | Median   | Q3       | Max      |
+| ---------------- | -------: | -------: | -------: | ------: | -------: | -------: | ------:  |
+| Peak rank        | 65.92    | 57.0045  | 1.0000   | 15.0000 | 51.5000  | 108.7500 | 200.0000 |
+| Weeks on chart   | 19.50    | 37.8139  | 1.0000   | 1.0000  | 5.0000   | 19.7500  | 269.0000 |
+| Danceability     | 0.6744   | 0.1515   | 0.1930   | 0.5690  | 0.6744   | 0.7907   | 0.9850   |
+| Energy           | 0.6408   | 0.1655   | 0.0218   | 0.5325  | 0.6520   | 0.7690   | 0.9720   |
+| Loudness         | -6.3560  | 2.6275   | -31.1600 | -7.7160 | -6.3560  | -4.5960  | -0.5140  |
+| Speechiness      | 0.1098   | 0.1022   | 0.0232   | 0.0413  | 0.0635   | 0.1358   | 0.6110   |
+| Acousticness     | 0.2557   | 0.2626   | 1.68e-05 | 0.0404  | 0.1555   | 0.4245   | 0.9690   |
+| Instrumentalness | 0.0137   | 0.0778   | 0.0000   | 0.0000  | 1.5e-06  | 1.e-4    | 0.9080   |
+| Liveness         | 0.1765   | 0.1338   | 0.0264   | 0.0931  | 0.1200   | 0.2318   | 0.9680   |
+| Tempo            | 121.0916 | 28.2680  | 66.1650  | 98.4300 | 119.9700 | 139.9700 | 205.8600 |
+| Duration (ms)    | 203630   | 54967    | 36935    | 169902  | 196389   | 229214   | 613027   |
+
+Note 1: about 30.3% of the songs only lasted one week on chart.  
+Note 2: about 48.3% of the songs have zero *instrumentalness*.  
+
+For the remaining four categorical variables we will show the frequencies by means of bar plots.  
+For *key* we have the following. We see, for example, that the mode of *key* is C#.
+```{r, echo = FALSE}
+key_bar <- 
+  data %>% ggplot(aes(x = key)) +
+  geom_bar() +
+  ylim(0,120) +
+  geom_text(aes(label = ..count..), stat = "count", vjust = -1) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+key_bar
+```
+  
+The variable *mode* only has two possible values: either *minor* or *major*. We have 373 songs written in major and 273 songs in minor.  
+
+In the barplot below we see the frequencies of the variable *time signature*. The majority of the songs are written in a time signature of 4/4.
+```{r, echo = FALSE}
+time_signature_bar <-
+  data %>% ggplot(aes(x = time_signature)) +
+  geom_bar() +
+  labs(x = "time signature") +
+  ylim(0, 625) +
+  geom_text(aes(label = ..count..), stat = "count", vjust = -1) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+time_signature_bar
+```
+  
+During the exploration of the dataset, we noticed that many of the top songs are colaborations of artists. However, the majority of songs are written by one artist compared to colaborations of artists: 417 and 229 respectively.
+
+
+## Nice plot
+When considering the first two variables of the dataset, *peak rank* and *weeks on chart*, one might expect that songs with a high peak rank will last more weeks on chart. Indeed, for a song at rank 1 in may take more weeks to drop out the top 200. To explore this thought, we made the plot below.  
+From the plot we see our thought confirmed, or at least up to some peak rank. For the really popular songs, songs with a rank between 1 and 50, it is clear that they stay on the chart for weeks than less popular songs do. We test this by performing a correlation test:
+```{r, echo = FALSE}
+cor.test(data$peak_rank, data$weeks_on_chart)
+```
+From the p-value we conclude that the correlation is not equal to 0. Therefore, we conclude that peak rank indeed affects the number of weeks on chart. Note that the correlation is negative, because songs with low peak rank tend to stay long on the chart.
+```{r, echo = FALSE}
+rank_weeks <-
+  data %>% ggplot(aes(x = peak_rank, y = weeks_on_chart)) +
+  geom_point() +
+  geom_smooth(colour = "red", se=FALSE) +
+  theme_minimal()
+
+rank_weeks
+```
+To test if more features have a correlation, we created scatterplots for every other numerical feature tested against each other. A small for-loop was written to automate this process. From the results we found that the following features have a correlation:
+
+```{r, echo=False, warning=False}
+data %>% 
+  ggplot(aes(x = loudness, y = energy)) +
+  geom_point() +
+  geom_smooth(method='lm', colour = "#FF0000", se=FALSE) +
+  xlim(-15, 0) +
+  stat_cor(colour = "#0000FF") +
+  theme_minimal()
+```
+
+```{r, echo=False}
+data %>% 
+  ggplot(aes(x = acousticness, y = energy)) +
+  geom_point() +
+  geom_smooth(method='lm', colour = "#FF0000", se=FALSE) +
+  stat_cor(label.x = 0.75, label.y = 0.95, colour = "#0000FF") +
+  theme_minimal()
+
+```
+
+For the categorical variables, we tested too see if the key of the song have an affect on the peak_rank or the weeks_on_chart. From our common knowledge we know that most pop-songs are written in the C-key. Therefore, we assume that songs written in other keys will performe less on the charts. To confirm our suspicion we plotted the following box-plots.
+```{r}
+data%>%ggplot(aes(x=key,y=peak_rank))+geom_boxplot() + theme_minimal()
+```
+```{r}
+data%>%ggplot(aes(x=key,y=weeks_on_chart))+geom_boxplot() + theme_minimal() + coord_cartesian(ylim = c(0,50))
+```
+From the results we can confirm that songs written in the C-key do have a higher peak-rank on average than songs written in other keys. However  songs written in the C-key doesn't seems to stay longer on the chart, than songs written in other keys.
+## Explain what you did and why (maximum 5 paragraphs total) if applicable, note findings such as missingness, outliers or unlikely values or group differences, etcetera.
+
+## Cleaning the data
+To clean the data, we have
+
+- Deleted "uri"
+- Recoded the variables key, mode and time signature
+- Defined the variables key, mode and time signature as being factors
+- Added a variable colab. This tells whether or not the song is a collaboration of artists
+
