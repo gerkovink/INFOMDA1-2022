@@ -4,9 +4,6 @@ author: "Aleksandra Dacko, Anita Lyubenova & Nina van Gerwen"
 date: "03/10/2022"
 output: html_document
 indent: true
-editor_options: 
-  markdown: 
-    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -100,7 +97,8 @@ data %<>% mutate("AircraftType"=case_when(Airplane=="True"~"Airplane",
                                       "Weather", 
                                     #wrongly codded "TURB" spotted and added
                                   Risk %in% c("MED")~"Injuries of Persons")) %>% 
-  mutate(RiskCat= replace_na(RiskCat, "Multiple") )%>% 
+  mutate(RiskCat= replace_na(RiskCat, "Multiple"),
+         WeightCat=replace_na(WeightCat,"Unknown") )%>% 
   select(!c("Location","Operator","Date","Model","StateOfOperator","Class",
             "ScheduledCommercial","Official","OccCats","Over2250","Over5700",
             "Helicopter","Airplane","Registration","X")) %>% 
@@ -231,7 +229,15 @@ grid_arrange_shared_legend <-
 
 ```
 
-```{r accidents over time plots}
+```{r deaths over time plots,fig.align='center'}
+#death count per year- trend
+data %>% filter(Fatalities >0) %>% group_by(Year,AircraftType) %>% 
+  summarise(sum=sum(Fatalities)) %>% ggplot(aes(x=Year, y=sum,color=AircraftType)) + 
+  geom_line() +
+  labs(x = "Year", y="Number of deaths",color="Aircraft Type")+
+  ggtitle("The total death count over time")+theme_minimal()
+```
+```{r accidents over time plots,fig.align='center'}
 #number of accidents per year - trend
 a<-data %>% group_by(Year,AircraftType) %>% 
   summarise(count=n()) %>% ggplot(aes(x=Year, y=count,color=AircraftType)) + 
@@ -242,18 +248,10 @@ a<-data %>% group_by(Year,AircraftType) %>%
 c<-data %>% filter(Fatalities >0) %>% group_by(Year,AircraftType) %>% 
   summarise(count=n()) %>% ggplot(aes(x=Year, y=count,color=AircraftType)) + 
   geom_line() +
-  labs(x = "Year", y="Count")+ ggtitle("The fatal accident count")+theme_minimal()
-#death count per year- trend
-
-b<-data %>% filter(Fatalities >0) %>% group_by(Year,AircraftType) %>% 
-  summarise(sum=sum(Fatalities)) %>% ggplot(aes(x=Year, y=sum,color=AircraftType)) + 
-  geom_line() +
-  labs(x = "Year", y="Number of deaths")+ ggtitle("The total death count")+theme_minimal()
-grid_arrange_shared_legend(a,b)
+  labs(x = "Year", y="")+ ggtitle("The fatal accident count")+theme_minimal()
 grid_arrange_shared_legend(a,c)
-
-#theme(panel.background =element_rect("white"),panel.grid.major = element_line("grey87"),panel.grid.minor = element_line("grey87"),legend.background =element_rect("white"))
 ```
+
 
 The plots for the fatal accident and accident count show a large drop in the 
 number of accidents after 2010. Hence, we wished to explore what might have 
@@ -266,16 +264,21 @@ We explored whether any of the other variables in the dataset might be able
 to explain the drop in the number of accidents through visual inspection of 
 the plots below. 
 
-```{r first two time plots}
+```{r Engine Types used over time,fig.align='center'}
 data %>%subset(AircraftType=="Airplane" ) %>% group_by(Year,EngineType) %>% 
   summarise(count=n()) %>% ggplot(aes(x=Year, y=count,color=EngineType)) + 
   geom_line() +
-  labs(x = "Year", y="Count")+ ggtitle("The  accident count")+theme_minimal() 
-
+  labs(x = "Year", y="Number of accidents",color="Engine Type")+ 
+  ggtitle("The accident count depending on engine type of aircraft")+
+  theme_minimal() 
+```
+```{r Number of engines in machines over time,fig.align='center'}
 data %>%subset(AircraftType=="Airplane" ) %>% group_by(Year,Engines) %>% 
   summarise(count=n()) %>% ggplot(aes(x=Year, y=count,color=as.factor(Engines))) + 
   geom_line() +
-  labs(x = "Year", y="Count")+ ggtitle("The  accident count")+theme_minimal() 
+  labs(x = "Year", y="umber of accidents",color="Number of engines")+ 
+  ggtitle("The accident count depending on the number of engines")+
+  theme_minimal()
 ```
 
 The first two plots show that for the type of engine, piston-type engines had 
@@ -283,13 +286,13 @@ the largest difference in the amount of accidents between 2010 and 2012. As for
 the number of engines, we find that single engine machines had the largest 
 difference in the amount of accidents between 2010 and 2012. 
 
-```{r third time plot}
+```{r third time plot,fig.align='center'}
 data %>%filter(AircraftType=="Airplane" , EngineType=="Piston") %>% 
   group_by(Year,Engines) %>% 
   summarise(count=n()) %>% 
   ggplot(aes(x=Year, y=count,color=as.factor(Engines))) + 
   geom_line() +
-  labs(x = "Year", y="Count")+ 
+  labs(x = "Year", y="Number of accidents",color="Number of Engines")+ 
   ggtitle("The Piston type of engine accident count")+
   theme_minimal() 
 ```
@@ -299,10 +302,10 @@ amount of accidents is in single-piston engines. This could be indicative of
 perhaps an interaction effect between engine-type and number of engines on 
 the number of accidents. 
 
-```{r final two time plots}
+```{r final 1,fig.align='center'}
 data %>% subset(Year %in% c("2010","2011","2012")) %>% 
   ggplot(aes(x=FlightPhase, group=Year))+
-  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count")+
+  geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count",width=0.8)+
   geom_text(aes( label = scales::percent(..prop..,accuracy = 0.1),
                    y= ..prop.. ), stat= "count", hjust = -0.3)+
   coord_flip()+theme(legend.position = "",
@@ -310,20 +313,31 @@ data %>% subset(Year %in% c("2010","2011","2012")) %>%
                      panel.grid.major = element_line("grey87"),
                      panel.grid.minor = element_line("grey87"),
                      legend.background =element_rect("white"))+
-  ylim(c(0,0.45))+ facet_wrap(~Year)
+  ylim(c(0,0.45))+ facet_wrap(~Year)+ylab("Proportion")+xlab("")+
+  ggtitle("Accidents in different flight phases (2010-2012)")
+```
 
+
+
+```{r final 2,fig.align='center'}
 data %>% subset(Year %in% c("2010","2011","2012")) %>% 
   ggplot(aes(x=WeightCat, group=Year))+geom_bar(aes(y = ..prop.., 
                                                     fill = factor(..x..)), 
-                                                stat="count")+
+                                                stat="count",width=0.8)+
+  ylim(c(0,0.67))+
   geom_text(aes( label = scales::percent(..prop..,accuracy = 0.1),
                    y= ..prop.. ), stat= "count", vjust = -.5) +
   theme(legend.position = "",panel.background =element_rect("white"),
         panel.grid.major = element_line("grey87"),
         panel.grid.minor = element_line("grey87"),
-        legend.background =element_rect("white"))+
-  facet_wrap(~Year)
+        legend.background =element_rect("white"),
+        axis.text.x = element_text(size = 8.5),
+        axis.title.x = element_text(size=10))+
+  facet_wrap(~Year)+ylab("Proportion")+xlab("Weight Category")+
+  ggtitle("Weight cathegories of aircrafts participated in accidents (2010-2012)")
 ```
+
+
 
 The next two plots look at the relation between flightphase and weight categories 
 respectively and the proportion of accidents per year. The first plot shows 
@@ -403,7 +417,7 @@ Which flight stage is most dangerous? Danger can be operationalized (1) as the
 proportion of accidents occuring in the flight stage but also (2) as the 
 proportion of fatal accidents occuring in the flight stage.
 
-```{r fatality plot three}
+```{r fatality plot preparation}
 FlightPhase.order.ap<-data %>%subset(AircraftType=="Airplane") %>%
   group_by(FlightPhase) %>%
   summarise(count=n()) %>%
@@ -445,7 +459,9 @@ h<-data %>%subset(AircraftType=="Helicopter") %>%
   labs(title="Helicopters" ,
    	x = "Flight Phase", y="Percentage",
    	fill="Injury Level")
+```
 
+```{r fatality plot,fig.align='center'}
 axh<-ggarrange(a,h, common.legend = TRUE,legend = "bottom")
 annotate_figure(axh,
             	top=text_grob("Proportion of accidents per flight phase and injury level for each aircraft type",
@@ -453,16 +469,25 @@ annotate_figure(axh,
 
 ```
 
+
 #### 2.2.4: Fatality and risk categories
 
 text.
 
-```{r fatality plot four}
-Risk_ord_fat<-data %>%filter(Fatalities >0) %>%  group_by(RiskCat) %>% 
+```{r risk categories plot preparation}
+#create a list to order by when plotting fatal cases
+Risk_ord_fat<-data %>%filter(InjuryLevel_3=="Fatal") %>%  group_by(RiskCat) %>% 
   summarise(count=n()) %>% 
   arrange(.,count) %$% RiskCat
+#create a list to order by when plotting non fatal cases
+Risk_ord<-data %>% filter(InjuryLevel_3=="Non-Fatal") %>%  
+  group_by(RiskCat) %>% 
+  summarise(count=n()) %>% 
+  arrange(.,count) %$% RiskCat
+```
 
-data %>% filter(Fatalities >0) %>%  
+```{r Risks involved in fatal accident occurance,fig.align='center'}
+data %>% filter(InjuryLevel_3=="Fatal") %>%  
   ggplot(aes(x=factor(RiskCat,Risk_ord_fat),fill=AircraftType))+ 
   geom_bar(width=0.6)+ 
   coord_flip()+
@@ -473,14 +498,10 @@ data %>% filter(Fatalities >0) %>%
         legend.background =element_rect("white"))+
   ggtitle("Risks involved in fatal accident occurance")+xlab("")+
   ylab("Number of accidents")
+```
 
-
-Risk_ord<-data %>% filter(InjuryLevel %in% c("Minor","None","Serious")) %>%  
-  group_by(RiskCat) %>% 
-  summarise(count=n()) %>% 
-  arrange(.,count) %$% RiskCat
-
-data %>%  
+```{r Risks involved in non-fatal accident occurance,fig.align='center'}
+data %>%  filter(InjuryLevel_3=="Non-Fatal") %>% 
   ggplot(aes(x=factor(RiskCat,Risk_ord),fill=AircraftType))+ 
   geom_bar(width=0.6)+ 
   coord_flip()+
@@ -493,3 +514,4 @@ data %>%
   xlab("")+
   ylab("Number of accidents")
 ```
+
