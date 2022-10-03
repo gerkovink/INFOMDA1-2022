@@ -397,7 +397,8 @@ There are 20 location types.
 ```{r warning=FALSE}
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)), 1))
+  summarise(Percentage = round(100*(n() / nrow(.)), 1)) %>%
+  arrange(desc(Percentage))
 
 loc_per
 ```
@@ -484,27 +485,6 @@ There are no rat sightings in Office Buildings in Staten Island, as it is a Boro
 For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
 
 ## Time and Rat number
-
-**Plot the number of rat sightings each month**
-```{r warning=FALSE}
-rat_dataset %>%
-  ggplot(aes(x = Created_Month, fill = Created_Month)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                             "#777711")) +
-  ylim(0, 15000) +
-  labs(x = "Month", y = "Total Number of Rat Sighting", 
-       title = "Number of Rat Sighting Each Month", fill = "Month") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust=0.5))
-```
-
-In July, the highest number of rat sightings was recorded, with 11,982 cases, followed by August and June. In general, the number of rat sightings can be identified in relation to fluctuations in temperature, as in winter months, i.e. November, December, January and February, the number of rat sightings are the lowest. With rising temperatures, however, the number of rat sightings increased markedly.
 
 **Plot the Percentage of rat sightings by month**
 ```{r warning=FALSE}
@@ -664,51 +644,6 @@ solved_duration %>%
 
 Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
 
-**Plot the number of rat sighting case resolution times by year.**
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
-  ylim(0, 2300) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust= -1) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 3000) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-On balance, from 2010 to 2017, an increasing number of sighting cases were solved within 1 month, with the number of cases requiring more than 2 months to be closed decreasing each year.
-
 **Plot the percentage of rat sighting case resolution times by year**
 ```{r fig.height=7, fig.width=10, warning=FALSE}
 library(scales)
@@ -805,48 +740,6 @@ duration_map
 ```
 
 The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
-
-## Location Type and Rat number
-
-**Check how many location types it is.**
-```{r warning=FALSE}
-unique(rat_dataset$Location_Type)
-# 20 location types
-```
-
-There are 20 location types.
-
-**Compute the percentage of rat sighting in each location type**
-```{r warning=FALSE}
-loc_per <- rat_dataset %>%
-  group_by(Location_Type) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)), 1)) %>%
-  arrange(desc(Percentage))
-
-loc_per
-```
-
-**Plot the bar chart that reveals the occupation of rat sighting in each location type**
-```{r, fig.width= 10, fig.height=7}
-loc_per %>%
-  bar_chart(Location_Type, Percentage,
-            bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                          "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                          "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                          "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                          "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                          "#777711")) +
-  geom_text(aes(label = paste(Percentage , "%")),
-            hjust = -0.2) +
-  ylim(NA, 45) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust=0.5)) +
-  labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
-       fill = "Location Type")
-  
-```
-
-Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
 
 ## Conclusions
 
