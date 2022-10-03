@@ -122,3 +122,95 @@ boys %>%
 
 ```
 
+##Question 11:
+
+```{r}
+elastic <-
+  bind_rows("El_1" = elastic1,
+            "El_2" = elastic2, 
+            .id = "Type")
+```
+
+##Question 12:
+
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, color = Type)) +
+  geom_point() +
+  labs(x = "Stretch", y = "Distance", title = "Stretch by distance") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+##Question 13:
+
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, color = Type)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(x = "Stretch", y = "Distance", title = "Stretch by distance") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+##Question 14: 
+
+```{r}
+reg1 <- lm(distance ~ stretch, elastic1)
+reg2 <- lm(distance ~ stretch, elastic2)
+```
+
+##Question 15:
+
+```{r}
+reg1 %>% 
+  predict(se.fit = TRUE) %>% 
+  summary()
+
+reg2 %>% 
+  summary() %$%
+  r.squared
+
+```
+
+##Question 16:
+
+```{r}
+reg1 %>% 
+  plot(which = 5)
+
+reg2 %>% 
+  plot(which = 5)
+```
+
+##Question 17:
+
+```{r}
+prediction <- predict(reg1 , newdata = elastic2)
+```
+
+##Question 18:
+
+```{r}
+pred_dat <-
+  data.frame(distance = prediction,
+             stretch = elastic2$stretch) %>% 
+  bind_rows(Predicted = .,
+            Observed = elastic2,
+            .id = "Predicted")
+
+pred_dat %>% 
+  ggplot(aes(stretch, distance, color = Predicted)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Predicted and observed distance")
+```
+```{r}
+cor(elastic2$distance, prediction)
+```
+
