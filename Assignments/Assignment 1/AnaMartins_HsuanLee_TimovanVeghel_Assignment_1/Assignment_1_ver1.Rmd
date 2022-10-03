@@ -27,7 +27,7 @@ library("ggmap")
 
 ```{r include=FALSE}
 # the key for reaching the map
-KEY = 
+KEY = "key"
 register_google(key = KEY)
 ```
 
@@ -150,6 +150,7 @@ sightings_map
 ```
 
 From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings. There is also a smaller concentration at the top middle of the map.
+
 ```{r, fig.width=10, fig.height=7, warning=FALSE}
 sightings_map <-
   ggmap(newyork.map) +
@@ -160,7 +161,7 @@ sightings_map <-
 sightings_map
 ```
 
-It seems like the sightings are mostly concentrated in 3 boroughs: Manhatten, Bronx and Brooklyn, with Staten Island having the least concentration by far.
+It seems like the sightings are mostly concentrated in 3 boroughs: Manhattan, Bronx and Brooklyn, with Staten Island having the lowest concentration by far.
 
 **Do the sighting locations change over the years?**
 ```{r ,fig.width=10, fig.height=7, warning=FALSE}
@@ -177,9 +178,13 @@ It definitely looks like that is not the case, as the maps all look basically ex
 
 ## Is the number of rat sightings in a given borough proportional to its population?
 
-Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
+Next up, we wanted to find out whether there are relative differences between boroughs when it comes to rat sightings, or if they are the same, when we account for differences in population and area respectively. 
 
 **Summarize Rat Sightings per borough per year from the original dataset**
+
+We started of by creating a new dataset centered around the boroughs. From our main dataset (rat_dataset), we took the borough column, and subsequently counted how often each borough was represented per year. 
+
+Side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively.
 
 ```{r warning=FALSE}
 Borough_Rats <- 
@@ -193,7 +198,14 @@ Borough_Rats <-
 head(Borough_Rats)
 ```
 
-**Combining the summarized dataset with a dataset of borough populations**
+**Creating a dataset for borough population**
+
+In order to compare borough by population, we first need a dataset which contains population (over time).
+The dataset we will be using can be found on [kaggle](https://www.kaggle.com/datasets/muonneutrino/new-york-city-census-data).
+
+It should be noted that this dataset only contains census data, which only happens every 10 years. Therefore, we manually added population data for the remaining years (which can be found here: https://fred.stlouisfed.org/categories/29191) 
+
+Lastly, we also manually added area data from Wikipedia.
 
 ```{r warning=FALSE}
 Borough_Population <- 
@@ -202,14 +214,15 @@ Borough_Population <-
   mutate(Borough = toupper(Borough)) %>% 
   inner_join(Borough_Rats, by = "Borough") %>% 
   rename(Borough = "Borough", Area = "Area", Population_2010 = "2010.x", Rat_Sightings_2010 = "2010.y", Population_2011 = "2011.x", Rat_Sightings_2011 = "2011.y", Population_2012 = "2012.x", Rat_Sightings_2012 = "2012.y", Population_2013 = "2013.x", Rat_Sightings_2013 = "2013.y", Population_2014 = "2014.x", Rat_Sightings_2014 = "2014.y", Population_2015 = "2015.x", Rat_Sightings_2015 = "2015.y", Population_2016 = "2016.x", Rat_Sightings_2016 = "2016.y", Population_2017 = "2017.x", Rat_Sightings_2017 = "2017.y") %>%
-  relocate(Borough, Area, Population_2010, Rat_Sightings_2010, Population_2011, Rat_Sightings_2011, Population_2012, Rat_Sightings_2012, Population_2013, Rat_Sightings_2013, Population_2014, Rat_Sightings_2014, Population_2015, Rat_Sightings_2015, Population_2016, Rat_Sightings_2016, Population_2017, Rat_Sightings_2017) #%>% 
-  #mutate(Sightings_Rate = round(((Rat_Sightings / Population) * 100000), digits = 2))
-  
+  relocate(Borough, Area, Population_2010, Rat_Sightings_2010, Population_2011, Rat_Sightings_2011, Population_2012, Rat_Sightings_2012, Population_2013, Rat_Sightings_2013, Population_2014, Rat_Sightings_2014, Population_2015, Rat_Sightings_2015, Population_2016, Rat_Sightings_2016, Population_2017, Rat_Sightings_2017)
 
 head(Borough_Population)
 ```
 
 **Creating a database for rats per population**
+
+We are interested in comparing boroughs, so we need to generate relative values to compare them on. In order to do this, we calculate the rate of rat sightings per 100.000 citizens. 
+
 ```{r warning=FALSE}
 Rats_Per_Pop <-
   Borough_Population %>% 
@@ -221,6 +234,8 @@ head(Rats_Per_Pop)
 
 **Creating a database for rats per area**
 
+For area, we followed the same process, but for rat sightings per kilometre squared. 
+
 ```{r warning=FALSE}
 Rats_Per_Km <-
   Borough_Population %>% 
@@ -230,7 +245,9 @@ Rats_Per_Km <-
 head(Rats_Per_Km)
 ```
 
-**Visualization for above**
+**Visualization of borough comparisons**
+
+In order to create the necessary visualizations, we slightly need to restructure our datasets.
 
 **Rat/population rates**
 ```{r , warning=FALSE}
@@ -243,7 +260,7 @@ as.factor(P_Rates$Year)
 head(P_Rates, n = 20)
 ```
 
-**Population plots** 
+**Population rate figures** 
 
 ```{r warning=FALSE}
 P_Rates %>% 
@@ -251,7 +268,7 @@ P_Rates %>%
   geom_point() +
   geom_line() +
   labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population", color = "Borough") +
-  theme_classic() +
+  theme_minimal() +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
@@ -262,10 +279,9 @@ P_Rates %>%
   geom_line() +
   facet_wrap(~ Borough) + 
   labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population") +
-  theme_classic() +
+  theme_minimal() +
   theme(plot.title = element_text(hjust=0.5))
 ```
-
 
 **Rat/Area rates**
 
@@ -279,7 +295,7 @@ as.factor(A_Rates$Year)
 head(A_Rates, n = 20)
 ```
 
-**Area plots**
+**Area rate figures**
 
 ```{r warning=FALSE}
 A_Rates %>% 
@@ -287,7 +303,7 @@ A_Rates %>%
   geom_point() +
   geom_line() +
   labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
-  theme_classic() +
+  theme_minimal() +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
@@ -298,10 +314,13 @@ A_Rates %>%
   geom_line() +
   facet_wrap(~ Borough) +
   labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
-  theme_classic() +
+  theme_minimal() +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
+We can see a rather obvious trend, where Manhattan has relatively the most rat sightings by far, both when compared on population as well as area. Queens and Staten Island both keep to the lower end of spectrum. 
+
+When it comes to change over the years, we see that the Bronx, Brooklyn, and Manhattan increase at a similar rate when it comes to population rate, while Queens and Staten Island remain relatively stable. When we compare on the basis of area, we see that Manhattan seems to grow faster than the Bronx and Brooklyn, while Queens and Staten Island still remain stable.
 
 **We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
 ```{r, warning=FALSE}
