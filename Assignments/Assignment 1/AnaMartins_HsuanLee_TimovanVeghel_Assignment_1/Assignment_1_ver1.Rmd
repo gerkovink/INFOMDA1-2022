@@ -112,7 +112,6 @@ head(rat_dataset)
 summary(rat_dataset)
 ```
 
-<<<<<<< HEAD
 ## The distribution of Rat sighting on the map
 
 **Where are the sightings more concentrated?**
@@ -154,6 +153,7 @@ sightings_map
 ```
 
 From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings. There is also a smaller concentration at the top middle of the map.
+
 ```{r, fig.width=10, fig.height=7, warning=FALSE}
 sightings_map <-
   ggmap(newyork.map) +
@@ -432,8 +432,6 @@ It is also no surprise most of the sightings at Government Buildings are in Manh
 There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
 For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
 
-=======
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 ## Time and Rat number
 
 **Plot the number of rat sightings each month**
@@ -749,8 +747,6 @@ duration_map
 
 The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
 
-<<<<<<< HEAD
-=======
 ## Location Type and Rat number
 
 **Check how many location types it is.**
@@ -804,13 +800,7 @@ Borough_Rats <-
   drop_na()
 
 head(Borough_Rats)
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 
-
-
-
-<<<<<<< HEAD
-=======
 P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
   geom_point() +
@@ -847,7 +837,6 @@ A_Rates %>%
 
 ```
 
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 
 
 
