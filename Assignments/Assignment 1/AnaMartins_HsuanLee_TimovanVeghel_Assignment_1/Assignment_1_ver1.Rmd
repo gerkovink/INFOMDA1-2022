@@ -25,7 +25,7 @@ library("ggmap")
 
 ```{r include=FALSE}
 # the key for reaching the map
-KEY = "AIzaSyDZb4hXrsdgQ7zjHoT1h6A26G7YbCV2jBc"
+KEY = 
 register_google(key = KEY)
 ```
 
@@ -79,7 +79,7 @@ rat_dataset <-
   rename(Unique_Key = "Unique Key", Created_Date = "Created Date", Closed_Date = "Closed Date", Location_Type = "Location Type", Incident_Zip = "Incident Zip", Incident_Address = "Incident Address", Street_Name = "Street Name", Cross_Street_1 = "Cross Street 1", Cross_Street_2 = "Cross Street 2", Intersection_Street_1 = "Intersection Street 1", Intersection_Street_2 = "Intersection Street 2", Address_Type = "Address Type", Status = "Status", Due_Date = "Due Date", RAU_Date = "Resolution Action Updated Date", Community_Board = "Community Board", Borough = "Borough", Latitude = "Latitude", Longitude = "Longitude") %>% 
   mutate(Created_Year = .DateSplit(Created_Date, 1), Created_Month = .DateSplit(Created_Date, 2), Created_Day = .DateSplit(Created_Date, 3)) %>% 
   mutate(Closed_Year = .DateSplit(Closed_Date, 1), Closed_Month = .DateSplit(Closed_Date, 2), Closed_Day = .DateSplit(Closed_Date, 3)) %>%
-  mutate(Due_Year = DateSplit(Due_Date, 1), Due_Month = .DateSplit(Due_Date, 2), Due_Day = .DateSplit(Due_Date, 3), Due_Time = .DateSplit(Due_Date, 4)) %>%
+  mutate(Due_Year = .DateSplit(Due_Date, 1), Due_Month = .DateSplit(Due_Date, 2), Due_Day = .DateSplit(Due_Date, 3), Due_Time = .DateSplit(Due_Date, 4)) %>%
   mutate(RAU_Year = .DateSplit(RAU_Date, 1), RAU_Month = .DateSplit(RAU_Date, 2), RAU_Day = .DateSplit(RAU_Date, 3), RAU_Time = .DateSplit(RAU_Date, 4)) %>% 
   mutate(Address_Number = .GetNumber(Incident_Address)) %>% 
   mutate(Community_Board_Number = .GetNumber(Community_Board)) %>% 
@@ -113,7 +113,7 @@ summary(rat_dataset)
 ```
 
 <<<<<<< HEAD
-## The distribution of Rat sighting on the map
+## The distribution of Rat sightings on the NYC map
 
 **Where are the sightings more concentrated?**
 
@@ -182,6 +182,9 @@ It definitely looks like that is not the case, as the maps all look basically ex
 ## Is the number of rat sightings in a given borough proportional to its population?
 
 Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
+
+**Summarize Rat Sightings per borough per year from the original dataset**
+
 ```{r warning=FALSE}
 Borough_Rats <- 
   rat_dataset %>% 
@@ -192,8 +195,11 @@ Borough_Rats <-
   drop_na()
 
 head(Borough_Rats)
+```
 
+**Combining the summarized dataset with a dataset of borough populations**
 
+```{r}
 Borough_Population <- 
   read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
   select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
@@ -207,7 +213,9 @@ Borough_Population <-
 head(Borough_Population)
 ```
 
-**Creating two new databases; one for rats per population and one for rats per area**
+
+
+**Creating a database for rats per population**
 ```{r warning=FALSE}
 Rats_Per_Pop <-
   Borough_Population %>% 
@@ -215,7 +223,11 @@ Rats_Per_Pop <-
   select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
 
 head(Rats_Per_Pop)
+```
 
+**Creating a database for rats per area**
+
+```{r}
 Rats_Per_Km <-
   Borough_Population %>% 
   mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
@@ -223,6 +235,9 @@ Rats_Per_Km <-
 
 head(Rats_Per_Km)
 ```
+
+
+
 
 **Visualization for above**
 ```{r , warning=FALSE}
