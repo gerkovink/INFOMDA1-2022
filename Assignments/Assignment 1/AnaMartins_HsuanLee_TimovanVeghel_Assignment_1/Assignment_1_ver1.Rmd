@@ -32,7 +32,6 @@ register_google(key = KEY)
 ## Data cleaning
 
 The dataset initially looks like this:
-
 ```{r warning=FALSE}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE)
@@ -42,7 +41,6 @@ head(rat_dataset)
 In order to start cleaning up the dataset, a few custom functions need to be written in order to split out information from several columns. 
 
 First off, we have written a function to split a date into its constituent components. The function, as seen below, takes a date string and a specified x value. It formats the input date as an ISO8601 date-time and subsequently isolates each component. Based on the provided x-value, the function puts out the required component. 
-
 ```{r warning=FALSE}
 .DateSplit <- function(txtdate, x){
   date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
@@ -61,7 +59,6 @@ First off, we have written a function to split a date into its constituent compo
 ```
 
 The second function can be used to isolate a specific number from a data point (in our case, this is either a house number of a community board number). The function only takes an address string. It first filters out NA values, after which it extracts and returns numerals from the input string. 
-
 ```{r warning=FALSE}
 .GetNumber <- function(address){
   if(!identical(address, NA)){
@@ -72,7 +69,6 @@ The second function can be used to isolate a specific number from a data point (
 ```
 
 With the necessary tools prepared, the dataset can be cleaned and prepared for further analysis. Empty columns and columns with only a single value represented are filtered, and the columns that are left are renamed to remove spaces. Next we split dates with the aforementioned .DateSplit() function, and use the .GetNumber() function to isolate relevant numeric values from strings. Following the use of these functions, the now redundant columns are removed. 
-
 ```{r warning=FALSE}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE) %>% 
@@ -87,7 +83,6 @@ rat_dataset <-
 ```
 
 We also want to make sure that all of the features have the proper value type.
-
 ```{r warning=FALSE}
 rat_dataset$Location_Type <- 
   as.factor(rat_dataset$Location_Type)
@@ -106,13 +101,11 @@ rat_dataset$Borough <-
 ```
 
 So, our dataset after cleaning is as follows:
-
 ```{r warning=FALSE}
 head(rat_dataset)
 summary(rat_dataset)
 ```
 
-<<<<<<< HEAD
 ## The distribution of Rat sightings on the NYC map
 
 **Where are the sightings more concentrated?**
@@ -184,7 +177,6 @@ It definitely looks like that is not the case, as the maps all look basically ex
 Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
 
 **Summarize Rat Sightings per borough per year from the original dataset**
-
 ```{r warning=FALSE}
 Borough_Rats <- 
   rat_dataset %>% 
@@ -198,7 +190,6 @@ head(Borough_Rats)
 ```
 
 **Combining the summarized dataset with a dataset of borough populations**
-
 ```{r}
 Borough_Population <- 
   read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
@@ -224,7 +215,6 @@ head(Rats_Per_Pop)
 ```
 
 **Creating a database for rats per area**
-
 ```{r}
 Rats_Per_Km <-
   Borough_Population %>% 
@@ -442,8 +432,6 @@ It is also no surprise most of the sightings at Government Buildings are in Manh
 There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
 For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
 
-=======
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 ## Time and Rat number
 
 **Plot the number of rat sightings each month**
@@ -759,8 +747,6 @@ duration_map
 
 The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
 
-<<<<<<< HEAD
-=======
 ## Location Type and Rat number
 
 **Check how many location types it is.**
@@ -801,6 +787,11 @@ loc_per %>%
 
 Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
 
+
+
+
+
+
 ## Is the number of rat sightings in a given borough proportional to its population?
 
 Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
@@ -814,13 +805,7 @@ Borough_Rats <-
   drop_na()
 
 head(Borough_Rats)
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 
-
-
-
-<<<<<<< HEAD
-=======
 P_Rates %>% 
   ggplot(aes(x=Year, y=Rate, group = Borough)) +
   geom_point() +
@@ -854,10 +839,8 @@ A_Rates %>%
   labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
   theme_classic() +
   theme(plot.title = element_text(hjust=0.5))
-
 ```
 
->>>>>>> 1656252ec916d6036d95351eab575793bca184de
 
 
 
