@@ -148,10 +148,10 @@ ggplot(data,aes(y=energy,x=weeks_on_chart))+
 
 ```{r, echo = FALSE}
 data%>%
-  filter(peak_rank<10) %>% 
+  filter(peak_rank<=10) %>% 
   ggplot(aes(x=weeks_on_chart, fill=mode))+
   geom_density(alpha=0.3)+
-  labs(title  = "Figure 6", subtitle = "Density plot showing the distribution of the weeks on chart feature,\ncategorized by the mode feature.") +
+  labs(title  = "Figure 6", subtitle = "Density plot showing the distribution of the weeks on chart feature of songs that has reached\ntop 10, categorized by the mode feature.") +
   theme_minimal()
 ```
 
@@ -166,7 +166,7 @@ data%>%
   ggplot(aes(x=weeks_on_chart))+
   geom_density(aes(fill=key) ,alpha=0.5)+
   theme_minimal() +
-  labs(title  = "Figure 7", subtitle = "Density plot showing the distribution of the weeks on chart feature, categorized by the key-signature\nfeature. Only songs that reached peak rank 1 are used in this analysis.")
+  labs(title  = "Figure 7", subtitle = "Density plot showing the distribution of the weeks on chart feature,\ncategorized by the key-signature feature.\nOnly songs that reached peak rank 1 are used in this analysis.")
 ```
 
 ```{r, echo = FALSE }
@@ -186,7 +186,7 @@ data%>%
   ggplot(aes(x=time_signature,y=peak_rank))+
   geom_boxplot()+
   theme_minimal() +
-  labs(title  = "Figure 9", subtitle = "Boxplot showing the distribution of the peak rank feature, categorized by the time signature feature.")
+  labs(title  = "Figure 9", subtitle = "Boxplot showing the distribution of the peak rank feature, categorized by\nthe time signature feature.")
 ```
 
 
