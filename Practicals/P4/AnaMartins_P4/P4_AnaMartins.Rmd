@@ -1,0 +1,136 @@
+---
+title: 'Supervised learning: Regression 1'
+author: "Ana Martins"
+date: "October 2022"
+output: html_document
+---
+
+## Introduction
+
+```{r}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+```
+
+## Regression in `R`
+
+1. **Create a linear model object called `lm_ses` using the formula `medv ~ lstat` and the `Boston` dataset.**
+
+```{r}
+lm_ses <- lm(data = Boston, formula = medv ~ lstat)
+lm_ses
+```
+
+2. **Use the function `coef()` to extract the intercept and slope from the `lm_ses` object. Interpret the slope coefficient.**
+
+```{r}
+coef(lm_ses)
+```
+
+The median value of owner-occupied homes in $1000s goes down as the lower status of the population goes up.
+
+3. **Use `summary()` to get a summary of the `lm_ses` object. What do you see? You can use the help file `?summary.lm`.**
+
+```{r}
+summary(lm_ses)
+```
+
+4. **Save the predicted y values to a variable called `y_pred`**
+
+```{r}
+y_pred <- predict(lm_ses)
+y_pred
+```
+
+5. **Create a scatter plot with `y_pred` mapped to the x position and the true y value (`Boston$medv`) mapped to the y value. What do you see? What would this plot look like if the fit were perfect?**
+
+```{r}
+ggplot() +
+  geom_point(data = Boston, mapping = aes(x = y_pred, y = medv))
+```
+
+If the fit were perfect the plot would be a straight line on y = x.
+
+6. **Use the `seq()` function to generate a sequence of 1000 equally spaced values from 0 to 40. Store this vector in a data frame with (`data.frame()` or `tibble()`) as its column name `lstat`. Name the data frame `pred_dat`.**
+
+```{r}
+pred_data <- data.frame(lstat = seq(0, 40, length.out = 1000))
+pred_data
+```
+
+7. **Use the newly created data frame as the `newdata` argument to a `predict()` call for `lm_ses`. Store it in a variable named `y_pred_new`.**
+
+```{r}
+y_pred_new <- predict(lm_ses, newdata = pred_data)
+y_pred_new
+```
+
+8. **Create a scatter plot from the `Boston` dataset with `lstat` mapped to the x position and `medv` mapped to the y position. Store the plot in an object called `p_scatter`.**
+
+```{r}
+p_scatter <-
+  ggplot() +
+  geom_point(data = Boston, mapping = aes(x = lstat, y = medv))
+p_scatter
+```
+
+9. **Add the vector `y_pred_new` to the `pred_dat` data frame with the name `medv`.**
+
+```{r}
+pred_data <-
+  pred_data %>% 
+  mutate(medv = y_pred_new)
+pred_data
+```
+
+10. **Add a geom_line() to `p_scatter`, with `pred_dat` as the `data` argument. What does this line represent?**
+
+```{r}
+p_scatter <-
+  p_scatter +
+  geom_line(data = pred_data, mapping = aes(x = lstat, y = medv))
+p_scatter
+```
+
+The prediction for the data.
+
+11. **The `interval` argument can be used to generate confidence or prediction intervals. Create a new object called `y_pred_95` using `predict()` (again with the `pred_dat` data) with the `interval` argument set to “confidence”. What is in this object?**
+
+```{r}
+y_pred_95 <- predict(lm_ses, newdata = pred_data, interval = "confidence")
+y_pred_95
+class(y_pred_95)
+```
+
+The fitted value for various xs and the lower and upper confidence limit.
+
+12. **Create a data frame with 4 columns: `medv`, `lstat`, `lower`, and `upper`.**
+
+```{r}
+df <-
+  data.frame(lstat = pred_data$lstat,
+             medv = y_pred_95[, 1],
+             lower = y_pred_95[, 2],
+             upper = y_pred_95[, 3])
+df
+```
+
+13. **Add a `geom_ribbon()` to the plot with the data frame you just made. The ribbon geom requires three aesthetics: `x` (`lstat`, already mapped), `ymin` (`lower`), and `ymax` (`upper`). Add the ribbon below the `geom_line()` and the `geom_points()` of before to make sure those remain visible. Give it a nice colour and clean up the plot, too!**
+
+```{r}
+ggplot(data = df) +
+  geom_ribbon(mapping = aes(x = lstat, ymin = lower, ymax = upper), fill = "#d8b365") +
+  geom_point(mapping = aes(x = lstat, y = medv), color = "#5ab4ac") +
+  geom_line(mapping = aes(x = lstat, y = medv), color = "#f5f5f5") +
+  theme_minimal()
+```
+
+
+## Plotting lm() in `ggplot`
+
+## Mean square error
+
+## Train-validation-test split
+
+## Programming exercise: cross-validation
