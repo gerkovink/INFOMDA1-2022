@@ -47,7 +47,10 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-.DS_Store
+Practicals/P1/Daniel/Data/googleplaystore.csv
+Practicals/P1/Daniel/Data/googleplaystore_user_reviews.csv
+Practicals/P1/Daniel/Data/license.txt
+Practicals/P1/Daniel/Data/students.xlsx
 Assignments/.DS_Store
 Assignments/Assignment 1/.DS_Store
 Assignments/Assignment 2/.DS_Store
