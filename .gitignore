@@ -47,6 +47,7 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+.DS_Store
 Practicals/P1/Daniel/Data/googleplaystore.csv
 Practicals/P1/Daniel/Data/googleplaystore_user_reviews.csv
 Practicals/P1/Daniel/Data/license.txt
@@ -70,4 +71,3 @@ Practicals/P6/.DS_Store
 Practicals/P7/.DS_Store
 Practicals/P8/.DS_Store
 Assignments/Assignment 1/Work info.xlsx
-
