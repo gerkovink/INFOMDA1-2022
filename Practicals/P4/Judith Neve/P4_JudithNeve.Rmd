@@ -1,0 +1,11 @@
+---
+title: "Practical 4"
+author: "Judith Neve"
+date: '2022-10-03'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
