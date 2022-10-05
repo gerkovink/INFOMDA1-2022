@@ -126,6 +126,9 @@ ggplot(data = df) +
   theme_minimal()
 ```
 
+14. **Explain in your own words what the ribbon represents.**
+
+The ribbon encloses all values within the confidence interval for the medv variable.
 
 ## Plotting lm() in `ggplot`
 
