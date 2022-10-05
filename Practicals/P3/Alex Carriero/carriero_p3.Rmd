@@ -1,0 +1,215 @@
+---
+title: "A.Carriero Practical 3"
+author: "Alex Carriero"
+date: "26/09/2022"
+output: pdf_document
+---
+
+```{r}
+# Load Libraries
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+```{r}
+# Use the boys data set from mice
+
+!is.unsorted(boys$age) # check if data are sorted by age
+summary(boys)          # summary statistics 
+```
+
+
+## 1. Create a histogram of the variable age using the function geom_histogram().
+```{r}
+boys %>% 
+  ggplot(aes(x=age)) + 
+  geom_histogram(fill = "wheat", color = "wheat3", binwidth=1, alpha = 0.7)+ 
+  theme_minimal()
+```
+
+## 2. Create a bar chart of the variable gen using the function geom_bar().
+```{r}
+boys %>% 
+  ggplot(aes(x= gen)) + 
+  geom_bar(fill = "skyblue", color = "grey", alpha = 0.6) + 
+  theme_minimal()
+```
+
+```{r, fig.height = 5, fig.width = 10}
+# Assessing the missing data pattern 
+md.pattern(boys)
+```
+## 3. Create a missingness indicator for the variables gen, phb and tv
+```{r}
+# create new indicator variables ( 1 = missing, 0 = not missing)
+boys_m <- boys %>% 
+            mutate(gen_m = as.factor(ifelse(is.na(gen),1,0)), 
+                   phb_m = as.factor(ifelse(is.na(phb),1,0)), 
+                   tv_m  = as.factor(ifelse(is.na(tv), 1,0)))
+```
+
+## 4. Assess whether missingness in the variables gen, phb and tv is related to someones age.
+```{r}
+# summarize age by missingness in gen 
+boys_m %>% 
+  group_by(gen_m) %>% 
+  summarize(mean = mean(age), 
+            min = min(age),
+            med = median(age),
+            max = max(age),
+            sd  = sd(age))
+
+# summarize age by missingness in phb
+boys_m %>% 
+  group_by(phb_m) %>% 
+  summarize(mean = mean(age), 
+            min = min(age),
+            med = median(age),
+            max = max(age),
+            sd  = sd(age))
+
+# summarize age by missingness in tv
+boys_m %>% 
+  group_by(tv_m) %>% 
+  summarize(mean = mean(age), 
+            min = min(age),
+            med = median(age),
+            max = max(age),
+            sd  = sd(age))
+
+# Results: we see that the mean/median age among people with missing values for gen, 
+#          phb and tv is much younger than people without missing values. 
+
+# much larger sd for age among people with missing values. 
+```
+
+
+## 5. Create a histogram for the variable age, faceted by whether or not someone has a missing value on gen.
+```{r}
+boys_m %>% 
+    ggplot(aes(x = age))+ 
+    geom_histogram( fill = "wheat", color = "wheat3", aes = 0.5) +
+    theme_minimal() + 
+    facet_wrap(~gen_m, labeller = labeller(gen_m = c("0" = "Not Missing", 
+                                                     "1" = "Missing")))
+```
+## 6. Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function geom_point() and 
+## 7. Add a colour aesthetic to the previous plot using the missingness indicator of the variable gen.
+```{r}
+boys_m %>% 
+    ggplot(aes(x = age, y = bmi, color = gen_m)) + 
+    geom_point(alpha = 0.6) + 
+    scale_color_manual(name = "Gen", labels = c('Not Missing', 'Missing'), 
+                       values = c('darkolivegreen', 'darkolivegreen2')) +
+    theme_minimal() 
+```
+## 8. Visualize the relationship between reg (region) and age using a boxplot.
+```{r}
+boys_m %>%
+  ggplot(aes(x= reg, y = age)) + 
+  geom_boxplot(fill = "aliceblue")
+```
+
+## 9. Create a density plot of age, splitting the densities by gen using the fill aesthetic.
+```{r}
+boys_m %>% 
+  ggplot(aes(x = age, fill = gen)) + 
+  geom_density(alpha = 0.7) + 
+  theme_minimal() +
+  scale_fill_brewer() 
+```
+
+## 10. Create a diverging bar chart for hgt in the boys data set, that displays for every age year that year’s mean height in deviations from the overall average hgt.
+```{r}
+boys %>%
+  mutate(Age = as.factor(ceiling(age)),
+         Height = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+## 11. Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2.
+```{r}
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+```
+
+## 12. Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic.
+```{r}
+elastic %>% 
+  ggplot(aes(x= stretch, y = distance, color = Set)) + 
+  geom_point() + 
+  theme_minimal()
+```
+
+## 13. Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line.
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(fill = Set)) + 
+  theme_minimal()
+```
+
+## 14. For each of the data sets elastic1 and elastic2, fit a regression model with y = distance on x = stretch using lm(y ~ x, data).
+```{r}
+fit1 <- elastic1 %$% 
+            lm(distance~stretch)
+
+fit2 <- elastic2 %$% 
+            lm(distance~stretch)
+```
+
+## 15. For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance $R^2$. 
+```{r}
+# predicted values 
+fit1 %>% predict(se.fit = TRUE)
+fit2 %>% predict(se.fit = TRUE)
+
+# summary 
+fit1 %>% summary()
+fit2 %>% summary()
+
+# directly r-squared 
+fit1 %>% summary() %$% r.squared
+fit2 %>% summary() %$% r.squared
+```
+
+## 16. Study the residual versus leverage plots for both models.
+```{r}
+fit1 %>% plot(which = 5)
+fit2 %>% plot(which = 5)
+```
+
+## 17. Use the elastic2 variable stretch to obtain predictions on the model fitted on elastic1.
+```{r}
+pred <- predict(fit1, newdata = elastic2)
+# pred
+```
+
+## 18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for elastic2.
+```{r}
+x <- as.data.frame(cbind(elastic2,pred)) %>% 
+        pivot_longer(cols = c("distance", "pred"), names_to = "predicted", values_to = "distance") %>% 
+        mutate(predicted = recode(predicted, "distance" = "obs"))
+
+x %>%
+  ggplot(aes(x= stretch, y = distance, col = predicted, fill = predicted)) + 
+  geom_point() + 
+  geom_smooth(method = "lm")+ 
+  theme_minimal()
+```
+```{r}
+# finally determine correlation between observed and predicted values 
+cor(elastic2$distance, pred)
+```
+
