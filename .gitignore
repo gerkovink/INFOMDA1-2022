@@ -48,4 +48,26 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 .DS_Store
-
+Practicals/P1/Daniel/Data/googleplaystore.csv
+Practicals/P1/Daniel/Data/googleplaystore_user_reviews.csv
+Practicals/P1/Daniel/Data/license.txt
+Practicals/P1/Daniel/Data/students.xlsx
+Assignments/.DS_Store
+Assignments/Assignment 1/.DS_Store
+Assignments/Assignment 2/.DS_Store
+Practicals/.DS_Store
+Practicals/P1/.DS_Store
+Practicals/P1/Florian van Leeuwen/.DS_Store
+Practicals/P1/Florian van Leeuwen/SLV_practical1/.DS_Store
+Practicals/P1/Gerko Vink/.DS_Store
+Practicals/P3/Florian van Leeuwen/.DS_Store
+Practicals/P1/Gerko Vink/.DS_Store
+Practicals/P2/.DS_Store
+Practicals/P2/Remove/.DS_Store
+Practicals/P3/.DS_Store
+Practicals/P4/.DS_Store
+Practicals/P5/.DS_Store
+Practicals/P6/.DS_Store
+Practicals/P7/.DS_Store
+Practicals/P8/.DS_Store
+Assignments/Assignment 1/Work info.xlsx
