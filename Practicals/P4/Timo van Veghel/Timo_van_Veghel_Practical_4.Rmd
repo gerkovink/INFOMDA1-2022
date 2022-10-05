@@ -1,0 +1,128 @@
+---
+title: "Timo_van_Veghel_Practical_4"
+author: "Timo"
+date: "2022-10-05"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+```
+
+##Question 1:
+
+```{r}
+lm_ses <- lm(medv ~ lstat, Boston)
+lm_ses
+```
+
+##Question 2:
+
+```{r}
+coef(lm_ses)
+```
+##Question 3:
+
+```{r}
+summary(lm_ses)
+```
+
+##Question 4:
+
+```{r}
+y_pred <- predict(lm_ses)
+```
+
+##Question 5:
+
+```{r}
+tibble(pred = y_pred, obs = Boston$medv) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point() +
+  theme_minimal()
+```
+
+##Question 6:
+
+```{r}
+pred_dat <-
+  tibble(lstat = seq(from = 0, to = 40, length.out = 1000))
+```
+
+##Question 7:
+
+```{r}
+y_pred_new <- predict(lm_ses, newdata = pred_dat)
+
+y_pred_new
+
+```
+
+##Question 8:
+
+```{r}
+p_scatter <-
+  Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+
+p_scatter
+```
+
+##Question 9:
+
+```{r}
+pred_dat <- pred_dat %>% mutate(medv = y_pred_new)
+```
+
+##Question 10:
+
+```{r}
+p_scatter + geom_line(data = pred_dat)
+```
+
+##Question 11:
+
+```{r}
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "confidence")
+
+```
+
+##Question 12:
+
+```{r}
+gg_pred <- tibble(
+  lstat = pred_dat$lstat,
+  medv  = y_pred_95[, 1],
+  lower = y_pred_95[, 2],
+  upper = y_pred_95[, 3]
+)
+```
+
+##Question 13:
+
+```{r}
+p_scatter <-
+  Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point(colour = "dark gray") +
+  geom_line(data = pred_dat, colour = "maroon") +
+  geom_ribbon(data = gg_pred, aes(x = lstat, ymin = lower, ymax = upper), colour = "red", fill = "orange", alpha = 0.5) +
+  theme_minimal()
+
+p_scatter
+```
+
+##Question 14:
+
+The ribbon represents which datapoints fall within the confidence interval of our prediction line
+
+##Question 15:
+
+```{r}
+
+```
+
