@@ -1,0 +1,261 @@
+---
+title: \vspace{-2cm} P1_Kyuri.Rmd
+author: "Kyuri Park"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#mainfont: Courier New
+#fontsize: 11pt
+urlcolor: blue
+geometry: margin = 1 in
+output: 
+  # pdf_document:
+  #   latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_depth: 1
+    toc_float: true
+    theme: paper
+    highlight: tango
+    df_print: paged
+---
+<style type="text/css">
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap');
+
+body{ /* Normal  */
+  font-size: 13px;
+  font-family: 'Lato', sans-serif;
+  }
+h1.title {
+  font-size: 25px;
+  color: DarkBlue;
+  margin-bottom:5px;
+}
+
+h1 { /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+h2 { /* Header 2 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+h3 { /* Header 3 */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre { /* Code block - determines code spacing between lines */
+  font-size: 13px;
+}
+
+</style>
+<hr>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE,
+               warning = FALSE,
+               comment = NA)
+
+```
+
+
+First, load the packages:
+
+```{r load_packages}
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+```
+
+# Data types
+
+```{r objects}
+object_1 <- 1:5
+object_2 <- 1L:5L
+object_3 <- "-123.456"
+object_4 <- as.numeric(object_2)
+object_5 <- letters[object_1]
+object_6 <- as.factor(rep(object_5, 2))
+object_7 <- c(1, 2, 3, "4", "5", "6")
+```
+
+## 1. Check classes of objects.
+
+```{r 1, collapse=TRUE}
+class(object_1)
+class(object_2)
+class(object_3)
+class(object_4)
+class(object_5)
+class(object_6)
+class(object_7)
+```
+
+## 2. Convert object_7 back to a vector of numbers using the as.numeric() function.
+
+```{r, collapse=TRUE}
+as.numeric(object_7)
+# check
+class(as.numeric(object_7))
+```
+
+# Lists and data frames
+
+## 3. Make a list called objects containing object 1 to 7 using the list() function.
+```{r}
+objects <- list(object_1, object_2, object_3, object_4, object_5, object_6, 
+                object_7)
+```
+
+## 4. Make a data frame out of object_1, object_2, and object_5 using the data.frame() function
+
+```{r}
+df <- data.frame(Var1 = object_1, Var2 = object_2, Var3 = object_5)
+```
+
+
+## 5. Useful functions for determining the size of a data frame are ncol() and nrow(). Try them out!
+
+```{r, collapse=TRUE}
+ncol(df); nrow(df)
+```
+# Loading, viewing, and summarising data
+
+## 6. Use the function read_csv() to import the file “data/googleplaystore.csv” and store it in a variable called apps.
+
+```{r}
+apps <- read_csv("data/googleplaystore.csv")
+```
+
+## 7. Did any column get a variable type you did not expect?
+As shown below, `size`, `Installs`, `Price` are characters. It would makes more sense for them to be numeric.
+```{r}
+glimpse(apps)
+```
+
+
+## 8. Use the function head() to look at the first few rows of the apps dataset
+```{r}
+head(apps)
+```
+
+## 9. Repeat steps 5, 6, and 7 but now for “data/students.xlsx” (NB: You’ll need a function from the package readxl). Also try out the function tail() and View() (with a capital V).
+
+```{r}
+students <- read_xlsx("data/students.xlsx")
+# check the dimension
+dim(students)
+glimpse(students)
+head(students); tail(students)
+# View(students)
+```
+
+
+## 10. Create a summary of the three columns in the students dataset using the summary() function. What is the range of the grades achieved by the students?
+
+```{r}
+summary(students)
+range(students$grade)
+```
+
+# Data transformation with `dplyr` verbs
+## **FILTER** 
+## 11. Look at the help pages for filter() (especially the examples) and show the students with a grade lower than 5.5.
+
+```{r}
+students %>% 
+  filter(grade < 5.5)
+```
+
+## 12. Show only the students with a grade higher than 8 from programme A.
+```{r}
+students %>% 
+  filter(grade>8, programme == "A")
+```
+
+## **ARRANGE**
+
+## 13. Sort the students dataset such that the students from programme A are on top of the data frame and within the programmes the highest grades come first.
+
+```{r}
+students %>% 
+  arrange(programme, desc(grade))
+```
+
+
+## **SELECT**
+
+## 14. Show only the `student_number` and `programme` columns from the students dataset.
+
+```{r}
+students %>% 
+  select(student_number, programme)
+```
+
+## **MUTATE**
+
+## 15. Use `mutate()` and `recode()` to change the codes in the programme column of the students dataset to their names. Store the result in a variable called `students_recoded`.
+```{r}
+students_recoded <- students %>% 
+  mutate(programme = recode(programme, "A" = "Psychology", "B" = "Sociology"))
+```
+
+# Data processing pipelines
+
+## 16. Create a data processing pipeline that (a) loads the apps dataset, (b) parses the number of installs as ‘Downloads’ variable using mutate and parse_number(), (c) shows only apps with more than 500 000 000 downloads, (d) orders them by rating (best on top), and (e) shows only the relevant columns (you can choose which are relevant, but select at least the Rating and Category variables). Save the result under the name popular_apps.
+
+```{r}
+popular_apps <-  read_csv("data/googleplaystore.csv") %>% 
+  mutate(Downloads = parse_number(Installs)) %>% 
+  filter(Downloads > 5e+08) %>% 
+  arrange(-Rating) %>% 
+  select(App, Category, Rating, Downloads) %>% 
+  distinct(App, .keep_all = TRUE)
+popular_apps
+```
+
+# Grouping and summarisation
+## 17. Show the median, minimum, and maximum for the popular apps dataset you made in the previous assignment.
+
+```{r}
+popular_apps %>% 
+  summarize(median_rating = median(Rating), minimum_rating = min(Rating), maximum_rating = max(Rating))
+```
+
+## 18. Add the median absolute deviation to the summaries you made before.
+
+```{r}
+# define mad function
+mad <- function(x) median(abs(x - median(x)))
+
+popular_apps %>% 
+  summarize(median_rating = median(Rating), minimum_rating = min(Rating), maximum_rating = max(Rating), mad_rating = mad(Rating))
+```
+
+## 19. Create a grouped summary of the ratings per category in the popular apps dataset.
+
+```{r}
+popular_apps %>% 
+  group_by(Category) %>% 
+  summarize(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+```
+
+# Final exercise
+
+## 20. Create an interesting summary based on the Google play store apps dataset. An example could be “do games get higher ratings than communication apps?”
+
+```{r}
+apps %>% 
+  drop_na() %>% 
+  filter(Category == "GAME"| Category=="COMMUNICATION") %>% 
+  distinct(App, .keep_all = TRUE) %>%
+  group_by(Category) %>% 
+  summarize(avgRating = round(mean(Rating),1))
+  
+```
+

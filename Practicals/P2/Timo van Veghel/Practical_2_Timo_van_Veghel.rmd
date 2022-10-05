@@ -1,0 +1,222 @@
+```{r}
+library(ISLR)
+library(tidyverse)
+```
+
+##Question 1:
+
+Aes: x is the number of hits, y is the number of homeruns
+Geoms: Points and 2D density lines
+Scale: Continuous
+Facets: NVT
+Transformations: NVT
+Coordinate system: Cartesian
+
+##Question 2:
+
+```{r}
+set.seed(1234)
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+
+gg_students <-
+  tibble(
+    Number = as.character(student_number),
+    Grade = student_grade,
+    Programme = as.factor(programme) 
+  )
+
+head(gg_students)
+```
+
+##Question 3:
+
+```{r}
+homeruns_plot <-
+  ggplot(Hitters, aes(x= HmRun, y = Hits)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits")
+```
+
+##Question 4:
+
+```{r}
+homeruns_plot <-
+  ggplot(Hitters, aes(x= HmRun, y = Hits, colour = League, size = Salary)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits")
+```
+
+##Question 5:
+
+#NVT
+
+##Question 6:
+
+```{r}
+grade_hist <-
+  ggplot(gg_students, aes(x = Grade)) +
+  geom_histogram(binwidth = 0.7)
+
+grade_hist
+```
+
+##Question 7:
+
+```{r}
+grade_dens <-
+  ggplot(gg_students, aes(x = Grade)) +
+  geom_density(fill = "light seagreen")
+
+grade_dens
+```
+
+##Question 8:
+
+```{r}
+grade_dens <-
+  ggplot(gg_students, aes(x = Grade)) +
+  geom_density(fill = "light seagreen") +
+  geom_rug(colour = "orange", size = 0.1)
+
+grade_dens
+```
+
+##Question 9:
+
+```{r}
+grade_dens <-
+  ggplot(gg_students, aes(x = Grade)) +
+  geom_density(fill = "light seagreen", colour = NA) +
+  geom_rug(colour = "orange", size = 0.1) +
+  labs(x = "Grade", y = "") +
+  theme_minimal() + 
+  xlim(0,10)
+
+grade_dens
+
+```
+
+##Question 10:
+
+```{r}
+grade_box <-
+  ggplot(gg_students, aes(x = Programme, y = Grade, fill = Programme)) +
+  geom_boxplot()
+
+grade_box
+```
+
+##Question 11:
+
+#Horizontal lines are the 25th percentile, median, and 75th percentile, the vertical lines shows what points aren't considered outliers
+
+##Question 12:
+
+```{r}
+gg_students %>%  
+  ggplot(aes(x = Grade, fill = Programme)) +
+  geom_density(colour = NA, alpha = 0.5) +
+  geom_rug(colour = "orange", size = 0.5) +
+  labs(x = "Grade", y = "") +
+  theme_minimal() + 
+  xlim(0,10)
+```
+
+##Question 13:
+
+```{r}
+Hitters %>% 
+  ggplot(aes(x = Years)) +
+  geom_bar() +
+  theme_minimal()
+```
+
+##Question 14:
+
+```{r}
+head(Smarket)
+
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line() +
+  theme_minimal()
+```
+
+##Question 15:
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "green", size = 0.5) +
+  geom_point(colour = "green", size = 1) +
+  theme_minimal()
+```
+
+##Question 16:
+
+```{r}
+which.max(Smarket[1:200,]$Volume)
+max(Smarket[1:200,]$Volume)
+```
+
+##Question 17:
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "green", size = 0.5) +
+  geom_point(colour = "green", size = 1) +
+  geom_label(aes(x = 170, y = 2.4, label = "Peak Volume")) +
+  theme_minimal()
+```
+
+##Question 18:
+
+```{r}
+baseball <-
+  Hitters %>% 
+  filter(!is.na(Salary)) %>% 
+  mutate(Range = cut(Salary, breaks = 3, labels = c("Low", "Middle", "High")), HR_Proportion = CHmRun/CHits)
+
+head(baseball)  
+```
+
+##Question 19:
+
+```{r}
+baseball_plot <-
+  baseball %>% 
+  ggplot(aes(x = CWalks, y = HR_Proportion)) +
+  geom_point() +
+  labs(x = "Number of walks", y = "Homerun proportions") +
+  xlim(0, 1600) +
+  ylim(0, 0.4) +
+  theme_minimal()
+  
+baseball_plot
+
+```
+
+##Question 20:
+
+```{r}
+baseball_plot + facet_wrap(~Range)
+```
+
+##Question 21:
+
+```{r}
+head(Carseats)
+
+Carseats %>% 
+  ggplot(aes(x = Age, y = Sales, colour = Income)) +
+  geom_point() +
+  facet_wrap(~ShelveLoc) +
+  theme_minimal()
+```
+
