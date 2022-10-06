@@ -239,5 +239,68 @@ model_2_mse_valid <- mse(y_true = boston_valid$medv,
                          y_pred = predict(model_2, newdata = boston_valid))
 ```
 
+26. **Compare model 1 and model 2 in terms of their training and validation MSE. Which would you choose and why?**
+
+Model 2, because it is slightly better.
+
+27. **Calculate the test MSE for the model of your choice in the previous question. What does this number tell you?**
+
+```{r}
+model_2_mse_test <- mse(y_true = boston_test$medv, y_pred = predict(model_2, newdata = boston_test))
+```
+
+The estimate for the expected amount of error when predicting the median value of a not previously seen town in Boston when using this model is given by the sqrt of `model_2_mse_test`.
 
 ## Programming exercise: cross-validation
+
+28. **Create a function that performs k-fold cross-validation for linear models.**
+
+```{r}
+foo <- function(formula, dataset, k) {
+  
+  if (nrow(dataset)%%k == 0) {
+    splits <- rep(c(1:k), each=(nrow(dataset)/k))
+  } else {
+    for (i in 1:(k/2)) {
+      if (nrow(dataset)%%(k+i) == 0){
+        splits <- c(rep(c(1:k), each=(nrow(dataset)/k)), 1:i)
+      }
+    }
+  }
+  
+  data_master <-
+    dataset %>% 
+    mutate(splits = sample(splits))
+  
+  model <- rep(NA, times = k)
+  data <- rep(NA, times = k)
+  
+  for (i in 1:k) {
+    model[i] <-
+      data_master %>% 
+      filter(splits != i) %>%
+      lm(formula = formula, data = .)
+  }
+    
+  # data_train <-
+  #   data_master %>% 
+  #   filter(splits == "train")
+  # 
+  # data_valid <-
+  #   data_master %>% 
+  #   filter(splits == "validation")
+  # 
+  # data_test <-
+  #   data_master %>% 
+  #   filter(splits == "test")
+  # 
+  # model <- rep(NA, times=k)
+  # 
+  # for (i in 1:k) {
+  #   model[i] <- lm(formula, data =)
+  # }
+}
+
+foo("medv ~ lstat", Boston, 3)
+```
+
