@@ -66,6 +66,8 @@ y_pred_new <- predict(lm_ses, newdata = pred_data)
 y_pred_new
 ```
 
+## Plotting lm() in `ggplot`
+
 8. **Create a scatter plot from the `Boston` dataset with `lstat` mapped to the x position and `medv` mapped to the y position. Store the plot in an object called `p_scatter`.**
 
 ```{r}
@@ -119,10 +121,10 @@ df
 13. **Add a `geom_ribbon()` to the plot with the data frame you just made. The ribbon geom requires three aesthetics: `x` (`lstat`, already mapped), `ymin` (`lower`), and `ymax` (`upper`). Add the ribbon below the `geom_line()` and the `geom_points()` of before to make sure those remain visible. Give it a nice colour and clean up the plot, too!**
 
 ```{r}
-ggplot(data = df) +
-  geom_ribbon(mapping = aes(x = lstat, ymin = lower, ymax = upper), fill = "#d8b365") +
-  geom_point(mapping = aes(x = lstat, y = medv), color = "#5ab4ac") +
-  geom_line(mapping = aes(x = lstat, y = medv), color = "#f5f5f5") +
+ggplot(data = Boston, mapping = aes(x = lstat, y = medv)) +
+  geom_ribbon(data = df, mapping = aes(ymin = lower, ymax = upper), fill = "#e5f5f9") +
+  geom_point(color = "#99d8c9") +
+  geom_line(data = pred_data, color = "#2ca25f", size = 1) +
   theme_minimal()
 ```
 
@@ -130,10 +132,112 @@ ggplot(data = df) +
 
 The ribbon encloses all values within the confidence interval for the medv variable.
 
-## Plotting lm() in `ggplot`
+
+15. **Do the same thing, but now with the prediction interval instead of the confidence interval.**
+
+```{r}
+y_pred_int <- predict(lm_ses, newdata = pred_data, interval = "prediction")
+y_pred_int
+
+df_int <-
+  data.frame(lstat = pred_data$lstat,
+             medv = y_pred_int[, 1],
+             lower = y_pred_int[, 2],
+             upper = y_pred_int[, 3])
+df_int
+ggplot(data = Boston, mapping = aes(x = lstat, y = medv)) +
+  geom_ribbon(data = df_int, mapping = aes(ymin = lower, ymax = upper), fill = "#e0ecf4") +
+  geom_point(color = "#9ebcda") +
+  geom_line(data = pred_data, color = "#8856a7") +
+  theme_minimal()
+```
+
 
 ## Mean square error
 
+16. **Write a function called `mse()` that takes in two vectors: true y values and predicted y values, and which outputs the mean square error.**
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+```
+
+17. **Make sure your `mse()` function works correctly by running the following code.**
+
+```{r}
+mse(1:10, 10:1)
+```
+
+18. **Calculate the mean square error of the `lm_ses` model. Use the `medv` column as `y_true` and use the `predict()` method to generate `y_pred`.**
+
+```{r}
+mse(Boston$medv, predict(lm_ses))
+```
+
+
 ## Train-validation-test split
+
+19. **The `Boston` dataset has 506 observations. Use `c()` and `rep()` to create a vector with 253 times the word “train”, 152 times the word “validation”, and 101 times the word “test”. Call this vector `splits`.**
+
+```{r}
+splits <- c(rep("train", 253), rep("validation", 152), rep("test", 101))
+```
+
+20. **Use the function `sample()` to randomly order this vector and add it to the `Boston` dataset using `mutate()`. Assign the newly created dataset to a variable called `boston_master`.**
+
+```{r}
+boston_master <-
+  Boston %>% 
+  mutate(splits = sample(splits))
+```
+
+21. **Now use `filter()` to create a training, validation, and test set from the `boston_master` data. Call these datasets `boston_train`, `boston_valid`, and `boston_test`.**
+
+```{r}
+boston_train <-
+  boston_master %>% 
+  filter(splits == "train")
+
+boston_valid <-
+  boston_master %>% 
+  filter(splits == "validation")
+
+boston_test <-
+  boston_master %>% 
+  filter(splits == "test")
+```
+
+22. **Train a linear regression model called `model_1` using the training dataset. Use the formula `medv ~ lstat` like in the first `lm()` exercise. Use `summary()` to check that this object is as you expect.**
+
+```{r}
+model_1 <- lm(medv ~ lstat, data = boston_train)
+summary(model_1)
+```
+
+23. **Calculate the MSE with this object. Save this value as `model_1_mse_train`.**
+
+```{r}
+model_1_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_1))
+model_1_mse_train
+```
+
+24. **Now calculate the MSE on the validation set and assign it to variable `model_1_mse_valid`. Hint: use the `newdata` argument in `predict()`.**
+
+```{r}
+model_1_mse_valid <- mse(y_true = boston_valid$medv, 
+                         y_pred = predict(model_1, newdata = boston_valid))
+model_1_mse_valid
+```
+
+25. **Create a second model `model_2` for the train data which includes `age` and `tax` as predictors. Calculate the train and validation MSE.**
+
+```{r}
+model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+model_2_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_2))
+model_2_mse_valid <- mse(y_true = boston_valid$medv, 
+                         y_pred = predict(model_2, newdata = boston_valid))
+```
+
 
 ## Programming exercise: cross-validation
