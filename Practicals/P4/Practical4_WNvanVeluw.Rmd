@@ -1,0 +1,249 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "19-9-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 4
+---
+For this practical we first load the necessary packages.
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(magrittr)
+library(ISLR)
+library(MASS)
+```
+
+### Exercise 1
+```{r}
+lm_ses <- lm(medv ~ lstat, Boston)
+```
+
+### Exercise 2
+The variable `lstat` is expressed in percentages. Hence, we see that someone with a status of 0% has a housing value of 34.55. For every additional percentage, the housing value with decrease with 0.95.
+```{r}
+coef(lm_ses)
+```
+
+### Exercise 3
+Running the `summary()` function gives an overview of the results of the regression. One can read the estimated coefficients, its standard error, test statistic and p-value. In addition, `summary()` gives information about the fit of the regression by means of stating the residuals and some important measures of quality (residual standard error, R-squared and F-statistic).
+```{r}
+summary(lm_ses)
+```
+
+### Exercise 4
+```{r}
+y_pred <- predict(lm_ses)
+```
+
+### Exercise 5
+If the fit was perfect, all points would be on a straight line. Then the predictions are equal to the observations. This is not the case in the fit of `lm_ses`. We see that, especially for high observed values, the prediction is off.
+```{r}
+plot(y_pred, Boston$medv, 
+     xlim = c(0,50),
+     ylim = c(0,50),
+     xlab = "Predicted",
+     ylab = "Observed")
+```
+
+### Exercise 6
+```{r}
+pred_dat <- data.frame(lstat = seq(0,40, length.out = 1000))
+```
+
+### Exercise 7
+```{r}
+y_pred_new <- predict(lm_ses, newdata = pred_dat)
+```
+
+### Exercise 8
+```{r}
+p_scatter <- Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  labs(x = "Lower status of population (in %)", y = "Median of housing value (in $1000s)") +
+  theme_minimal()
+
+p_scatter
+```
+
+### Exercise 9
+```{r}
+pred_dat$medv = y_pred_new
+```
+
+### Exercise 10
+The line represents the fitted regression model, i.e. the function $medv = 34.55 + 0.95\cdot lstat$.
+```{r}
+p_scatter + geom_line(data = pred_dat, colour = "red")
+```
+
+### Exercise 11
+In this object we have the prediction computed by the regression model and the lower- and upperbound of the 95% confidence interval.
+```{r}
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "confidence")
+head(y_pred_95)
+```
+
+### Exercise 12
+```{r}
+data_95 <- data.frame(lstat = pred_dat$lstat,
+                      medv = y_pred_95[,1],
+                      lower = y_pred_95[,2],
+                      upper = y_pred_95[,3])
+head(data_95)
+```
+
+### Exercise 13
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), data = data_95, fill = "blue", alpha = 0.3) +
+  geom_point() +
+  geom_line(data = pred_dat, colour = "blue") +
+  labs(x = "Lower status of population (in %)", y = "Median of housing value (in $1000s)") +
+  theme_minimal()
+```
+
+### Exercise 14
+The ribbon represents the uncertainty of the regression predictions. For example, we are more certain when predicting the housing value for $lstat = 20$ then for $lstat = 40$. One can see that by the width of the ribbon at the respective values for `lstat`.
+
+### Exercise 15
+```{r}
+y_pred_pred <- predict(lm_ses, newdata = pred_dat, interval = "prediction")
+head(y_pred_pred)
+
+data_pred <- data.frame(lstat = pred_dat$lstat,
+                      medv = y_pred_pred[,1],
+                      lower = y_pred_pred[,2],
+                      upper = y_pred_pred[,3])
+head(data_pred)
+
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), data = data_pred, fill = "red", alpha = 0.3) +
+  geom_point() +
+  geom_line(data = pred_dat, colour = "red") +
+  labs(x = "Lower status of population (in %)", y = "Median of housing value (in $1000s)") +
+  theme_minimal()
+```
+
+### Exercise 16
+```{r}
+mse <- function(y_true, y_pred){
+  return( mean((y_true-y_pred)^2) )
+}
+```
+
+### Exercise 17
+```{r}
+mse(1:10, 10:1)
+```
+
+### Exercise 18
+```{r}
+mse(Boston$medv, predict(lm_ses))
+```
+
+### Exercise 19
+```{r}
+splits <- c(rep("train", 253),
+            rep("validation", 152),
+            rep("test", 101)
+)
+```
+
+### Exercise 20
+```{r}
+boston_master <- Boston %>% mutate(Set = sample(splits))
+head(boston_master)
+```
+
+### Exercise 21
+```{r}
+boston_train <- boston_master %>% filter(Set == "train")
+head(boston_train)
+
+boston_validation <- boston_master %>% filter(Set == "validation")
+head(boston_validation)
+
+boston_test <- boston_master %>% filter(Set == "test")
+head(boston_test)
+```
+
+### Exercise 22
+```{r}
+model_1 <- lm(medv ~ lstat, data = boston_train)
+summary(model_1)
+```
+
+### Exercise 23
+```{r}
+model_1_mse_train <- mse(boston_train$medv, predict(model_1))
+model_1_mse_train
+```
+
+### Exercise 24
+```{r}
+model_1_mse_validation <- mse(boston_validation$medv, 
+                              predict(model_1, newdata = boston_validation))
+model_1_mse_validation
+```
+
+### Exercise 25
+```{r}
+model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+model_2_mse_train <- mse(boston_train$medv, predict(model_2))
+model_2_mse_train
+
+model_2_mse_validation <- mse(boston_train$medv, 
+                              predict(model_2, newdata = boston_validation))
+model_2_mse_validation
+```
+
+### Exercise 26
+I would choose model 1, since its MSE for out-of-sample prediction is lower. I think that predicting out of sample is the objective of doing a regression. Therefore, the MSE on the validation set should be as low as possible.
+
+### Exercise 27
+The MSE tells you the mean squared distance of your predictions. Hence, the number 136.2778 tells us that the squared difference of the true observations and predictions is on average off by 136.2778.
+```{r}
+model_1_mse_test <- mse(boston_train$medv,
+                        predict(model_1, newdata = boston_test))
+model_1_mse_test
+```
+
+### Exercise 28
+```{r}
+crossValidation <- function(formula, dataset, k){
+  n <- nrow(dataset)
+  splits <- rep(1:k, length.out = n)
+  data_split <- dataset %>% mutate(fold = sample(splits))
+  
+  mses <- c()
+  for(i in 1:k){
+    data_train <- data_split %>% filter(fold != i)
+    data_validation <- data_split %>% filter(fold == i)
+    model <- lm(formula, data_train)
+    
+    y_name <- as.character(formula)[2]
+    mses <- c(mses, mse(data_validation[[y_name]],
+                        predict(model, newdata = data_validation)))
+  }
+  
+  return( mean(mses) )
+}
+```
+
+### Exercise 29
+Because of the randomness introduced by `sample()`, every re-run might return in a different result.
+```{r}
+crossValidation(formula = medv ~ lstat + age + tax, dataset = Boston, k = 9)
+
+crossValidation(formula = medv ~ lstat + I(lstat^2) + age + tax, dataset = Boston, k = 9)
+```
