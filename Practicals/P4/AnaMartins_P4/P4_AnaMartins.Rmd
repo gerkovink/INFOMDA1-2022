@@ -234,6 +234,7 @@ model_1_mse_valid
 
 ```{r}
 model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+typeof(model_2)
 model_2_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_2))
 model_2_mse_valid <- mse(y_true = boston_valid$medv, 
                          y_pred = predict(model_2, newdata = boston_valid))
@@ -272,14 +273,16 @@ foo <- function(formula, dataset, k) {
     dataset %>% 
     mutate(splits = sample(splits))
   
-  model <- rep(NA, times = k)
-  data <- rep(NA, times = k)
+  model <- list()
+  data <- list()
   
   for (i in 1:k) {
-    model[i] <-
+    len <- length(model)
+    model[[len+1]] <-
       data_master %>% 
       filter(splits != i) %>%
       lm(formula = formula, data = .)
+    mse(y_true = )
   }
     
   # data_train <-
@@ -301,6 +304,5 @@ foo <- function(formula, dataset, k) {
   # }
 }
 
-foo("medv ~ lstat", Boston, 3)
+foo("medv ~ lstat", Boston, 4)
 ```
-
