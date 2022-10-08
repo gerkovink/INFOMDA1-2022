@@ -1,0 +1,435 @@
+---
+title: "SLV Assignment 1: Exploratory Data Analysis"
+author: "Shannon Dickson and Simranjit Kaur"
+date: "`r format(Sys.Date(), '%B %d %Y')`"
+output: 
+   bookdown::html_document2:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: false
+    theme: paper
+---
+
+<style type="text/css">
+  
+body{ /* Normal  */
+  font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 18px;
+  color: DarkBlue;
+}
+h1 { /* Header 1 */
+  font-size: 18px;
+}
+h2 { /* Header 2 */
+  font-size: 18px;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+}
+</style>
+
+---
+
+```{r setup, echo = FALSE}
+# Global settings
+library(knitr)
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+hook_output <- knitr::knit_hooks$get("output")
+
+# Truncate output that is too long
+knitr::knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x <- xfun::split_lines(x)
+    if (length(x) > n) {
+      x <- c(head(x, n), "....\n")
+    }
+    x <- paste(x, collapse = "\n")
+  }
+  hook_output(x, options)
+})
+```
+
+```{r packages, echo = FALSE}
+library(tidyverse)
+library(readr)
+library(kableExtra)
+library(gtsummary)
+library(ggpubr)
+library(corrplot)
+library(RColorBrewer)
+```
+
+```{r, data, echo = FALSE}
+maths <- readr::read_csv("Maths.csv")
+```
+
+```{r, clean, echo = FALSE, include = FALSE}
+# Overview of the data
+glimpse(maths)
+
+# Data cleaning
+# - Here we select only the variables we want to work with
+# - Next we use mutate_if() to check if a variable is a 'character'
+# - then we convert these 'character' variables to 'factor'
+# - then we convert these 'double' variables to 'numeric'
+# - because it is easier to work with data of these classes
+maths <- maths %>% 
+  
+  select(school, sex, age, Medu, Fedu, studytime,
+         higher, internet, famrel, freetime, Dalc,
+         Walc, G1, G2, G3) %>% 
+  
+  mutate_if(is.character, as.factor) %>% 
+  mutate_if(is.double, as.numeric)
+
+# Missing data
+# - There is no missing data
+anyNA(maths)
+```
+
+# Introduction 
+
+A research study in the US found that students with higher grades (mostly A's) are less likely to drink alcohol and drink alcohol less frequently than students with lower grades (mostly D's). In this study, 24% of students with mostly A's currently drink alcohol compared to 52% of students with mostly D's. Further, 11% of students with mostly A's engage in binge-drinking behaviours compared to 34% of students with mostly D's [(Youth Risk Behaviour Survey, 2015)](https://www.cdc.gov/healthyyouth/health_and_academics/pdf/DASHfactsheetAlcohol.pdf). Alcohol can lead to poor sleeping habits, mental health issues and reduced concentration, in turn affecting academic achievement. Our research question is primarily concerned with the effect (if any) of alcohol on grades in mathematics in two Portuguese high schools. Students responded to a questionnaire about their social-demographic status, alcohol use, family and personal relationships, and attitudes towards studying. Information about the student's grades across the academic year were collated from school reports. Our secondary research question explores if there are *other* circumstantial factors that influence grades. Alcohol consumption is measured during weekdays (**Dalc**) and weekends (**Walc**) on a scale from 1 (very low) to 5 (very high). Since binge-drinking is common in students with lower grades, we will focus on weekend alcohol consumption. Grades are assessed in the first and second academic period with the final grade being the average of the two. We will focus both on the pattern of grades across the year as well as the final grade only. 
+
+# Descriptive statistics 
+
+**Table 1** summarises the information we have about the students using `gt::tbl_summary()` (note that this package performs the correct statistical test based on the data type provided). Grades do not differ significantly between the schools, but the final grade is much lower for students at MS. Alcohol consumption generally is higher for students at MS, too. Only internet access, age, mother's education, and hours of study time per week differ significantly between the schools. We will explore if these factors differentially influence grades in each school. Although the remaining factors in **Table 1** do not differ significantly between schools they could still influence grades overall and we will explore this too. There are 395 responses and no missing data. 
+
+```{r descriptive, echo = FALSE}
+# Summary table 
+# - Selecting only the variables we are interested in 
+maths %>% 
+  select(school, sex, internet, age, famrel, Medu, Fedu, studytime, Walc, Dalc, G1:G3) %>% 
+  mutate(sex = case_when(sex == "F" ~ "Female",
+                         sex == "M" ~ "Male"),
+         internet = case_when(internet == "no" ~ "No access", 
+                              internet == "yes" ~ "Access")) %>% 
+# - Creating a summary table using gtsummary::tbl_summary
+# - Ensuring variables are evaluated as the correct type
+# - Changing the labels/levels to display 
+  tbl_summary(by = school,
+              type = c(age, famrel, Medu, Fedu, studytime, Dalc, Walc, G1, G2, G3) ~ "continuous",
+              label = list(vars(sex) ~ "Gender",
+                           vars(age) ~ "Age",
+                           vars(internet) ~ "Internet at home",
+                           vars(famrel) ~ "Quality of family relationships",
+                           vars(Medu) ~ "Mother's education",
+                           vars(Fedu) ~ "Father's education",
+                           vars(studytime) ~ "Hours of study",
+                           vars(Dalc) ~ "Weekday alcohol consumption",
+                           vars(Walc) ~ "Weekend alcohol consumption",
+                           vars(G1) ~ "Grade in period 1",
+                           vars(G2) ~ "Grade in period 2",
+                           vars(G3) ~ "Final grade"),
+              statistic = list(all_continuous() ~ "{mean} ({sd})",
+                               all_categorical() ~ "{n} ({p}%)")) %>% 
+# - Extra options from gtsummary
+  add_overall() %>% 
+  add_p(test = all_continuous() ~ "t.test") %>% 
+  bold_labels() %>% 
+  bold_p() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**School**") %>% 
+  modify_caption("Student characteristics") %>% 
+# - piping through to kableExtra for styling
+  as_kable_extra() %>% 
+  kableExtra::kable_classic(bootstrap_options = "striped", full_width = TRUE) %>% 
+  row_spec(0, bold = TRUE)
+```
+
+
+
+# Exploratory correlations
+
+As an initial step we wanted to explore the relations between the numerical variables in our data using a correlogram using `corrplot::corrplot()`. To only display correlations that are statistically significant, a function calculating p-values for a correlation matrix was created and the results mapped to `corrplot()`. **Figure 1** displays the correlogram of statistically significant correlations in the data (i.e. blank space represents non-significant correlations that are omitted). Most of the correlations are rather small, with the exception of highly similar variables (e.g. mother's and father's education, weekend and weekday alcohol consumption, grades 1 and 2 and the final grade). Greater alcohol consumption on the weekend only correlates negatively with lower grades in period one (-0.13, p < 0.05). There are no significant correlations between alcohol consumption and the remaining grades. Age is negatively correlated with grades in period two (-0.14, p < 0.05) and with the final grade (-0.16, p < 0.05), meaning older students achieve lower grades. Age is also significantly positively correlated with alcohol consumption on weekdays (-0.13, p < 0.05) and weekends (-0.12, p < 0.05), meaning older students drink more. Study time is negatively correlated with alcohol consumption on weekdays (-0.20, p < 0.05) and weekends (-0.25, p < 0.05), meaning students study less when they drink more. Finally, mother's education is positively correlated with grades (0.21-0.22, p < 0.05) as is fathers education (0.15-0.19, p < 0.05). Correlations are not causal and the rather small correlations observed here could mean that a third (potentially unmeasured) variable explains the relationship between variables better. Regardless, we can say that the significant correlations mean the variables are related in *some* way.
+ 
+**Figure 1. Correlogram of student grades and other life factors**
+
+```{r, echo = FALSE}
+# Correlogram
+# - I make a function to produce p-values for a correlation matrix
+cor_pval <- function(mtx, ...) {
+    mtx <- as.matrix(mtx)
+    n <- ncol(mtx)
+    p.mat<- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+            tmp <- cor.test(mtx[, i], mtx[, j], ...)
+            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        }
+    }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mtx)
+  p.mat
+}
+
+# - I prepare the data as a matrix
+corr_data <- maths %>% 
+  select(age, Medu, Fedu, studytime, famrel, Dalc, Walc, G1, G2, G3) %>% 
+  as.matrix()
+
+# - I calculate the p-values 
+p_vals <- cor_pval(corr_data)
+
+# - I create a correlation matrix
+cor_mtx <- corr_data %>%
+  cor()
+
+# - I change the matrix row and column names to be more informative
+colnames(cor_mtx) <- c("Age", "Mother's education", "Father's education", "Study hours", "Family relationships", "Weekday alcohol use", "Weekend alcohol use", "Grade 1", "Grade 2", "Final grade")
+
+rownames(cor_mtx) <- c("Age", "Mother's education", "Father's education", "Study hours", "Family relationships", "Weekday alcohol use", "Weekend alcohol use", "Grade 1", "Grade 2", "Final grade")
+  
+# - I create a colour palette for the correlogram
+col2 <- colorRampPalette(c("#800020", "#F7E7CE", "#6D9BC3"))
+
+# - Finally, I plot the correlogram using corrplot::corrplot
+corrplot(cor_mtx,
+         method = "color",
+         type = "upper",
+         order = "AOE",
+         addCoef.col = "black",
+         col = col2(200),
+         tl.col = "black",
+         tl.srt = 45,
+         p.mat = p_vals,
+         sig.level = 0.05,
+         insig = "blank",
+         cl.cex = 0.6,
+         tl.cex = 0.7,
+         number.cex = 0.7)
+```
+
+
+
+# Grades and student behaviour 
+
+In **Table 1** we saw that weekend and weekday alcohol consumption did not significantly differ between schools so we will explore the pooled data. In **Figure 1** only weekend alcohol use correlated with grades in the first period, however, grades throughout the academic year correlated together so we will explore each grade separately. Since we are interested in how grades are distributed across different levels of alcohol consumption we used `geom_boxplot()` to summarize this information. Outliers were calculated for each grade and plotted separately using `geom_jitter()` to better visualize how many outliers there are. Outliers are observations that fall beyond the interquartile range. **Figure 2** shows that grades follow a similar trend across the year, where students who drink less achieve higher grades and students who drink more achieve lower grades. Generally, the spread of grades across all levels of alcohol consumption is quite large as represented by the long whiskers. The spread does decrease as alcohol intake increases and the spread is greatest for final grades. Grades in the second period and the final grades show some evidence of positive skew at higher levels of alcohol consumption (i.e., the median is closer to the lower end of the IQR and the whisker is short). A number of students achieve zero grades even at very low levels of alcohol consumption, represented by the outliers plotted in red. While we would expect such outliers at high levels of alcohol consumption it is not immediately clear why students who drink less are receiving very low grades. One possibility is that these zero grades actually represent missing data - but it is impossible to tell and so we continue to treat them as observed scores. 
+
+**Figure 2. Distribution of student mathematics grades and alcohol consumption per school**
+
+```{r, echo = FALSE, fig.width=8}
+# Grades and weekend alcohol consumption
+# - I create three datasets that contain the outliers for G1, G2, and G3
+
+# - There are no outliers in G1, so I have commented this out
+#   outliers_G1 <- maths %>% 
+                #   group_by(Walc) %>%
+                #   filter(G1 > quantile(G1, 0.75) + 1.5 * IQR(G1) | G1 < quantile(G1, 0.25) - 1.5 * IQR(G1))
+
+outliers_G2 <- maths %>% 
+                group_by(Walc) %>%
+                filter(G2 > quantile(G2, 0.75) + 1.5 * IQR(G2) | G2 < quantile(G2, 0.25) - 1.5 * IQR(G2))
+
+outliers_G3 <- maths %>% 
+                group_by(Walc) %>%
+                filter(G3 > quantile(G3, 0.75) + 1.5 * IQR(G3) | G3 < quantile(G3, 0.25) - 1.5 * IQR(G3))
+
+# - I create the boxplots of weekend alcohol consumption and grades
+g1_alc <- maths %>% 
+            ggplot(aes(Walc, G1, fill = Walc)) +
+            geom_boxplot(aes(group = Walc, alpha = 0.8), outlier.shape = NA) +
+            labs(subtitle = "First period",
+                 x = "",
+                 y = "") +
+            ylim(0,20) +
+            # scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) + 
+            scale_fill_viridis_c() +
+            theme(strip.text = element_text(face = "bold")) +
+            theme_pubclean() 
+
+g2_alc <- maths %>% 
+            ggplot(aes(Walc, G2, fill = Walc)) +
+            geom_boxplot(aes(group = Walc, alpha = 0.8), outlier.shape = NA) +
+            geom_jitter(data = outliers_G2, colour = "firebrick3", alpha = 0.6) +
+            labs(subtitle = "Second period", 
+                 x = "",
+                 y = "") +
+            ylim(0, 20) +
+            #scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+            scale_fill_viridis_c() +
+            theme(strip.text = element_text(face = "bold")) +
+            theme_pubclean() 
+
+g3_alc <- maths %>% 
+            ggplot(aes(Walc, G3, fill = Walc)) +
+            geom_boxplot(aes(group = Walc, alpha = 0.8), outlier.shape =  NA) +
+            geom_jitter(data = outliers_G3, colour = "firebrick3", alpha = 0.6) +
+            labs(subtitle = "Final period",
+                 x = "",
+                 y = "") +
+            ylim(0,20) +
+            #scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+            scale_fill_viridis_c() +
+            theme(strip.text = element_text(face = "bold")) +
+            theme_pubclean()
+
+# - I arrange the boxplots into one plot frame
+ggarrange(g1_alc, g2_alc, g3_alc, nrow = 1, legend = "none") %>% 
+  annotate_figure(left = text_grob("Grades", size = 10, rot = 90),
+                  bottom = text_grob("Weekend alcohol consumption"))
+```
+
+
+Time spent studying has a very obvious link to academic outcomes. Students who study for longer are more likely to perform better in exams. In **Table 1**, there are significant differences between schools regarding the number of hours students spend studying. We decided to visualise this information in a scatterplot using `geom_jitter()` and `geom_smooth()`. We were also interested in how many students fall into each category of study time (1 - 4 hours) and if this is different between schools, so we created a barplot using `geom_bar()` to visualise this. In **Figure 3** we see that grades generally increase as students spend more time studying. This trend is much steeper for students at MS, perhaps indicating that they require more effort to achieve high grades than students at GS. Notably, there are no students at MP that study more than 3 hours. This could also explain why grades are generally lower at MP and why we observe signficant differences between schools in **Table 1**. Again, the standard error of the slope is much greater for MP indicating these estimates are less realiable. 
+
+**Figure 3. Association between student grades in mathematics and hours spent studying each week**
+
+```{r, echo = FALSE, fig.width = 9}
+# Grades and study time
+# - Scatter plot 
+gr_stu_1 <- maths %>% 
+            ggplot(aes(studytime, G3, colour = school)) +
+            geom_jitter(alpha = 0.6) +
+            geom_smooth(method = "lm") +
+            labs(x = "Hours of study",
+                 y = "",
+                 fill = "School") +
+            scale_colour_manual(values = c("#1f9e89", "goldenrod1")) +
+            theme_linedraw()
+# - bar plot
+# - Create a data summary table
+gr_stu_2 <- maths %>% 
+                group_by(school, studytime) %>% 
+                summarise(G3_mean = mean(G3),
+                          n = n()) %>% 
+                  ggplot(aes(studytime, G3_mean, fill = studytime)) +
+                  geom_bar(stat = "identity", position = "dodge", alpha = 0.9) +
+                  geom_text(aes(label=n), position=position_dodge(width=0.9), vjust=-0.25) +
+                  labs(x = "Hours of studying a week",
+                       y = "") +
+                  scale_fill_viridis_c() +
+                  theme_pubclean() +
+                  theme(legend.position = "none",
+                        strip.text = element_text(face = "bold", colour = "black"),
+                        strip.background = element_rect(fill ="white")) +
+                  facet_wrap(~school)
+
+# - Arrange plots in one frame
+ggarrange(gr_stu_1, gr_stu_2, ncol = 2, legend = "top", common.legend = TRUE) %>% 
+    annotate_figure(left = text_grob("Final grade", size = 10, rot = 90))
+```
+
+
+
+# Grades and socio-demographic factors
+
+Socio-demographic factors are a broad range of characteristics relating to an individual and their household. Here we focus on age, mother's education, quality of family relationships, and internet access. In **Table 1** we saw that age, mother's education, and internet access differed significantly between the schools, so we decided to visualise this information per school. In **Figure 1** we also see weak, but significant correlations between these variables and grades. Although the quality of family relationships did not differ significantly between schools or correlate with grades, we firmly believe that this can have a strong effect on grades and decided to visualise this too. Age, mother's education, and family relationships were visualised in a scatterplot using `geom_jitter()` and `geom_smooth()`, which fit a linear regression line to the data. School was mapped to the `colour` aesthetic to check for differences. In **Figure 4** we see that age is negatively associated with grades, such that older student's achieve lower grades. The trend is similar for the two schools, but the spread of the data shows that students at MP are older than students at GS. This could be why grades are lower at MP. Mother's education is positively associated with grades in GS and MP, suggesting that better educated mothers are able to help their children achieve better grades. Lastly, the association between grades and the quality of family relationships differs between schools. Students at GS see a positive trend, whereas students at MP see a negative trend. The majorty of students at both schools rate the quality of relationships highly, but the sample size is so much smaller at MP that students who give low ratings could be driving the negative association. Indeed, the standard error for the slope is much greater for students at MP compared to GS, suggesting the estimation is less reliable. 
+
+**Figure 4. Association between final grade in mathematics with age, mother's education, and family relationships**
+
+```{r, echo = FALSE, fig.width = 11}
+# Grades and sociodemographic information
+# - Age
+gr_age <- maths %>% 
+          ggplot(aes(age, G3, colour = school)) +
+          geom_jitter(alpha = 0.6) +
+          geom_smooth(method = "lm") +
+          labs(x = "Age",
+               y = "") +
+          scale_colour_manual(values = c("#1f9e89", "goldenrod1")) +
+          theme_bw()
+# - Mother's education    
+gr_edu <- maths %>% 
+            ggplot(aes(Medu, G3, colour = school)) +
+            geom_jitter(alpha = 0.6) +
+            geom_smooth(method = "lm") +
+            labs(x = "Mother's education",
+                 y = "") +
+            scale_colour_manual(values = c("#1f9e89", "goldenrod1")) +
+            theme_linedraw()
+# - Family relationships
+gr_fam <- maths %>% 
+            ggplot(aes(famrel, G3, colour = school)) +
+            geom_jitter(alpha = 0.6) +
+            geom_smooth(method = "lm") +
+            labs(x = "Quality of family relationships",
+                 y = "") +
+            scale_colour_manual(values = c("#1f9e89", "goldenrod1")) +
+            theme_linedraw()
+
+# - Arrange plots in one frame
+ggarrange(gr_age, gr_edu, gr_fam, nrow = 1, legend = "bottom", common.legend = TRUE) %>% 
+  annotate_figure(left = text_grob("Final grade", size = 10, rot = 90))
+```
+
+Internet access at home is an important resource for self-study and so could effect grades throughout the year. In **Table 1** we saw significant differences between schools in terms of internet access. We are interested if the average grade differs between schools according to internet access at home, and visualised this using `geom_line()` and `geom_errorbar()`. In **Figure 5** we see differencs in the mean grade with error bars that represent the standard error of the mean. The trend is similar in both schools, showing that students who have internet access at home achieve higher average grades. We also see that students at MP achieve lower average grades than GS (but again note the large error bars). **Table 1** shows that 30% of students at MP do not have internet access, compared to 15% of students at GS. This could also explain why grades are lower at MP.  
+
+**Figure 5. Association between internet access and average grade per school**
+
+```{r, echo = FALSE, fig.width = 9}
+# Grades and internet access
+# - Grade 1
+g1_int <- maths %>% 
+            group_by(school, internet) %>% 
+            summarise(G1_mean = mean(G1), 
+                      G1_se = psych::describe(G1)$se) %>% 
+            
+            ggplot(aes(internet, G1_mean, color = school)) +
+            geom_line(aes(group = school)) +
+            geom_errorbar(aes(ymin = G1_mean-1.96*G1_se,
+                              ymax = G1_mean+1.96*G1_se),
+                              width = .1) +
+            ylim(5, 15) +
+            labs(subtitle = "Period 1",
+                 x = "",
+                 y = "") +
+            theme_pubclean() +
+            theme(legend.title = element_blank()) +
+            theme(legend.position='none') +
+            scale_color_manual(values = c("#22a884", "goldenrod1"))
+# - Grade 2
+g2_int <- maths %>% 
+            group_by(school, internet) %>% 
+            summarise(G2_mean = mean(G2), 
+                      G2_se = psych::describe(G2)$se) %>% 
+            
+            ggplot(aes(internet, G2_mean, color = school)) +
+            geom_line(aes(group = school)) +
+            geom_errorbar(aes(ymin = G2_mean-1.96*G2_se,
+                              ymax = G2_mean+1.96*G2_se),
+                              width = .1) +
+            ylim(5, 15) +
+            labs(subtitle = "Period 2",
+                 x = "",
+                 y = "") +
+            theme_pubclean() +
+            scale_color_manual(values = c("#22a884", "goldenrod1"))
+# - Grade final
+g3_int <- maths %>% 
+            group_by(school, internet) %>% 
+            summarise(G3_mean = mean(G3), 
+                      G3_se = psych::describe(G3)$se) %>% 
+        
+            ggplot(aes(internet, G3_mean, colour = school)) +
+            geom_line(aes(group = school)) +
+            geom_errorbar(aes(ymin = G3_mean-1.96*G3_se,
+                              ymax = G3_mean+1.96*G3_se),
+                          width = .1) +
+            ylim(5, 15) +
+            labs(subtitle = "Final period",
+                 x = "",
+                 y = "") +
+            theme_pubclean() +
+            theme(legend.title = element_blank()) +
+            theme(legend.position='none') +
+            scale_color_manual(values = c("#22a884", "goldenrod1"))
+
+# - Arrange plots in one frame
+ggarrange(g1_int, g2_int, g3_int, nrow = 1, common.legend = TRUE, legend = "bottom") %>% 
+  annotate_figure(left = text_grob("Grades", size = 10, rot = 90),
+                  bottom = text_grob("Internet access at home"))
+```
+
+
+# Conclusion
+
+Our goal was use visualisation to determine if alcohol consumption has an effect on mathematics grades in two schools. **Figure 2** does indicate that students who drink more get lower grades. We also discovered that additional factors are just as influential on grades, such as age, mother's education, and hours spent studying. This indicates that grades are only partly explained by student lifestyle and behaviours (alcohol use, study effort) and that factors beyond a student's control are also important (education of the mother, internet access). If a school is interested in boosting student's grades, they should consider programs of targeted support (tutoring, financial) as well as motivating the student to engage in self-study and make positive lifestyle changes. The findings are exploratory and not causal and must be considered with care due to the imbalance in sample size between schools. 
