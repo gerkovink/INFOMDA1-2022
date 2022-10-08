@@ -1,0 +1,192 @@
+---
+title: "Practical 3"
+author: "Florian van Leeuwen"
+date: "9/26/2022"
+output: html_document
+---
+
+## Practical 3
+
+```{r, packages}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+library(stargazer)
+```
+
+```{r}
+# inspect data
+head(boys)
+tail(boys)
+!is.unsorted(boys$age)
+summary(boys)
+```
+## 1. Create a histogram of the variable age using the function geom_histogram().
+```{r}
+ggplot(boys, aes(x = age)) +
+  geom_histogram(fill = "#fee6ce") +
+  theme_classic()
+```
+
+## 2. Create a bar chart of the variable gen using the function geom_bar().
+```{r}
+ggplot(boys, aes(x = gen)) + 
+  geom_bar(fill = "#addd8e") +
+  theme_classic()
+```
+
+## 3. Create a missingness indicator for the variables gen, phb and tv.
+```{r}
+md.pattern(boys)
+
+boys <- boys %>% 
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis = is.na(tv))
+```
+
+## 4. Assess whether missingness in the variables gen, phb and tv is related to someones age.
+```{r}
+boys %>% 
+  group_by(gen_mis) %>% 
+  summarise(age = mean(age))
+
+boys %>% 
+  group_by(phb_mis) %>% 
+  summarise(age = mean(age))
+
+boys %>% 
+  group_by(tv_mis) %>% 
+  summarise(age = mean(age))
+```
+
+## 5. Create a histogram for the variable age, faceted by whether or not someone has a missing value on gen.
+```{r}
+ggplot(boys, aes(x = age)) +
+  geom_histogram(fill = "darkblue") +
+  facet_grid(cols = vars(gen_mis)) +
+  labs(title = "Distribution of age by if someone has a missing value on gen") +
+  theme_minimal()
+
+ggplot(boys, aes(x = age)) +
+  geom_histogram(fill = "darkblue") +
+  facet_wrap(~gen_mis) +
+  labs(title = "Distribution of age by if someone has a missing value on gen") +
+  theme_minimal()
+```
+
+## 6. Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function geom_point().
+```{r}
+boys %>% 
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point(color = "darkblue") +
+  theme_minimal()
+```
+
+## 7. Add a colour aesthetic to the previous plot using the missingness indicator of the variable gen.
+```{r}
+boys %>% 
+  ggplot(aes(x = age, y = bmi, color = gen_mis, shape = gen_mis)) +
+  geom_point() +
+  theme_classic()
+```
+
+## 8. Visualize the relationship between reg (region) and age using a boxplot.
+```{r}
+boys %>% 
+  ggplot(aes(x = age)) +
+  geom_boxplot(color = "darkblue") +
+  facet_grid(rows = vars(reg)) +
+  theme_minimal()
+```
+## 9. Create a density plot of age, splitting the densities by gen using the fill aesthetic.
+```{r}
+boys %>% 
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Distribution of age by gen")
+```
+## 10. Create a diverging bar chart for hgt in the boys data set, that displays for every age year that year’s mean height in deviations from the overall average hgt.
+```{r}
+boys %>% 
+  mutate(Age = as.factor(ceiling(age)),
+         hgt_dif =hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>% 
+  summarize(Height_diff = mean(hgt_dif, na.rm = TRUE)) %>% 
+  mutate(color = ifelse(Height_diff > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height_diff, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank()) +
+  labs(x = "Height difference from the mean")
+  
+
+```
+
+## 11. Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2
+```{r}
+head(elastic1)
+head(elastic2)
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+```
+## 12. Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic.
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, color = Set, shape = Set)) +
+  geom_point() +
+  theme_classic()
+```
+## 13. Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line.
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, color = Set, shape = Set)) +
+  geom_point() +
+  geom_smooth(method='lm', se = FALSE) +
+  theme_classic() 
+```
+
+## 14. For each of the data sets elastic1 and elastic2, fit a regression model with y = distance on x = stretch using lm(y ~ x, data).
+```{r}
+model1 <- lm(distance ~ stretch, elastic1)
+model2 <- lm(distance ~ stretch, elastic2)
+```
+
+## 15. For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance  
+```{r}
+model1 %>% predict(se.fit = TRUE)
+predict(model2, se.fit = TRUE)
+
+stargazer(model1, model2, title="Results", align=TRUE, type="text")
+```
+
+## 16. Study the residual versus leverage plots for both models.
+```{r}
+plot(model1, which = 5)
+plot(model2, which = 5)
+```
+
+## 17. Use the elastic2 variable stretch to obtain predictions on the model fitted on elastic1.
+```{r}
+pred <- predict(model1, newdata = elastic2)
+```
+
+## 18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for elastic2.
+```{r}
+pred_dat <- 
+  data.frame(distance = pred, 
+             stretch  = elastic2$stretch) %>%
+  bind_rows(Predicted = .,
+            Observed  = elastic2, 
+            .id = "Predicted")
+
+pred_dat %>% ggplot(aes(x = distance, y = stretch, color = Predicted)) +
+                      geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Predicted and observed distances")
+```
+
