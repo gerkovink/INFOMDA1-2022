@@ -233,7 +233,7 @@ model_1_mse_valid
 25. **Create a second model `model_2` for the train data which includes `age` and `tax` as predictors. Calculate the train and validation MSE.**
 
 ```{r}
-model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+model_2 <- lm("medv ~ lstat + age + tax", data = boston_train)
 typeof(model_2)
 model_2_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_2))
 model_2_mse_valid <- mse(y_true = boston_valid$medv, 
@@ -257,7 +257,9 @@ The estimate for the expected amount of error when predicting the median value o
 28. **Create a function that performs k-fold cross-validation for linear models.**
 
 ```{r}
-foo <- function(formula, dataset, k) {
+kfoldcv <- function(formula, dataset, k) {
+  
+  y <- unlist(strsplit(formula, " "))[1]
   
   if (nrow(dataset)%%k == 0) {
     splits <- rep(c(1:k), each=(nrow(dataset)/k))
@@ -273,36 +275,30 @@ foo <- function(formula, dataset, k) {
     dataset %>% 
     mutate(splits = sample(splits))
   
-  model <- list()
-  data <- list()
+  sum_mse = 0
   
   for (i in 1:k) {
-    len <- length(model)
-    model[[len+1]] <-
+    model <-
       data_master %>% 
       filter(splits != i) %>%
       lm(formula = formula, data = .)
-    mse(y_true = )
+    test_data <-
+      data_master %>% 
+      filter(splits == i)
+    sum_mse = sum_mse + mse(y_true = dataset[, c(y)], y_pred = predict(model, newdata = test_data))
   }
-    
-  # data_train <-
-  #   data_master %>% 
-  #   filter(splits == "train")
-  # 
-  # data_valid <-
-  #   data_master %>% 
-  #   filter(splits == "validation")
-  # 
-  # data_test <-
-  #   data_master %>% 
-  #   filter(splits == "test")
-  # 
-  # model <- rep(NA, times=k)
-  # 
-  # for (i in 1:k) {
-  #   model[i] <- lm(formula, data =)
-  # }
+  
+  sum_mse / k
+
 }
 
-foo("medv ~ lstat", Boston, 4)
 ```
+
+29. **Use your function to perform 9-fold cross validation with a linear model with as its formula `medv ~ lstat + age + tax`. Compare it to a model with as formula `medv ~ lstat + I(lstat^2) + age + tax`.**
+
+```{r}
+kfoldcv("medv ~ lstat + age + tax", Boston, 9)
+kfoldcv("medv ~ lstat + I(lstat^2) + age + tax", Boston, 9)
+```
+
+I get a warning for the test and training sets not being the same length but I feel like that's how it makes sense...
