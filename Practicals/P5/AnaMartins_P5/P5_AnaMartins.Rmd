@@ -1,0 +1,69 @@
+---
+title: "Classification 1"
+author: "Ana Martins"
+date: "October 2022"
+output: html_document
+---
+
+## Introduction
+
+```{r}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+```
+
+```{r}
+set.seed(45)
+```
+
+## Default dataset
+
+1. **Create a scatterplot of the `Default` dataset, where `balance` is mapped to the x position, `income` is mapped to the y position, and `default` is mapped to the colour. Can you see any interesting patterns already?**
+
+```{r}
+default.plot <-
+  Default %>% 
+  ggplot(mapping = aes(x = balance, y = income, color = default)) +
+  geom_point()
+default.plot
+```
+
+The default Nos clearly appear more for lower balances and the default Yeses on the higher balances, but there seems to be no or low correlation to the income.
+
+2. **Add facet_grid(cols = vars(student)) to the plot. What do you see?**
+
+```{r}
+default.plot <-
+  default.plot +
+  facet_grid(cols = vars(student))
+default.plot
+```
+
+As expected, the students have a lower income but they also have about the same balance.
+
+3. **Transform “student” into a dummy variable using `ifelse()` (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set `default_train` (80%) and a test set `default_test` (20%)**
+
+```{r}
+default.data <-
+  Default %>% 
+  mutate(student = ifelse(student == "Yes", 1, 0)) %>% 
+  mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
+default.data
+
+default.train <-
+  default.data %>% 
+  filter(split == "train")
+```
+
+
+## K-Nearest Neighbours
+
+## Confusion matrix
+
+## Logistic regression
+
+## Linear discriminant analysis
+
+## Final assignment
