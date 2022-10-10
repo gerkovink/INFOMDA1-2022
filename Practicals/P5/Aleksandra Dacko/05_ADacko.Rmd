@@ -160,4 +160,32 @@ I would say it is similar to the logistic regression
 # Final assignment
 
 ### 18. Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?
+```{r}
+titanic<-read.csv(file = "data/titanic.csv",header = T)
+```
+
+```{r}
+#check and clean data. Transform ordinary and binary variables to factors. Make female the reference category
+head(titanic)
+data<-titanic %>% select(!Name) %>%  mutate_if(is.character, as.factor)
+head(data)
+```
+
+```{r}
+#now I use logistic regression to predict the probability of survival
+model_glm<-glm(Survived~PClass*Age*Sex,data=data)
+
+probability<- function(model,PClass,Age,Sex){
+  new<-tibble(PClass=PClass,
+              Age=Age,
+              Sex=Sex)
+  p<-predict(model,newdata=new,type="response")
+  return(p)
+}
+#boy
+probability(model = model_glm,PClass ="3rd",Age =14 ,Sex ="male" )
+#girl
+probability(model = model_glm,PClass ="2nd" ,Age =14 ,Sex ="female" )
+
+```
 
