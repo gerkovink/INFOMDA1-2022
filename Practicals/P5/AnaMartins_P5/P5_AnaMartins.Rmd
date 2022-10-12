@@ -270,8 +270,8 @@ Now, to predict for a 14 year old boy from the 3rd class:
 titanic <-
   read_csv("data/Titanic.csv") %>% 
   select(-Name) %>% 
-  drop_na() %>% 
-  mutate(PClass = ifelse(titanic$PClass == "1st", 1, ifelse(titanic$PClass == "2nd", 2, 3)), Sex = ifelse(titanic$Sex == "female", 1, 0))
+  mutate(PClass = ifelse(titanic$PClass == "1st", 1, ifelse(titanic$PClass == "2nd", 2, 3)), Sex = ifelse(titanic$Sex == "female", 1, 0)) %>% 
+  drop_na()
 
 titanic.boy <-
   data.frame(PClass = 3, Age = 14, Sex = 0)
