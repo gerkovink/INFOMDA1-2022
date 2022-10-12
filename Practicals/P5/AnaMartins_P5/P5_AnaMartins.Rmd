@@ -141,13 +141,13 @@ lr_mod
 10. **Visualise the predicted probabilities versus observed class for the training dataset in `lr_mod`. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot.**
 
 ```{r}
-log_predi <- predict(lr_mod, type = "response")
+log_pred <- predict(lr_mod, type = "response")
 
 default_pred <- rbinom(length(log_pred), 1, log_pred)
 
 default_train <-
   default_train %>% 
-  mutate(log_pred = log_predi) %>% 
+  mutate(log_pred = log_pred) %>% 
   mutate(default_pred = as.factor(default_pred))
 
 default_train %>% 
@@ -205,5 +205,96 @@ Not really...
 ## Linear discriminant analysis
 
 15. **Train an LDA classifier lda_mod on the training set.**
+```{r}
+lda_mod <-
+  lda(formula = default ~ ., data = default_train)
+```
+
+16. **Look at the `lda_mod` object. What can you conclude about the characteristics of the people who default on their loans?**
+
+```{r}
+lda_mod
+```
+
+Students are more likely to get yes on the default, but so are people with higher balance. As for the income, its seems to be about the same for both the people who get yes or no.
+
+17. **Create a confusion matrix and compare it to the previous methods.**
+
+```{r}
+lda_pred <- predict(lda_mod)
+
+table(true = default_train$default, predicted = lda_pred$class)
+```
+
+It seems worse.
 
 ## Final assignment
+
+18. **Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?**
+
+```{r}
+titanic <- read_csv("data/Titanic.csv")
+
+split <- sample(rep(c("train", "test"), times = c(round(0.8*1313), round(0.2*1313))))
+titanic <-
+  titanic %>% 
+  mutate(split = split, PClass = ifelse(titanic$PClass == "1st", 1, ifelse(titanic$PClass == "2nd", 2, 3)), Sex = ifelse(titanic$Sex == "female", 1, 0))
+
+titanic.train <-
+  titanic %>% 
+  filter(split == "train") %>% 
+  select(-split) %>% 
+  drop_na()
+
+titanic.test <-
+  titanic %>% 
+  filter(split == "test") %>% 
+  select(-split) %>% 
+  drop_na()
+
+titanic.knn <- knn(train = titanic.train %>% select(-Survived, -Name), test = titanic.test %>% select(-Survived, -Name), cl = titanic.train$Survived, k = 3)
+titanic.knn
+
+titanic.pred <-
+  titanic.test %>% 
+  mutate(pred = titanic.knn)
+
+titanic.pred %>% 
+  ggplot(mapping = aes(x = Age, y = Survived, color = pred)) +
+  geom_point()
+```
+
+Now, to predict for a 14 year old boy from the 3rd class:
+
+```{r}
+titanic <-
+  read_csv("data/Titanic.csv") %>% 
+  select(-Name) %>% 
+  drop_na() %>% 
+  mutate(PClass = ifelse(titanic$PClass == "1st", 1, ifelse(titanic$PClass == "2nd", 2, 3)), Sex = ifelse(titanic$Sex == "female", 1, 0))
+
+titanic.boy <-
+  data.frame(PClass = 3, Age = 14, Sex = 0)
+
+titanic.knn <- knn(train = titanic %>% select(-Survived), test = titanic.boy, cl = titanic$Survived, k = 3)
+titanic.knn
+```
+
+He would not survive.
+Now for the 14 year old girl in 2nd class:
+
+```{r}
+titanic <-
+  read_csv("data/Titanic.csv") %>% 
+  select(-Name) %>% 
+  drop_na() %>% 
+  mutate(PClass = ifelse(titanic$PClass == "1st", 1, ifelse(titanic$PClass == "2nd", 2, 3)), Sex = ifelse(titanic$Sex == "female", 1, 0))
+
+titanic.girl <-
+  data.frame(PClass = 2, Age = 14, Sex = 1)
+
+titanic.knn <- knn(train = titanic %>% select(-Survived), test = titanic.girl, cl = titanic$Survived, k = 3)
+titanic.knn
+```
+
+She would not survive either.
