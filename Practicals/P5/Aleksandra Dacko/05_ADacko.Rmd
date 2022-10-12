@@ -27,11 +27,14 @@ head(Default)
 ```{r}
 Default %>% ggplot(aes(x=balance,y=income,color=default)) + geom_point()
 ```
+
 ### 2.Add facet_grid(cols = vars(student)) to the plot. What do you see?
 ```{r}
 Default %>% ggplot(aes(x=balance,y=income,color=default)) + geom_point()+facet_grid(cols=vars(Default$student))
 ```
+
 ### 3. Transform “student” into a dummy variable using ifelse() (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set default_train (80%) and a test set default_test (20%)
+
 ```{r}
 Default %<>% mutate(student=case_when(student=="No" ~0, student=="Yes"~1))
 ```
@@ -52,6 +55,7 @@ default_test<-Default[-train_idx,]
 ```{r}
 knn_5_pred <-knn(train=default_train[,2:4],test=default_test[,2:4], k=5,cl=as.factor(default_train[,1]))
 ```
+
 ### 5. Create two scatter plots with income and balance as in the first plot you made. One with the true class (default) mapped to the colour aesthetic, and one with the predicted class (knn_5_pred) mapped to the colour aesthetic.
 ```{r}
 default_test %>%ggplot(aes(x=balance,y=income,color=default)) + geom_point()
@@ -73,11 +77,12 @@ knn_2_pred <-knn(train=default_train[,2:4],test=default_test[,2:4], k=2, cl=as.f
 ```{r}
 bind_cols(default_test, pred = knn_2_pred) %>% arrange(default) %>% ggplot(aes(x=balance,y=income,color=pred)) + geom_point()
 ```
-#Confusion matrix
+# Confusion matrix
 ```{r}
 table(true=default_test$default, predicted = knn_2_pred)
 ```
 5-KKN seems to perform a bit better 
+
 ### 7.What would this confusion matrix look like if the classification were perfect?
 ```{r}
 table(true=default_test$default, predicted = default_test$default)
