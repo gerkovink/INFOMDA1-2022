@@ -52,18 +52,158 @@ default.data <-
   mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
 default.data
 
-default.train <-
+default_train <-
   default.data %>% 
-  filter(split == "train")
+  filter(split == "train") %>% 
+  select(-split)
+default_train
+
+default_test <-
+  default.data %>% 
+  filter(split == "test") %>% 
+  select(-split)
+default_test
 ```
 
 
 ## K-Nearest Neighbours
 
+4. **Create class predictions for the test set using the `knn()` function. Use `student`, `balance`, and `income` (but no basis functions of those variables) in the `default_train` dataset. Set `k` to 5. Store the predictions in a variable called `knn_5_pred`.**
+
+```{r}
+knn_5_pred <- knn(train = default_train %>% select(-default), test = default_test %>% select(-default), cl = default_train$default, k = 5) 
+knn_5_pred
+```
+
+5. **Create two scatter plots with income and balance as in the first plot you made. One with the true class (`default`) mapped to the colour aesthetic, and one with the predicted class (`knn_5_pred`) mapped to the colour aesthetic.**
+
+```{r}
+default_test <-
+  default_test %>% 
+  mutate(knn_5_pred = knn_5_pred)
+
+default_test %>% 
+  ggplot(mapping = aes(x = balance, y = income, color = default)) +
+  geom_point()
+
+default_test %>% 
+  ggplot(mapping = aes(x = balance, y = income, color = knn_5_pred)) +
+  geom_point()
+```
+
+The test data set seems to have more Yeses than the prediction, but it seems mostly right.
+
+6. **Repeat the same steps, but now with a `knn_2_pred` vector generated from a 2-nearest neighbours algorithm. Are there any differences?**
+```{r}
+knn_2_pred <- knn(train = default_train %>% select(-default), test = default_test %>% select(-default, -knn_5_pred), cl = default_train$default, k = 2)
+
+default_test %>% 
+  mutate(knn_2_pred = knn_2_pred)
+
+default_test %>% 
+  ggplot(mapping = aes(x = balance, y = income, color = default)) +
+  geom_point()
+
+default_test %>% 
+  ggplot(mapping = aes(x = balance, y = income, color = knn_2_pred)) +
+  geom_point()
+```
+
+This one seems to fit better.
+
 ## Confusion matrix
+
+```{r}
+table(true = default_test$default, predicted = knn_2_pred)
+```
+
+7. **What would this confusion matrix look like if the classification were perfect?**
+
+It would be a diagonal matrix.
+
+8. **Make a confusion matrix for the 5-nn model and compare it to that of the 2-nn model. What do you conclude?**
+
+```{r}
+table(true = default_test$default, predicted = knn_5_pred)
+```
+
+They do not seem much different. The 5-nn model has more false negatives, but the 2-nn model has more false positives.
 
 ## Logistic regression
 
+9. **Use `glm()` with argument family = binomial to fit a logistic regression model `lr_mod` to the `default_train` data.**
+
+```{r}
+lr_mod <- glm(formula = default ~ ., family = binomial(), data = default_train)
+lr_mod
+```
+
+10. **Visualise the predicted probabilities versus observed class for the training dataset in `lr_mod`. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot.**
+
+```{r}
+log_predi <- predict(lr_mod, type = "response")
+
+default_pred <- rbinom(length(log_pred), 1, log_pred)
+
+default_train <-
+  default_train %>% 
+  mutate(log_pred = log_predi) %>% 
+  mutate(default_pred = as.factor(default_pred))
+
+default_train %>% 
+  ggplot(mapping = aes(x = balance, y = income)) +
+  facet_wrap(default ~ .) +
+  geom_point(mapping = aes(color = default_pred))
+```
+The prediction seems to be mostly correct for lower balances and very high balances, but it comes out incorrect for balances in the middle.
+
+11. **Look at the coefficients of the `lr_mod` model and interpret the coefficient for `balance`. What would the probability of default be for a person who is not a student, has an income of 40000, and a balance of 3000 dollars at the end of each month? Is this what you expect based on the plots we’ve made before?**
+
+```{r}
+prob_spec <-
+  default_train %>% 
+  filter(student == 0, 50000 > income, income > 40000, 3000 > balance, balance < 4000)
+prob <- mean(prob_spec$log_pred)
+prob * 100
+```
+The mean probability of default of someone who is not a student, has an income of 40000 and a balance of 3000 is of 2,85%.
+
+### Visualising the effect of the balance variable
+
+12. **Create a data frame called `balance_df` with 3 columns and 500 rows: `student` always 0, `balance` ranging from 0 to 3000, and `income` always the mean income in the `default_train` dataset.**
+
+```{r}
+student <- c(rep(0, times = 500))
+balance <- c(seq(0, 3000, by=3001/500))
+income <- c(rep(mean(default_train$income), times = 500))
+balance_df <- data.frame(student = student, balance = balance, income = income)
+```
+
+13. **Use this dataset as the `newdata` in a `predict()` call using `lr_mod` to output the predicted probabilities for different values of `balance`. Then create a plot with the `balance_df$balance` variable mapped to x and the predicted probabilities mapped to y. Is this in line with what you expect?**
+
+```{r}
+balance_pred1 <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df <-
+  balance_df %>% 
+  mutate(balance_pred = balance_pred1)
+
+balance_df %>% 
+  ggplot(mapping = aes(x = balance, y = balance_pred)) +
+  geom_point()
+
+```
+
+14. **Create a confusion matrix just as the one for the KNN models by using a cutoff predicted probability of 0.5. Does logistic regression perform better?**
+
+```{r}
+table(true = default_train$default, predicted = ifelse(default_train$log_pred < 0.5, 0, 1))
+```
+
+Not really...
+
 ## Linear discriminant analysis
+
+15. **Train an LDA classifier lda_mod on the training set.**
 
 ## Final assignment
