@@ -1,0 +1,243 @@
+---
+title: 'Practical 5: Supervised Learning (Classification)'
+author: "Nina van Gerwen (1860852)"
+date: "2022-10-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r preparation}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+
+
+### 1) Scatterplot
+
+```{r Q1}
+Default %>%
+  ggplot(data = ., aes(x = balance, y = income, col = default)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal()
+```
+
+For interesting patterns, I don't necessarily see one yet. Except that
+perhaps if a customer has not defaulted on their debt, they seem to be
+on the higher end of their average balance.
+
+### 2) Improving the plot
+
+```{r}
+Default %>%
+  ggplot(data = ., aes(x = balance, y = income, col = default)) +
+  geom_point(alpha = 0.5) +
+  facet_grid(cols = vars(student)) +
+  theme_minimal()
+```
+
+Now we can see that most likely student-customers have a lot lower income than
+other customers. Even when their balance is the same. Also again, if
+a person has defaulted their debt, they seem to be on the upper end of balance.
+
+### 3) Dummy coding and splitting dataset
+
+```{r}
+Default <- Default %>%
+  mutate(student = ifelse(student == "Yes", 1, 0))
+
+Default$train <- sample(c(0,1), size = nrow(Default), prob = c(0.2, 0.8),
+                        replace = TRUE)
+
+default_train <- Default %>% filter(., train == 1)
+default_test <- Default %>% filter(., train == 0)
+```
+
+## K-Nearest Neighbours
+
+### 4) Class predictions using knn
+
+```{r}
+knn_5_pred <- knn(default_train[, 2:4], default_test[, 2:4], cl = default_train[, 1], k = 5)
+```
+
+### 5) More scatterplots
+
+```{r}
+cbind(default_test, knn_5_pred) %>%
+  ggplot(data = ., aes(x = balance, y = income, col = default)) +
+  geom_point() +
+  theme_minimal()
+
+cbind(default_test, knn_5_pred) %>%
+  ggplot(data = ., aes(x = balance, y = income, col = knn_5_pred)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### 6) Repeating with k = 2
+
+```{r}
+knn_2_pred <- knn(default_train[, 2:4], default_test[, 2:4], cl = default_train[, 1], k = 2)
+
+cbind(default_test, knn_2_pred) %>%
+  ggplot(data = ., aes(x = balance, y = income, col = default)) +
+  geom_point() +
+  theme_minimal()
+
+cbind(default_test, knn_2_pred) %>%
+  ggplot(data = ., aes(x = balance, y = income, col = knn_2_pred)) +
+  geom_point() +
+  theme_minimal()
+```
+
+
+This time, it seems to have classified more as default Yes, which you would
+think is more in line with the actual dataset.
+
+## Confusion Matrix
+
+### 7) A perfect confusion matrix
+
+In a perfect confusion matrix, there would be no values that were
+wrongly predicted (i.e., 48 and 41 would be 0). So all the non-diagonal values
+would be 0.
+
+### 8) Creating confusion matrices
+
+```{r}
+table(true = default_test$default, predicted = knn_2_pred)
+
+table(true = default_test$default, predicted = knn_5_pred)
+```
+
+We find that with *k = 5*, we had more wrongly predicted "Default = Yes"
+and less wrongly predicted "Default = No". However, in total, the knn function
+performed better with *k = 5*. This might, however, be due to big difference
+in the amount of customers who have Default = No in the dataset (namely, 9667 vs. 333).
+
+## Logistic regression
+
+### 9) Fitting a logistic regression
+
+```{r}
+lr_mod <- glm(default ~ income + balance + student, data = default_train, 
+              family = "binomial")
+
+cbind(default_train, prob = predict(lr_mod, data = default_train, 
+                                    type = "response")) %>%
+  mutate(default = ifelse(default == "Yes", 1, 0),
+         student = ifelse(student == 1, "Yes", "No")) %>%
+  ggplot(data = ., aes(x = balance, y = prob, col = as.factor(student))) +
+  geom_point(aes(y = default), col = "black", alpha = .2) +
+  geom_smooth(method = "glm", se = FALSE, 
+              method.args = list(family = "binomial"))
+  
+
+plot(lr_mod)
+
+```
+
+The plot above shows two things. First, it shows that if you are a student, 
+you have a higher probability to have defaulted. Furthermore, it also
+shows that the higher your balance, the higher the probability you defaulted.
+
+### 11) Interpreting coefficients
+
+```{r}
+summary(lr_mod)
+```
+
+When balance increases by 1, the odds of having defaulted is 1.005 times
+larger. If you are a student, the odds of having defaulted multiplies by
+0.498 (i.e., a student is less likely to have defaulted). The
+probability of default for a person who is not a student, has
+an income of 40000 and a balance of 3000 is:
+
+$$ \frac{e^{-10.7 + 2.321e-06 \cdot 40000 + 5.660e-03 \cdot 3000 -6.977e-01}}
+{1 + e^{-10.7 + 2.321e-06 \cdot 40000 + 5.660e-03 \cdot 3000 -6.977e-01}}$$
+
+Which is: 
+
+```{r}
+exp(-10.7 + 2.321e-06 * 40000 + 5.660e-03 * 3000 + -6.977e-01) /
+  (1 + exp(-10.7 + 2.321e-06 * 40000 + 5.660e-03 * 3000 + -6.977e-01))
+```
+
+This could have also been gained by doing:
+
+```{r}
+predict(lr_mod, newdata = data.frame(income = 40000, balance = 3000, 
+                                    student = 1), type = "response")
+```
+This coincides with the earlier made plot.
+
+## Visualisation
+
+### 12) New data frame
+```{r}
+balance_df <- data.frame(student = rep(0, 500),
+                         balance = seq(0, 3000, by = 3000/499), income = mean(default_train$income))
+```
+
+
+### 13) Predicting
+
+```{r}
+balance_df$prob <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df %>%
+  ggplot(data = ., aes(x = balance, y = prob)) +
+  geom_line()
+
+```
+
+Yes, this is exactly what I expected. The higher your balance, the higher
+your probability.
+
+### 14) Checking performance
+
+```{r}
+test <- default_test %>% 
+  mutate(prob = predict(lr_mod, newdata = default_test, 
+                                    type = "response"),
+         dichot_prob = ifelse(prob > 0.5, "Yes", "No")) 
+
+
+table(true = test$default, predicted = test$dichot_prob)
+```
+
+Yes, it performed better.
+
+## Linear Discriminant Analysis
+
+### 15) Training a model
+
+```{r}
+lda_mod <- lda(default ~ income + balance + student, data = default_train)
+```
+
+### 16) Inspecting the model
+
+```{r}
+lda_mod
+```
+
+People who default on their loans seem to have a higher chance to be a student
+and seem to have a higher balance.
+
+### 17) Confusion matrix 
+
+```{r}
+lda_pred <- predict(lda_mod, newdata = default_test, type = "response")
+
+table(true = default_test$default, predicted = lda_pred$class)
+```
+
+Seems to perform as well as the knn method.
