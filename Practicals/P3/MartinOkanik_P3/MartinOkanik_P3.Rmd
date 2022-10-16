@@ -1,0 +1,197 @@
+---
+title: "P3_MartinOkanik"
+author: "Martin Okanik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+```{r}
+head(boys)
+```
+
+```{r}
+tail(boys)
+```
+
+```{r}
+!is.unsorted(boys$Age)
+```
+
+```{r}
+summary(boys)
+```
+
+```{r}
+boys %>% 
+  ggplot() +
+  geom_histogram(aes(x = age))
+```
+
+```{r}
+boys %>% 
+  ggplot() +
+  geom_bar(aes(x = gen))
+```
+
+```{r}
+md.pattern(boys)
+```
+
+```{r}
+# adopting the same notation as the official solution...
+# (got a bit stuck on what is asked here - maybe put it more clearly next time?...)
+
+boys_mis <- boys %>% 
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis  = is.na(tv))
+```
+
+```{r}
+# missingness related to age: e.g. what is the average age for missing and non-missing values? do they differ?
+
+boys_mis %>% 
+  group_by(gen_mis) %>% 
+  summarize(mean_age = mean(age))
+```
+
+```{r}
+boys_mis %>% 
+  group_by(phb_mis) %>% 
+  summarize(mean_age = mean(age))
+```
+
+```{r}
+boys_mis %>% 
+  group_by(tv_mis) %>% 
+  summarize(mean_age = mean(age))
+```
+
+We see that the patterns are very consistent across variables - we have more complete data for older boys.
+
+```{r}
+boys_mis %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram() +
+  facet_wrap(~gen_mis)
+
+```
+
+```{r}
+scatter_boys <- boys_mis %>% 
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point()
+
+scatter_boys
+```
+
+```{r}
+scatter_boys <- boys_mis %>% 
+  ggplot(aes(x = age, y = bmi)) + 
+  geom_point(aes(colour = gen_mis), shape = "bullet")
+
+scatter_boys
+```
+
+```{r}
+boys_mis %>% 
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot()
+```
+
+```{r}
+boys_mis %>% 
+  ggplot(aes(x = age)) +
+  geom_density(aes(fill = gen))
+  
+```
+
+```{r}
+boys %>% 
+  mutate(age_cat = cut(age, 0:ceiling(max(boys$age))),
+         hgt_rel = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(age_cat) %>% 
+  summarize(hgt_rel_mean = mean(hgt_rel, na.rm = TRUE)) %>%
+  ggplot(aes(x = hgt_rel_mean, y = age_cat)) +
+  geom_bar(stat = "identity")
+```
+
+## Regression visualization
+
+```{r}
+els <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+head(els)
+tail(els)
+```
+
+```{r}
+els %>% ggplot(aes(x = stretch, y = distance )) +
+  geom_point(aes(colour = Set))
+```
+
+```{r}
+els %>% ggplot(aes(x = stretch, y = distance, colour = Set )) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+fit1 <- elastic1 %>%  lm(distance ~ stretch, .)
+fit2 <- elastic2 %>%  lm(distance ~ stretch, .)
+fit1
+```
+
+```{r}
+fit1 %>% predict(elastic1,  se.fit = TRUE)
+```
+
+```{r}
+fit1 %>% summary()
+```
+
+```{r}
+fit1 %>% summary() %$% r.squared
+```
+
+```{r}
+fit2 %>% summary() %$% r.squared
+```
+
+```{r}
+fit1 %>% plot(which = 5)
+```
+
+fit1 seems very sensitive to a few influential observations, namely #7 and especially #2
+
+```{r}
+fit2 %>% plot(which = 5)
+```
+
+fit2 seems more robust
+
+```{r}
+pred12 <- fit1 %>% predict(elastic2)
+```
+
+```{r}
+pred_all <- 
+  data.frame(distance = pred12, 
+             stretch  = elastic2$stretch) %>%
+  bind_rows(Predicted = .,
+            Observed  = elastic2, 
+            .id = "Predicted")
+
+pred_all %>%
+  ggplot(aes(stretch, distance, colour = Predicted)) +
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
