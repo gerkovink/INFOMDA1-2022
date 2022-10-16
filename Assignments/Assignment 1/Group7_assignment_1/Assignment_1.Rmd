@@ -1,0 +1,446 @@
+---
+title: "Assignment 1"
+subtitle: "(group 7)"
+author: "Laura Hasbini, Jorge Miguel Fernández, Lorenzo Occelli, Martin Okánik"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 1
+    toc_float: yes
+    df_print: paged
+    theme: paper
+    highlight: pygments
+    pandoc_args: --output=Assignment1.html
+  pdf_document:
+    toc: yes
+    toc_depth: '1'
+fontsize: 12pt
+urlcolor: blue
+mainfont: Arial
+---
+
+```{r load_packages, message = FALSE, warning = FALSE}
+library(tidyverse) 
+library(haven)
+library(mapdata)
+library(reshape2)
+library(ggExtra)
+library("RColorBrewer")
+```
+
+# Housing in Miami
+
+In this report we will study what is driving the housing prices in Miami. We have divided the work in several sections: first of all we're going to look at the correlation with the age and quality of the house, secondly we will investigate the relation regarding the area of the house and the property. Later we will study the impact of the location and finally we will look to additional features such as the distance to the ocean, the highways and railways. 
+
+# Dataset description
+
+The data we're going to investigate represent housing prices in Miami.
+Raw data source: https://www.kaggle.com/datasets/deepcontractor/miami-housing-dataset 
+
+The dataset contains information on 13,932 single-family homes sold in Miami in 2016.
+Columns of the dataset:
+
+-   PARCELNO: unique identifier for each property. About 1% appear multiple times.
+
+-   SALE_PRC: sale price (US\$)
+
+-   LND_SQFOOT: land area (square feet)
+
+-   TOT_LVG_AREA: floor area (square feet)
+
+-   SPEC_FEAT_VAL: value of special features (e.g., swimming pools) (US\$)
+
+-   RAIL_DIST: distance to the nearest rail line (an indicator of noise) (feet)
+
+-   OCEAN_DIST: distance to the ocean (feet)
+
+-   WATER_DIST: distance to the nearest body of water (feet)
+
+-   CNTR_DIST: distance to the Miami central business district (feet)
+
+-   SUBCNTR_DI: distance to the nearest subcenter (feet)
+
+-   HWY_DIST: distance to the nearest highway (an indicator of noise) (feet)
+
+-   age: age of the structure
+
+-   avno60plus: dummy variable for airplane noise exceeding an acceptable level
+
+-   structure_quality: quality of the structure (values from 1 -low- to 5 -high-)
+
+-   month_sold: sale month in 2016 (1 = jan)
+
+-   LATITUDE
+
+-   LONGITUDE
+
+```{r 1}
+data <- read_csv("data/miami-housing.csv")
+data <- select(data, -PARCELNO)
+```
+
+## Tyding the dataset
+
+```{r 2}
+head(data)
+```
+We convert the variable "structure_quality" from numeric to factor type.
+
+```{r 3}
+data <-
+  mutate(data, structure_quality = as.factor(data$structure_quality))
+```
+
+# Summary statistics tables
+
+We want here to have a first look at our dataset and its global statistical properties.
+
+```{r 4}
+colnames(data)
+```
+
+```{r 5}
+data %>% 
+  summarise(mean_age = mean(age),
+            mean_price = mean(SALE_PRC), 
+            mean_total_living_area = mean(TOT_LVG_AREA))
+```
+
+To gain more insight we create a classification based on the age of the houses.
+
+```{r 6}
+data$age_range = cut(data$age, seq(0,100, by=10),
+                     labels=c("0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100"))
+```
+
+```{r 7}
+data %>% 
+  group_by(age_range) %>% 
+  summarise(count = n(),
+            mean_price = mean(SALE_PRC),
+            mean_CNTR_distance = mean(CNTR_DIST),
+            mean_Ocean_distance = mean(OCEAN_DIST),
+            mean_Total_living_area = mean(TOT_LVG_AREA))
+```
+We can observe that the most represented categories of our dataset are houses between 10 and 30 years old, while very old units (over 80 ys old) constitute a very small subset.
+From the previous table we can deduce some general trends related to the age of the buildings: \
+- Newest houses (0-10 ys old) are by far the most expensive on average, while the cheapest appear to be houses of 61-70 ys old. Older houses have a remarkable higher price than the latter ones, maybe due to a value's increase as being considered historical buildings. \
+- There is a clear trend between house's age and distance from Miami CBD, with younger units located increasingly further from the CBD. \
+- A general trend is also visible in the houses' distance from the ocean, with older building located closer to the water. \
+- Mean total living area increased almost steadily with time, with the newest houses (0-10 ys old) being around 38% bigger than houses of 91-100 ys old.
+
+
+```{r 8}
+data %>% 
+  group_by(structure_quality) %>% 
+  summarise(count = n(),
+            mean_age = mean(age),
+            mean_CNTR_distance = mean(CNTR_DIST))
+```
+
+To conclude we investigate the relation between the quality of houses' structure and their age. Values of 1 represent poor quality, while 5 best quality. We expected a decreasing mean age with increasing structure's quality, but it's not always the case. We have to point out, though, that the subset of houses with structure quality equal to 3 is very scarce, counting only 16 units (less than 0.2% of the population). Therefore, the correspondent means have not the same statistical strength of the other categories.
+
+## Plots
+
+We shuffle the dataset to prevent any systematic biases of what appears on top of cluttered plots (which are at times hard to avoid for such a large dataset):
+
+```{r 9}
+rows <- sample(nrow(data))
+data <- data[rows, ]
+```
+
+#Relation with the quality and age of the house
+
+```{r 10}
+data$sales_range = cut(data$SALE_PRC, 50)
+
+structure_bar_plot <- 
+  data %>%
+  ggplot(aes(x=sales_range, fill = structure_quality)) +
+  geom_bar(alpha=0.7) +
+  scale_fill_manual(labels = c("1 (Low)", "2", "3", "4", "5 (High)"), values =
+  c('#993404','#d95f0e','#fe9929','#fed98e','#ffffd4')) +
+  labs(x = "Price [US$]", fill ="Structure quality") +
+  scale_x_discrete(breaks=seq(0,2650000,500000))
+
+structure_density_plot <- 
+  data %>%
+  ggplot(aes(x=SALE_PRC, fill = structure_quality)) +
+  geom_density(alpha=0.6) +
+  scale_fill_manual(labels = c("1 (Low)", "2", "3", "4", "5 (High)"), values =
+  c('#993404','#d95f0e','#fe9929','#fed98e','#ffffd4')) +
+  labs(x = "Price [US$]", fill ="Structure quality")
+
+cowplot::plot_grid(structure_bar_plot, structure_density_plot, nrow = 2, label_size = 10,labels = c("Barplot", "Density Plot"), align='v')
+```
+
+```{r 11}
+sale_fct_of_age_plot <- 
+  data %>% 
+    ggplot(aes(x = age, y = SALE_PRC ,color = structure_quality)) +
+    geom_point(alpha = 0.8, size=1.5) +
+    scale_color_manual(labels = c("1 (Low)", "2", "3", "4", "5 (High)"), values =
+    c('#993404','#d95f0e','#fe9929','#fed98e','#ffffd4')) + 
+    labs(x = "Age [years]", y = "Price [US$]", color = "Structure quality", title="How does price is impacted by age and stuct. quality?")
+
+sale_fct_of_age_plot
+```
+
+From the three previous plots we can see how the structure and age of the house impacts its price. The figure 'structure_density_plot' represents the density distribution for each individual variable and the figure 'structure_bar_plot' the bar plot with the number of cumulative counts. 
+From the figure 'structure_density_plot' we can see that houses with bad structure quality are usually sold for a cheap price. It's surprising to see that the probability that an expensive house has a medium structure quality (3) is more important than the probability that this house has a really good structure quality (5). However if we additionally look at the the figure 'structure_distribution_plot' we can note that the previous result has been created by the plot. In fact few houses are identified with a quality structure of 3, consequently the derived density in 'structure_density_plot' is not really representative. Moreover, figure 'structure_bar_plot' also shows that few houses with a structure of quality 3 were identified for the range of price. Finally we can note that for prices higher that 1 million US$ only houses with high structure quality were identified. We can conclude that houses with good structure quality are more likely to be sold for higher price. 
+
+Additionally we can investigate the relation with the age of the house. In figure 'sale_fct_of_age_plot' is presented the price at which houses were sold as a function of price with additional information about the structure quality. The first thing we can note is that all the houses with bad structure quality are old ones, reversely new houses are mainly with good structure quality. Regarding the price, we can underline that houses sold with high price are younger than 50 years old, also most of the houses sold for more than 1million \$ have a high structure quality. For houses worth less than 1 million \$ no clear link with the age can be observed.
+
+# Influence of land area
+
+In this section, the interconnections between the land area of a property [sq. feet], its total living area [sq. feet] and its price [US\$] are explored via a series of graphs.
+
+### Investigate the dependence of price on living area
+
+First we calculate the correlation coefficient:
+
+```{r 13}
+cor(data$TOT_LVG_AREA, data$SALE_PRC)
+```
+
+This is a reasonable correlation.
+
+We make a plot of price as a function of living area:
+
+```{r 14}
+price_livA <- data %>% 
+  ggplot(aes(x = TOT_LVG_AREA, y = SALE_PRC)) +
+  geom_point(aes(colour = LND_SQFOOT), 
+              alpha = 1, shape = "bullet" ) +
+  geom_density_2d(colour = "grey", size = 0.1, bins = 10) +
+  labs(title = "Does large living area mean higher price?", 
+       x = "living area [sq. feet]", 
+       y = "price [US$]") +
+  scale_color_continuous(name = "land area [sq. feet]") +
+  theme_minimal()
+
+price_livA <- ggMarginal(price_livA, type = "density")
+price_livA
+```
+
+This scatterplot includes a very bare, qualitative density plot to bring visual intuition on the cluttered part of the graph. We can see that there is a distinctive growing trend of prices with living area, as exposed by the density contours. Also, there is a very weak indication that properties with high land area tend to fall above the mean price for a given living area - which is of course expected.
+
+### Investigate the dependence of price on total area
+
+First calculate the correlation coefficient:
+
+```{r 15}
+cor(data$LND_SQFOOT, data$SALE_PRC)
+```
+
+This is rather low in this context. It is not unreasonable that property land area correlates much more weakly with price than living area, since it often comes with a comparatively small house, which is much more expensive per area than garden. This smears out the relationship between the total land area with price. Correlations of the two area variables will be discussed shortly.
+
+```{r 16}
+price_landA <- data %>% 
+  ggplot(aes(x = LND_SQFOOT, y = SALE_PRC)) +
+  geom_point(aes(colour = TOT_LVG_AREA), 
+              alpha = 1, shape = "bullet" ) +
+  geom_density_2d(colour = "grey", size=0.1, bins=10) +
+  labs(title = "Does large land area mean higher price?", 
+       x = "land area [sq. feet]", 
+       y = "price [US$]") +
+  scale_color_continuous(name = "living area [sq. feet]") +
+  theme_minimal()
+
+price_landA <- ggMarginal(price_landA, type = "density")
+price_landA
+```
+
+### Investigate the correlations between high living area and high land area of a property
+
+First calculate the correlation coefficient:
+
+```{r 17}
+cor(data$LND_SQFOOT, data$TOT_LVG_AREA)
+```
+
+This is again not too strong, but shows some tendency. Plot the graph :
+
+```{r 18}
+livA_landA <- data %>% 
+  ggplot(aes(x = LND_SQFOOT, y = TOT_LVG_AREA)) +
+  geom_point(aes( colour = SALE_PRC), 
+              alpha = 1, shape = "bullet" ) +
+  geom_density_2d(colour = "grey", size=0.1, bins=10) +
+  geom_abline(intercept = 0, slope = 1, colour = "green") +
+  labs(title = "Is large land area associated with large living area?", 
+       x = "land area [sq. feet]", 
+       y = "living area [sq. feet]", color = "price [US$]") +
+  scale_color_gradient(low = "dark green", high = "red") +
+  geom_text(x = 8800, y = 6300, label = "y = x", colour = "green") +
+  theme_minimal()
+
+livA_landA <- ggMarginal(livA_landA, type = "density")
+livA_landA
+```
+
+Interestingly, there are a few cases where living area exceeds the land area. This is in principle possible, since a house can have multiple floors, which only count once in the total land area - at the base. Large part of the data lies in a vertically stretched elliptical region marked by the density contours at around 8,000 square feet of land area. A surprisingly wide range of living areas exists for this almost constant fixed area. This is likely related to zoning in the heavily regulated american suburbs. There is another similar (but weaker) region at around 5,000 sq. feet. The distribution of land area is quite strongly bimodal, which is interesting in its own right. There is another vertical blob of enhanced density at or just above15,000 sq. feet. Similar but weaker/more diffuse pattern is found slightly below 40,000 sq. feet. A natural suspicion arises (especially for the second group) that this has something to do with taxes. A deeper inquiry would be needed.
+
+### Qualitative comparisons with age
+
+Let us sea how the new property land and living areas evolved in time. We can do this by assuming that these two parameters stayed constant since the time of construction. This of course does not apply to the property price, so we leave it out of analysis.
+
+```{r 20}
+data <- data %>%
+  mutate(age_group = cut(age, 3, labels = c("new (<32)", "intermediate (<64)", "old (>64)")))
+head(data, 20)
+```
+
+```{r 21}
+table(data$age_group)
+```
+
+```{r 22}
+data %>% 
+  ggplot(aes(x = TOT_LVG_AREA, fill = age_group)) +
+  geom_density(alpha = 0.3) +
+  scale_fill_discrete(name = "age group [years]", 
+                      labels = c("new (<32): n = 8434", "intermediate (<64): n = 4410", "old (>64): n = 1088")) +
+  labs(title = "Do older properties have smaller living area?",
+    x = "living area [sq. feet]",
+    y = "density (rel. to each group)") +
+  theme_minimal()
+
+```
+
+There is a clear trend that older properties tend to have smaller living area than newer ones. This likely reflects shifts in consumer preferences and demand throughout 20th century.
+
+```{r 23}
+data %>% 
+  ggplot(aes(x = LND_SQFOOT, fill = age_group)) +
+  geom_density(alpha = 0.3) +
+  scale_fill_discrete(name = "age group [years]", 
+                      labels = c("new (<32): n = 8434", "intermediate (<64): n = 4410", "old (>64): n = 1088")) +
+  labs(title = "Do older properties have smaller land area?",
+    x = "land area [sq. feet]",
+    y = "density (rel. to each group)") +
+  xlim(0, 20000) +
+  theme_minimal()
+```
+
+Old properties have a rather simpler distribution of land area in between the peaks of the newest and intermediate ones. Newest developments tend to have the smallest land area, but their secondary peak corresponds with the intermediate ones, and partially the old ones. There is a distinctive secondary peak for newer and intermediate properties at 15,000. All these patterns are likely imprints of changes in saturation of the usage of suitable land around Miami, and the shifts in zoning regulations. Added together, these three
+
+# Emplacement of Miami houses
+
+We create a classification of houses based on their distance from key places, such as Miami CBD, the Ocean, highways and railways.
+
+```{r 24}
+data$highway_range = cut(data$HWY_DIST, c(0,2998.1,10854.2,50000),
+                     labels=c("Near","Mid","Far"))
+data$ocean_range = cut(data$OCEAN_DIST, c(0,18079.3,19200,100400),
+                     labels=c("Near","Mid","Far"))
+data$rail_range = cut(data$RAIL_DIST, c(0,3299.4,12102.6,76000),
+                     labels=c("Near","Mid","Far"))
+data$center_range = cut(data$CNTR_DIST, c(0,42823,89358,160000),
+                     labels=c("Near","Mid","Far"))
+head(data)
+```
+```{r 25}
+A <- data %>% 
+  ggplot(aes(x=highway_range, y=SALE_PRC)) + 
+  geom_boxplot(outlier.alpha = 0.05) + labs(x = "highway range", y = "price[US$]") + theme_classic()
+B <- data %>% 
+  ggplot( aes(x=ocean_range, y=SALE_PRC)) + 
+  geom_boxplot(outlier.alpha = 0.05)+ labs(x = "ocean range", y = "price[US$]") + theme_classic()
+C <- data %>% 
+   ggplot(aes(x=rail_range, y=SALE_PRC)) + 
+  geom_boxplot(outlier.alpha = 0.05)+ labs(x = "rail range", y = "price[US$]") + theme_classic()
+D <-data %>% 
+  ggplot(aes(x=center_range, y=SALE_PRC)) + 
+  geom_boxplot(outlier.alpha = 0.05)+ labs(x = "center range", y = "price[US$]") + theme_classic()
+cowplot::plot_grid(A, B,C,D,hjust = -0.15,label_size = 10,labels = c("Highway", "Ocean", "Rail", "Center"))
+
+```
+
+The distances to the highway, ocean, rail and center have been classified in "near", "mid" and "far". In every case, the threshold between near and mid are the values of the 1st quartile; the one between mid and far is the value in which the 3rd quartile interval starts.This makes the amount of houses classified as mid, double as the ones classified as near or far. Once all the distances have been grouped, multiple plots have been generated:
+
+The box and whiskers plots of the sale price against the different distances that we have information about, show us some interesting properties of the houses in MIAMI:
+
+- Taking a look to the medians, it is quite clear that the more expensive a house is, the further it is from a highway and the opposite happens for the distance to the ocean, rail and center. 
+- This graphs show us the interquartile range which is a good way to see how localized or spread the data is. For the houses located near the ocean and near the center, the price is quite more spread than for the rest of variables as we can see in the boxes that represent those houses.
+- The dots represented are the outliers, in this case, every value that is out of ±1.5 times the interquartile range is considered outlier. 
+
+One of the variables that look more correlated between them are the distances to ocean and center, thus, a scatter plot of those variables with the sale price has been created:
+
+```{r 26}
+b<-data %>% 
+  ggplot(aes(x = OCEAN_DIST, y = CNTR_DIST ,color = SALE_PRC)) +
+  geom_point(alpha = 0.8) + 
+  scale_color_gradient(low = "dark green", high = "red") +
+  labs(x = "Distance to ocean [feet]", y = "Distance to center [feet]", color = "price [US$]") +    ggtitle("Price[US$] over distance to ocean and distance to center") + 
+  geom_density2d() +
+  theme_minimal()
+b
+```
+
+As we can see in this figure, it is clearly visible through the color that houses located closer to the center and to the ocean are more valuable. However, most of the houses are located around 20000 feet far from the ocean and 30000 feet from the city center.
+
+# Geographical location of the houses
+
+To conclude, we make use of the precise coordinates of the houses to have an idea of their geographical distribution.
+
+```{r 27}
+world_map <- map_data("worldHires")
+miamiBeach <- data.frame(x=-80.13, y=25.83)
+miamiCenter <- data.frame(x=-80.2, y=25.8)
+miamiCenter2 <- data.frame(x=-80.27, y=25.7)
+
+age_map <- ggplot(world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill="lightgray", colour = "white") +
+  coord_cartesian(xlim=c(-80.6, -80.1), ylim = c(25.4, 26)) +
+  geom_point(data = miamiCenter, aes(x = x, y = y, group = NULL), size = 15, alpha = .5, color =
+               "blue") +
+  geom_point(data = data, aes(x = LONGITUDE, y = LATITUDE, group = NULL, color = age),
+             size   = 1, alpha = 0.5) +
+  scale_color_gradient(low = "dark green", high = "orange", limits = c(0 ,100)) +
+  labs(x = "Longitude [°E]", y = "Latitude [°N]", color = "Unit's age [years]", title = "House's locations and age") +
+  annotate("text", x=-80.28, y=25.795, label= "Miami Int.", color="dark red", size=2.5) +
+  annotate("text", x=-80.28, y=25.9, label= "Miami\n Opa-Locka", color="dark red", size=2.5) +
+  annotate("text", x=-80.38, y=25.45, label= "Southern\n Glades", color="dark red", size=3) 
+
+age_map
+```
+
+
+```{r 28}
+price_map <- ggplot(world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill="lightgray", colour = "white") +
+  coord_cartesian(xlim=c(-80.6, -80.1), ylim = c(25.4, 26)) +
+  geom_point(data = miamiBeach, aes(x = x, y = y, group = NULL), size = 15, alpha = .5, color =
+               "red") +
+  geom_point(data = miamiCenter, aes(x = x, y = y, group = NULL), size = 15, alpha = .5, color =
+               "green") +
+  geom_point(data = miamiCenter2, aes(x = x, y = y, group = NULL), size = 15, alpha = .5, color
+             ="green") +
+  geom_point(data = data, aes(x = LONGITUDE, y = LATITUDE, group = NULL, color = SALE_PRC), 
+             size   = 1, alpha = 0.5) +
+  scale_color_gradient(low = "dark green", high = "red") +
+  labs(x = "Longitude [°E]", y = "Latitude [°N]", color = "Sale's price [US$]", title = "House's locations and prices") +
+  annotate("text", x=-80.28, y=25.795, label= "Miami Int.", color="black", size=2.5) +
+  annotate("text", x=-80.28, y=25.9, label= "Miami\n Opa-Locka", color="black", size=2.5) +
+  annotate("text", x=-80.38, y=25.45, label= "Southern\n Glades", color="black", size=3)
+
+price_map
+```
+
+The first map "age_map" is useful to deduce the expansion of the city through the last century: the oldest units, around 100  years old, are located in the city center, close to (80.2W, 25.8N , blue-shaded circle), while going forward in time we see that new buildings expanded the urban area first along the cost, then in westward and southward directions. \
+In the second map "price_map" we observe the geographical distributions of the sold houses, sorted by price. As we could expect the most expensive units are located close to the Ocean and the Miami business district (green-shaded circle at 80.3W, 25.7N), with some extremely wealthy neighborhood located on Miami Beach's peninsula (red-shaded circle at 80.13W, 25.8N). \
+
+In both map some features of Miami are easily recognizable, such as Miami Int. airport (empty rectangle at 80.28W, 25.8N) and Miami Opa-Locka executive airport (empty area at 80.28W, 25.9N). It's also visible the natural barrier to the expantion of the urban area represented by the Souther Glades' protected area.
+
+
+
+
+
+
+
+
+
+
+

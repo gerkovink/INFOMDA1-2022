@@ -1,0 +1,233 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "19-9-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 2
+---
+For this practical we first load the necessary packages.
+```{r, warning = FALSE, message = FALSE}
+library(ISLR)
+library(tidyverse)
+```
+
+### Exercise 1
+In the visualisation we see the following.
+
+**Aesthetics:**  
+    &nbsp;&nbsp; The x-axis shows the number of hits;  
+    &nbsp;&nbsp; The y-axis shows the number of home runs;  
+**Geoms:** the visualisation uses points and contour lines;  
+**Scales:** both axes are a continuous scale;  
+**Facets** no facets are used;  
+**Statistical transformations:** no statistical transformation is applied;   
+**Coordinate system:** standard (Cartesian) coordinate system.  
+
+### Exercise 2
+In this exercise we generate the data frame that will be used for exploring the *ggplot* function. The generation process is shown below.
+```{r}
+set.seed(1234)
+student_grade <- rnorm(32,7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+gg_students <- data.frame(StudentNr = as.character(student_number), 
+                       Grade = student_grade, 
+                       Prog = as.factor(programme))
+```
+
+### Exercise 3
+The code to generate the plot is shown below.
+```{r}
+homeruns_plot <-
+  ggplot(Hitters, aes(x = HmRun, y = Hits)) +
+  geom_point() +
+  labs(x = "Home runs", y = "Hits")
+
+homeruns_plot
+
+```
+
+### Exercise 4
+
+```{r}
+homeruns_ext <-
+  Hitters %>% ggplot(aes(x = Hits, y = HmRun, colour = League, size = Salary)) +
+  geom_point() +
+  labs(x = "Hits", y = "Home runs")
+
+homeruns_ext
+```
+
+### Exercise 6
+```{r}
+students_hist <-
+  gg_students %>% ggplot(aes(x = Grade, fill = Prog)) +
+  geom_histogram(binwidth = 0.2)
+
+students_hist
+```
+
+### Exercise 7
+```{r}
+students_dens <-
+  gg_students %>% ggplot(aes(x = Grade)) +
+  geom_density(fill = "light seagreen") +
+  labs(title = "Density of the grades")
+
+students_dens
+```
+
+### Exercise 8
+```{r}
+students_dens <-
+  students_dens +
+  geom_rug(colour = "red", size = 2)
+
+students_dens
+```
+
+### Exercise 9
+```{r}
+students_dens <-
+  gg_students %>% ggplot(aes(x = Grade)) +
+  geom_density(fill = "light seagreen", colour = NA) +
+  labs(title = "Density of the grades", y = "") +
+  xlim(0,10) +
+  theme_minimal()
+  
+
+students_dens
+```
+
+### Exercise 10
+```{r}
+students_box <-
+  gg_students %>% ggplot(aes(x = Prog, y = Grade, fill = Prog)) +
+  geom_boxplot() +
+  labs(x = "", fill = "Programme") +
+  theme(axis.text.x = element_blank())
+
+students_box
+```
+
+### Exercise 11
+The horizontal lines indicate the first quartile, median and third quartile.  
+The vertical line on top of the box indicates the largest datapoint in the set that is not more than 1.5$\asterix$IQR away from the third quartile. IQR stands for inter-quartile range.
+The vertical line on the bottom of the box indicates the largest datapoint in the set that is not less than 1.5$\asterix$IQR away from the first quartile.
+
+### Exercise 12
+```{r}
+students_dens <-
+  gg_students %>% ggplot(aes(x = Grade, fill = Prog)) +
+  geom_density(alpha=0.7) + 
+  xlim(0,10) +
+  labs(y = "", fill = "Programme")
+
+students_dens
+```
+
+### Exercise 13
+```{r}
+hitters_bar <-
+  Hitters %>% ggplot(aes(x = Years)) +
+  geom_bar()
+
+hitters_bar
+```
+
+### Exercise 14
+```{r}
+Smarket_data <- Smarket[1:200,] %>% mutate(Day = c(1:200))
+Smarket_line <-
+  Smarket_data %>% ggplot(aes(x = Day, y = Volume)) +
+  geom_line()
+
+Smarket_line
+```
+
+### Exercise 15
+```{r}
+Smarket_data <- Smarket[1:200,] %>% mutate(Day = c(1:200))
+Smarket_line <-
+  Smarket_data %>% ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "blue", size = 1.5) +
+  geom_point(colour = "blue", size = 2)
+
+Smarket_line
+```
+
+### Exercise 16
+The day with the maximal volume is day
+```{r}
+which.max(Smarket_data$Volume)
+```
+The volume on that day equaled
+```{r}
+max(Smarket_data$Volume)
+```
+
+### Exercise 17
+```{r}
+Smarket_line <-
+  Smarket_data %>% ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "blue", size = 1.5) +
+  geom_point(colour = "blue", size = 2) +
+  geom_label(aes(x = 170, y = max(Smarket_data$Volume), label = "Peak volume"), nudge_x = -19, nudge_y = 0.02)
+
+Smarket_line
+```
+
+### Exercise 18
+The three categories that I have created to distribute a player's Salary are the following:
+
+**Low income** if salary $\leq 500$;  
+**Middle income** if $500 <$ salary $\leq 1500$;  
+**High income** if salary $\geq 1500$.
+```{r}
+baseball <-
+  Hitters %>% 
+  filter(!is.na(Salary)) %>% 
+  mutate(Income = as.factor(cut(Salary, breaks = c(0,500, 1500,2500), labels = c("Low", "Middle", "High")))) %>% 
+  mutate(HmRunRate = CHmRun/CHits)
+```
+
+### Exercise 19
+```{r}
+baseball_plot <-
+  baseball %>% ggplot(aes(x = CWalks, y = HmRunRate)) +
+  geom_point() +
+  ylim(0,0.4) +
+  xlim(0,1600) +
+  labs(x = "Career Walks", y = "Proportion Homeruns")
+
+baseball_plot
+```
+
+### Exercise 20
+```{r}
+baseball_plot <-
+  baseball_plot + facet_wrap(vars(Income))
+
+baseball_plot
+```
+
+### Exercise 21
+In the following plot we can see the density of the price of a carseat. We have splitted on whether or not a seller is in an urban or rural region. We also distinguished between the quality of the shelving location.  
+```{r}
+Carseats$ShelveLoc <- fct_relevel(Carseats$ShelveLoc, "Bad", "Medium", "Good")
+carseats_plot <-
+  Carseats %>% ggplot(aes(x = Price, fill = Urban)) + 
+  geom_density(alpha = 0.5) +
+  facet_wrap(vars(ShelveLoc)) +
+  labs(x = "Carseat price (in USD)",
+       title = "Density of the price of carseats, faceted on shelving location.")
+
+carseats_plot
+```

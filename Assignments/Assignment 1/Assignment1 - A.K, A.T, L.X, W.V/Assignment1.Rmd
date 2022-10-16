@@ -1,0 +1,194 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Abdool Al-Khaledi, Amalia Tsakali, Li-Yeun Xu, Willem van Veluw"
+date: "2022-09-19"
+output:
+  html_document: default
+  pdf_document: default
+subtitle: Assignment 1
+---
+
+## Introduction
+For the purpose of this assignment, exploratory data analysis will be performed on the data set “Spotify top chart songs 2022”, which was obtained from Kaggle and uploaded by user “SVETA151”. The dataset is a collection of top charting songs in 2022 according to the weekly Spotify Top 200 Global chart. Each of the songs listed in the dataset has charted in the top 200 according to Spotify for a minimum of one week. That being said, the dataset contains 646 rows along with 17 columns. Each row lists a unique song while each column outlines a different feature of the song. These features include necessary identifying information such as artist(s) and song name. Moreover, these features include numerical measures such as weeks on chart, loudness, tempo and duration. Along with categorical measures such as the key of the song, the time signature and modality (major/minor). For this assignment, various factettes of the dataset will be analyzed. Focus will be placed on comparing features to determine if any correlate with each other. Furthermore, we will also investigate whether any feature correlates with the number of weeks charted, or the peak rank.
+
+## Libraries & Packages
+
+```{r, message = FALSE, warning = FALSE}
+list.of.packages <- c("ggpubr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) 
+  install.packages(new.packages)
+
+library(ggpubr)
+library(tidyverse)
+```
+
+## Load the data
+In this section we load and pre-process the data. This means that we define which variables are factors and change their labels. We will also add some variables in order to make pretty plots.
+
+```{r, message = FALSE}
+data <- 
+  read_csv("data/spotify_top_charts_22.csv") %>% 
+  select(-uri) %>% 
+  mutate(key = recode(key, 
+                      "0"="C","1"="C#","2"="D","3"="D#","4"="E","5"="F","6"="F#","7"="G","8"="G#","9"="A",
+                      "10"="A#","11"="B") 
+                      %>% as.factor()) %>% 
+  mutate(mode = recode(mode, 
+                      "0" = "minor", "1" = "major") 
+                      %>% as.factor()) %>% 
+  mutate(time_signature = recode(time_signature, 
+                      "1" = "1/4", "3" = "3/4", "4" = "4/4", "5" = "5/4") 
+                      %>% as.factor()) %>% 
+  mutate(colab = case_when(grepl(",", artist_names) ~ "YES", !grepl(",", artist_names) ~ "NO") %>% as.factor())
+
+```
+
+
+## Inspect the data
+```{r}
+View(data)
+```
+
+## Create Table
+Summary statistics for measures such as mean, median, min/max, along with the first and 3rd interquartile ranges have been tabulated for the 11 numerical features. These measures demonstrate interesting properties of the top charting songs in 2022. For example, a charting song peaked at rank 65 ± 57 on average and lasted 19 ± 37 weeks in the chart. Although it is worth mentioning that the standard deviation of both of these measures is very high, demonstrating a high degree of variance in the highest rank achieved by a song and the number of weeks it charts.   Furthermore, songs were more likely to score higher on measures of energy and danceability (0.6408 ± 0.1655 and 0.6744 ± 0.1515) than on speechiness, acousticness, liveness and instrumentalness, with these values ranging from (0.1037 – 0.2557). This demonstrates that a top charting song tends to be energetic as opposed to calm and acoustic. This conclusion is further supported by the fact that 48.3% of songs reported 0 instrumentalness. Where instrumentalness here refers to musicality achieved through stretches of instrumentation as opposed to vocal performances.
+
+
+| Variable         | Mean     | Std      | Min      | Q1      | Median   | Q3       | Max      |
+| ---------------- | -------: | -------: | -------: | ------: | -------: | -------: | ------:  |
+| Peak rank        | 65.92    | 57.0045  | 1.0000   | 15.0000 | 51.5000  | 108.7500 | 200.0000 |
+| Weeks on chart   | 19.50    | 37.8139  | 1.0000   | 1.0000  | 5.0000   | 19.7500  | 269.0000 |
+| Danceability     | 0.6744   | 0.1515   | 0.1930   | 0.5690  | 0.6744   | 0.7907   | 0.9850   |
+| Energy           | 0.6408   | 0.1655   | 0.0218   | 0.5325  | 0.6520   | 0.7690   | 0.9720   |
+| Loudness         | -6.3560  | 2.6275   | -31.1600 | -7.7160 | -6.3560  | -4.5960  | -0.5140  |
+| Speechiness      | 0.1098   | 0.1022   | 0.0232   | 0.0413  | 0.0635   | 0.1358   | 0.6110   |
+| Acousticness     | 0.2557   | 0.2626   | 1.68e-05 | 0.0404  | 0.1555   | 0.4245   | 0.9690   |
+| Instrumentalness | 0.0137   | 0.0778   | 0.0000   | 0.0000  | 1.5e-06  | 1.e-4    | 0.9080   |
+| Liveness         | 0.1765   | 0.1338   | 0.0264   | 0.0931  | 0.1200   | 0.2318   | 0.9680   |
+| Tempo            | 121.0916 | 28.2680  | 66.1650  | 98.4300 | 119.9700 | 139.9700 | 205.8600 |
+| Duration (ms)    | 203630   | 54967    | 36935    | 169902  | 196389   | 229214   | 613027   |
+
+
+```{r, echo = FALSE}
+key_bar <- 
+  data %>% ggplot(aes(x = key)) +
+  geom_bar() +
+  ylim(0,120) +
+  geom_text(aes(label = ..count..), stat = "count", vjust = -1) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+  labs(title = "Figure 1", subtitle = "Barplot showing the frequencies of the key-signature feature.")
+
+
+key_bar
+```
+  
+The variable *mode* only has two possible values: either *minor* or *major*. We have 373 songs written in major and 273 songs in minor.  
+In the barplot below we see the frequencies of the variable *time signature*. The majority of the songs are written in a time signature of 4/4.
+
+
+
+```{r, echo = FALSE}
+time_signature_bar <-
+  data %>% ggplot(aes(x = time_signature)) +
+  geom_bar() +
+  labs(x = "time signature") +
+  ylim(0, 625) +
+  geom_text(aes(label = ..count..), stat = "count", vjust = -1) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+  labs(title  = "Figure 2", subtitle = "Barplot showing the frequencies of the time signatures.")
+
+time_signature_bar
+```
+  
+During the exploration of the dataset, we noticed that many of the top songs are colaborations of artists. However, the majority of songs are written by one artist compared to colaborations of artists: 417 and 229 respectively.
+
+
+## Descriptive and Exploratory Plots
+When considering the first two variables of the dataset, peak rank and weeks on chart, one might expect that songs with a high peak rank will last more weeks on chart.
+For a song at rank 1, it may take more weeks to drop out the top 200 due to the high popularity of the song. To explore this thought, we made the plot investigating weeks on chart vs peak rank (Figure 3).  From the plot we see our thought confirmed, or at least up to some peak rank. For the really popular songs, songs with a rank between 1 and 50, it is clear that they stay on the chart for weeks than less popular songs do. We test this by performing a Pearsons correlation test. The test returned a correlation estimate of -0.3525126. This demonstrates a negative correlation since a higher peak rank is represented by a low numerical estimate. Furthermore, a “For loop” was written to test every numerical feature against another. This returned energy/loudness correlation of 0.69 p<2.2e-16 (Figure 4).
+
+```{r, echo = FALSE}
+cor.test(data$peak_rank, data$weeks_on_chart)
+```
+
+
+```{r, echo = FALSE}
+rank_weeks <-
+  data %>% ggplot(aes(x = peak_rank, y = weeks_on_chart)) +
+  geom_point() +
+  geom_smooth(colour = "red", se=FALSE) +
+  theme_minimal() +
+  labs(title  = "Figure 3", subtitle = "Scatterplot showing the relationship between peak rank and weeks on chart feature.")
+  
+
+rank_weeks
+```
+
+```{r, echo=FALSE, warning=FALSE}
+data %>% 
+  ggplot(aes(x = loudness, y = energy)) +
+  geom_point() +
+  geom_smooth(method='lm', colour = "#FF0000", se=FALSE) +
+  xlim(-15, 0) +
+  stat_cor(colour = "#0000FF") +
+  theme_minimal() +
+  labs(title  = "Figure 4", subtitle = "Scatterplot showing the relationship between the energy and loudness feature.")
+```
+
+Energy was also measured against weeks charted in the context of the key of the song (Figure 5). Interestingly, in the context of most keys, how energetic a song was had a negative correlation with the number of weeks charted. Exceptions were found in keys A, C#, D and G. This negative correlation might stem from the key used, since keys which are unconventional to the top 200 might have a strong initial presence due to the unorthodox nature of the song, but then that song might quickly fall out of favor once the gimmick of an unorthodox key has exhausted itself. 
+
+```{r, echo=FALSE}
+ggplot(data,aes(y=energy,x=weeks_on_chart))+
+  geom_point() +
+  stat_cor(label.x = 0.4, label.y = 0.1)+
+  facet_wrap(~key) +
+  labs(title  = "Figure 5", subtitle = "Scatterplots showing the relationship between the energy and weeks on chart feature.\nThe facet_wrap() function is used on the key-signature feature.") +
+  theme_minimal()
+```
+
+```{r, echo = FALSE}
+data%>%
+  filter(peak_rank<=10) %>% 
+  ggplot(aes(x=weeks_on_chart, fill=mode))+
+  geom_density(alpha=0.3)+
+  labs(title  = "Figure 6", subtitle = "Density plot showing the distribution of the weeks on chart feature of songs that has reached\ntop 10, categorized by the mode feature.") +
+  theme_minimal()
+```
+
+A density plot was also prepared to compare the modality of a song (major/minor) to the weeks charted (Figure 6). Going off the idea that a majority of the songs are in the major scale, this plot demonstrates that the highest charting songs predominantly belong to the major scale. Furthermore, the major scale produces multiple density peaks whereas the minor scale seems to taper much more rapidly after the highest peak, indicating that a song in the major scale is more likely to chart for a longer period of time. Not only that, but the measures on the lower end are also mainly occupied by songs in the major scale. Another density plot was also produced, this time relating the key used to the weeks charted (Figure 7). This was done to delineate whether a specific key was more likely to chart more frequently. The two most interesting results from this plot are that songs in G# do not seem to chart for more than 100 weeks while songs in G have a much tighter distribution around 100 weeks and constitute most of the songs present in that range of weeks.
+
+```{r, echo = FALSE}
+pop_keys <- c("C#","C","D","G#","F","G")
+
+data%>% 
+  filter(peak_rank==1)%>% 
+  filter(key %in%pop_keys)%>%
+  ggplot(aes(x=weeks_on_chart))+
+  geom_density(aes(fill=key) ,alpha=0.5)+
+  theme_minimal() +
+  labs(title  = "Figure 7", subtitle = "Density plot showing the distribution of the weeks on chart feature,\ncategorized by the key-signature feature.\nOnly songs that reached peak rank 1 are used in this analysis.")
+```
+
+```{r, echo = FALSE }
+#time signature
+data%>%
+  ggplot(aes(x=time_signature,y=weeks_on_chart))+
+  geom_boxplot()+
+  theme_minimal() +
+  coord_cartesian(ylim=c(0,50)) +
+  labs(title  = "Figure 8", subtitle = "Boxplot showing the distribution of the weeks on chart feature, categorized by the time signature\nfeature. To make the boxes more interpretable we put a limit on y-axis so that 63 data-points are\nremoved from the plot.")
+```
+
+Lastly, 2 box plots comparing the time signature to the weeks on chart (Figure 8) and peak rank (Figure 9) were produced to determine if “busier” songs or songs with higher number of beats/measure were more successful. In terms of weeks on chart against the time signature, songs that produced 4 beats per measure (4/4) were more likely to chart for a longer number of weeks. These songs also having the best peak rank. This might be due to the fact that songs with a 4/4 time signature more easily appeal to the pattern finding nature of humans resulting in predictable compositions which are more easily enjoyable by the general public. Songs which are 5/4 might be too “busy” and songs that are 3/4 might be considered too “sparse” .
+
+```{r, echo = FALSE}
+data%>%
+  ggplot(aes(x=time_signature,y=peak_rank))+
+  geom_boxplot()+
+  theme_minimal() +
+  labs(title  = "Figure 9", subtitle = "Boxplot showing the distribution of the peak rank feature, categorized by\nthe time signature feature.")
+```
+
+
+
+
