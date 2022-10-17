@@ -1,0 +1,232 @@
+---
+title: "Practical 5"
+author: "Hsuan Lee"
+output: html_document
+---
+```{r}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+```
+
+```{r}
+set.seed(45)
+```
+
+## Default dataset
+
+**1. Create a scatterplot of the Default dataset, where balance is mapped to the x position, income is mapped to the y position, and default is mapped to the colour. Can you see any interesting patterns already?**
+```{r}
+Default %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = default))
+```
+
+The participants cannot pay the loans happening more in higher balance, less in lower balance, but the distribution of income between them looks the same.
+
+**2. Add facet_grid(cols = vars(student)) to the plot. What do you see?**
+```{r}
+Default %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = default)) +
+  facet_grid(cols = vars(student))
+```
+
+The graph shows that the students have lower income.
+
+**3. Transform “student” into a dummy variable using ifelse() (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set default_train (80%) and a test set default_test (20%)**
+```{r}
+# create dummy
+Default_dum <- Default %>%
+  mutate(student = ifelse(student == "Yes", 1, 0))
+Default_dum$student <- as.factor(Default_dum$student)
+
+# split data
+Default_dum <- Default_dum[sample(nrow(Default_dum)), ]
+train <- seq(1, nrow(Default)*0.8)
+test <- seq(max(train) + 1, nrow(Default))
+
+default_train <- Default_dum[train, ]
+default_test <- Default_dum[test, ]
+```
+
+## K-Nearest Neighbours
+
+**4. Create class predictions for the test set using the knn() function. Use student, balance, and income (but no basis functions of those variables) in the default_train dataset. Set k to 5. Store the predictions in a variable called knn_5_pred.**
+```{r}
+knn_5_pred <- class::knn(train = default_train[, -c(1)],
+    test = default_test[, -c(1)], 
+    cl = as.factor(default_train[,1]), 
+    k = 5)
+```
+
+**5. Create two scatter plots with income and balance as in the first plot you made. One with the true class (default) mapped to the colour aesthetic, and one with the predicted class (knn_5_pred) mapped to the colour aesthetic.**
+
+Hint: Add the predicted class knn_5_pred to the default_test dataset before starting your ggplot() call of the second plot. What do you see?
+```{r}
+# mere the data
+default_test <- data.frame(cbind(default_test, knn_5_pred = knn_5_pred))
+
+# plot with true value
+default_test %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = default))
+
+# plot with predicted value
+default_test %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = knn_5_pred))
+```
+
+**6. Repeat the same steps, but now with a knn_2_pred vector generated from a 2-nearest neighbours algorithm. Are there any differences?**
+```{r}
+knn_2_pred <- knn(train = default_train[, -c(1)],
+                  test = default_test[, -c(1,5)],
+                  cl = default_train[,1],
+                  k = 2)
+```
+
+```{r}
+# mere the data
+default_test <- data.frame(cbind(default_test, knn_2_pred = knn_2_pred))
+
+# plot with true value
+default_test %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = default))
+
+# plot with predicted value
+default_test %>%
+  ggplot(aes(x = balance, y = income)) +
+  geom_point(aes(color = knn_2_pred))
+```
+
+Overall, the k equal to 2 seems works better than k equal to 5, as more people got yes but it does not make sense?
+
+## Confusion matrix
+
+**7. What would this confusion matrix look like if the classification were perfect?**
+```{r}
+table(true = default_test$default, predicted = default_test$default)
+```
+
+**8. Make a confusion matrix for the 5-nn model and compare it to that of the 2-nn model. What do you conclude?**
+```{r}
+table(true = default_test$default, predicted = default_test$knn_5_pred)
+```
+
+the 5-nn model looks more precise than the 2-nn model, as there are much more less FP, and almost the same of FN.
+
+## Logistic regression
+
+**9. Use glm() with argument family = binomial to fit a logistic regression model lr_mod to the default_train data.**
+```{r}
+options(scipen = 999)
+default_train <- default_train[,-5]
+lr_mod <- glm(default~ ., family = binomial, data = default_train)
+summary(lr_mod)
+```
+
+**10. Visualise the predicted probabilities versus observed class for the training dataset in lr_mod. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot.**
+```{r}
+tibble(observed  = default_train$default, 
+       predicted = predict(lr_mod, type = "response")) %>% 
+  ggplot(aes(y = predicted, x = observed, colour = observed)) +
+  geom_point(position = position_jitter(width = 0.2), alpha = .3) +
+  scale_colour_manual(values = c("dark blue", "orange"), guide = "none") +
+  theme_minimal() +
+  labs(y = "Predicted probability to default")
+```
+
+The participants whose default is yes got higher prediction tp default. In contrast, the participants who are not tend to default obtained lower predicted probability to default.
+
+**11. Look at the coefficients of the lr_mod model and interpret the coefficient for balance. What would the probability of default be for a person who is not a student, has an income of 40000, and a balance of 3000 dollars at the end of each month? Is this what you expect based on the plots we’ve made before?**
+```{r}
+summary(lr_mod)
+```
+
+With one unit increase of balance, the log odds of default increase by .006.
+
+```{r}
+# log-odds for that person
+logodds <- -11.019345854 + 3000*0.005743252 + 0.000005985*40000
+
+# probability
+exp(logodds) / (1 + exp(logodds))
+```
+
+Probability of .998 of defaulting.
+
+## Visualising the effect of the balance variable
+
+**12. Create a data frame called balance_df with 3 columns and 500 rows: student always 0, balance ranging from 0 to 3000, and income always the mean income in the default_train dataset.**
+```{r}
+balance_df <- data_frame(student = rep(0, 500), 
+                         balance = seq(0, 3000, length.out = 500),
+                         income = rep(mean(default_train$income), 500))
+balance_df$student <- as.factor(balance_df$student)
+```
+
+**13. Use this dataset as the newdata in a predict() call using lr_mod to output the predicted probabilities for different values of balance. Then create a plot with the balance_df$balance variable mapped to x and the predicted probabilities mapped to y. Is this in line with what you expect?**
+```{r}
+balance_df$pred <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df %>%
+  ggplot(aes(x = balance, y = pred)) +
+  geom_line()
+```
+
+**14. Create a confusion matrix just as the one for the KNN models by using a cutoff predicted probability of 0.5. Does logistic regression perform better?**
+```{r}
+pred_test <- predict(lr_mod, newdata = default_test, type = "response")
+pred_test <- ifelse(pred_test >= .5, "yes", "no")
+
+table(true = default_test$default, predicted = pred_test)
+```
+
+Logistic regression performs better than knn.
+
+## Linear discriminant analysis
+
+**15. Train an LDA classifier lda_mod on the training set.**
+```{r}
+lda_mod <- lda(default~., data = default_train)
+```
+
+**16. Look at the lda_mod object. What can you conclude about the characteristics of the people who default on their loans?**
+```{r}
+lda_mod
+```
+
+In the defaulted people, students occupied around 40%; and has higher balance; and lower income.
+
+**17. Create a confusion matrix and compare it to the previous methods.**
+```{r}
+pred_lda <- predict(lda_mod, newdata = default_test, type = "response")
+
+table(true = default_test$default, predicted = pred_lda$class)
+```
+
+LDA has more FN, and lower FP, but less TP than logistic regression.
+
+## Final assignment
+
+**18. Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?**
+```{r}
+titanic <- read_csv("Titanic.csv")
+```
+
+```{r}
+# fit the model
+model <- glm(Survived~ PClass + Age + Sex, family = binomial, data = titanic)
+summary(model)
+```
+
+```{r}
+targets <- data.frame(PClass = c("2nd","3rd"), Age = c(14, 14), Sex = c("female", "male"))
+
+predict(model, newdata = targets, type = "response")
+```
+
+The survival probability of the girls are 87%, the boy is 12.5%.
