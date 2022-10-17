@@ -1,0 +1,268 @@
+---
+title: "06_ADacko"
+author: "Aleksandra Dacko"
+date: "10/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(ISLR)
+library(tidyverse)
+library(pROC)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(here)
+library(magrittr)# used for %$%
+```
+
+```{r}
+#set seed first 
+set.seed(45)
+```
+
+# Confusion matrix, continued
+```{r}
+#load the data first
+data_cardio<-read.csv(file="data/cardiovascular_treatment.csv")
+validataion<-read.csv(file="data/new_patients.csv")
+
+```
+
+```{r}
+#clean the data
+str(data_cardio)
+#we need to set the variables to factors
+data_cardio%<>% mutate_if(is.character, as.factor) %>% mutate(dose=as.factor(dose),response=as.factor(response) )
+validataion%<>% mutate_if(is.character, as.factor) %>% mutate(dose=as.factor(dose),response=as.factor(response) )
+```
+```{r}
+str(data_cardio)
+str(validataion)
+```
+
+
+### 1. Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability.
+
+```{r}
+model1<-glm(data=data_cardio, formula=response ~ .,"binomial")
+summary(model1)
+```
+```{r}
+pred1<-data.frame(predicted=predict(model1,type = "response"), survived=data_cardio$response)
+con_table1<-pred1 %>% mutate(pred=case_when(predicted>0.5~1,predicted<=0.5~0)) %$% table(pred,survived)
+#The first confusion matrix
+con_table1
+```
+
+### 2. Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the confusion matrix table on wikipedia. What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?
+
+```{r}
+TP<-con_table1[2,2]
+TN<-con_table1[1,1]
+FP<-con_table1[2,1]
+FN<-con_table1[1,2]
+#accuracy
+#Assuming that we present the true on top
+measures<-function(table){
+  TP<-table["1","1"]
+  TN<-table["0","0"]
+  FP<-table["1","0"]
+  FN<-table["0","1"]
+  new<-tibble(
+    ACC=(TP+TN)/(TP+TN+FP+FN),
+    sensitivity=TP/(TP+FN),
+    specificity=TN/(TN+FP),
+    FPR=FP/(FP+TN),
+    PPV=TP/(TP+FP),
+    NPV=TN/(TN+FN))
+  return(new)
+  
+}
+
+#Accuracy is .7, meaning that 30% of the patients are misclassified
+#Sensitivity(TPR) If the patient will respond to treatment, there is an 77% probability 
+# that the model will detect this
+
+#Specificity(TNR) If the patient will not respond to treatment, there is a 63% prob that the model will detect this
+
+#The false positive rate (FPR): If the patient does not respond to treatment, there is a 37% chance
+# he or she will anyway be predicted to respond to the treatment
+
+#positive predictive value("precision"):If the patient is predicted to respond to the treatment, there is a 67% chance they will actually respond to the treatment
+
+#negative predictive value(NPV) If the patient is predicted to not respond to the treatment, there is
+# a 73% probability that they will indeed not respond to the treatment
+measures(con_table1)
+```
+### 3.Create an LDA model lda_mod for the same prediction problem. Compare its performance to the LR model.
+```{r}
+lda_mod1<-lda(data=data_cardio,response~. )
+pred2<-predict(lda_mod1)
+con_table2<-table(predicted=pred2$class,true=data_cardio$response)
+con_table2
+measures(con_table2)
+```
+I conclude that the performance is the same 
+
+### 4.Compare the classification performance of lr_mod and lda_mod for the new patients in the data/new_patients.csv
+
+```{r}
+#lr_mod
+pred1b<-data.frame(predicted=predict(model1,newdata = validataion,type = "response"), survived=validataion$response)
+con_table1b<-pred1b %>% mutate(pred=case_when(predicted>0.5~1,predicted<=0.5~0)) %$%table(pred,survived)
+#lda_mod
+pred2b<-predict(lda_mod1,newdata = validataion)
+con_table2b<-pred2b %$% table(predicted=pred2b$class,true=validataion$response)
+
+print("Logistic regresion")
+con_table1b
+print("vs the linear discriminant method")
+measures(con_table1b)
+measures(con_table2b)
+```
+We see that the models are performing again the same. 
+If we look at the PPV and NPV
+
+For the training data set the PPV was 0.673 and now it dropped to 0.56 which means that the model may predict the response 1 correctly in only 56 out of 100 occasions. 
+NPPV was 0.734 and now it dropped to 0.64. 
+
+# Brier score 
+### Calculate the out-of-sample brier score for the lr_mod and give an interpretation of this number.
+```{r}
+brier_sc<-pred1b %>% mutate(pred=case_when(predicted>0.5~1,predicted<=0.5~0))
+mean((brier_sc$predicted-(as.numeric(brier_sc$survived)-1))^2)
+```
+The mean squared difference between the probability and the true class is 0.23
+
+# ROC curve
+### 5.Create two LR models: lr1_mod with severity, age, and bb_score as predictors, and lr2_mod with the formula response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose. Save the predicted probabilities on the training data.
+```{r}
+lr1_mod<-glm(formula=response~severity+age+bb_score, data=data_cardio,family = "binomial")
+lr2_mod<-glm(formula=response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, data=data_cardio,family = "binomial")
+
+pred1_mod<-predict(lr1_mod,type="response")
+pred2_mod<-predict(lr2_mod,type="response")
+```
+
+### 6.Use the function roc() from the pROC package to create two ROC objects with the predicted probabilities: roc_lr1 and roc_lr2. Use the ggroc() method on these objects to create an ROC curve plot for each. Which model performs better? Why?
+
+```{r}
+roc_lr1<-roc(data_cardio$response ,pred1_mod)
+roc_lr2<-roc(data_cardio$response,pred2_mod)
+```
+```{r}
+ggroc(roc_lr1) + theme_minimal() + labs(title = "The ROC curve for the more simple linear regression")
+```
+
+
+```{r}
+ggroc(roc_lr2) + theme_minimal() + labs(title = "The ROC curve for the more complex linear regression")
+```
+The conclusion would be that the more complex model performs better since the area under the curve is larger than for the first graph.
+
+### 7.Print the roc_lr1 and roc_lr2 objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?
+```{r}
+roc_lr1
+```
+
+```{r}
+roc_lr2
+```
+As I mentioned before the area under the curve is larger for the second plot and we confirm that with solutions above. The minimum AUC is 0.5 with a straight line representation. The "perfect" area under the curve is 1.//
+Intuitively://
+If we pick one person who does not respond to treatment and one who does AUC is the probability that the classifier ranks the person who responds to treatment higher.
+
+# Iris dataset
+
+```{r}
+#fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+### 8.Explore the iris dataset using summaries and plots
+
+```{r}
+summary(iris)
+```
+```{r}
+ggplot(data=iris,mapping =aes(x=Sepal.Length,y=Sepal.Width,colour=Species))+geom_point()+
+scale_fill_viridis_d() +
+  theme_minimal()+ggtitle("Sepal")
+```
+
+
+```{r}
+ggplot(data=iris,mapping =aes(x=Sepal.Length,y=Petal.Length,colour=Species))+geom_point()+
+scale_fill_viridis_d() +
+  theme_minimal()+ggtitle("Lenghts")
+```
+```{r}
+ggplot(data=iris,mapping =aes(x=Sepal.Width,y=Petal.Width,colour=Species))+geom_point()+
+scale_fill_viridis_d()+theme_minimal()+ggtitle("Widths")
+```
+
+```{r}
+ggplot(data=iris,mapping =aes(x=Petal.Length,y=Petal.Width,colour=Species))+geom_point()+
+scale_fill_viridis_d() +
+  theme_minimal()+ggtitle("Petal")
+```
+
+### 9.Fit an additional LDA model, but this time with only Sepal.Length and Sepal.Width as predictors. Call this model lda_iris_sepal.
+
+```{r}
+lda_iris_sepal<-lda(Species ~ Sepal.Length*Sepal.Width, data = iris)
+```
+
+### 10.Create a confusion matrix of the lda_iris and lda_iris_sepal models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+
+```{r}
+pred_lda1<-predict(lda_iris)
+pred_lda2<-predict(lda_iris_sepal)
+table(pred_lda1$class,iris$Species)
+table(pred_lda2$class,iris$Species)
+```
+The first model is better since the diagonal entries sum to larger values than in case of the second matrix
+
+# Classification trees
+
+### 11. Use rpart() to create a classification tree for the Species of iris. Call this model iris_tree_mod. Plot this model using rpart.plot().
+```{r}
+iris_tree_mod<-rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+```
+### 12. How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?
+
+It would be classified as Versicolor. 
+### 13.Create a scatterplot where you map Petal.Length to the x position and Petal.Width to the y position. Then, manually add a vertical and a horizontal line (using geom_segment) at the locations of the splits from the classification tree. Interpret this plot.
+```{r}
+iris %>% ggplot(mapping = aes(x=Petal.Length,y=Petal.Width,color=Species)) +geom_point()+geom_segment(aes(x=2.5,xend=Inf,y=1.75,yend=1.75),color="black")+geom_segment(aes(x=2.5,xend=2.5,y=-Inf,yend=Inf),color="black")+theme_minimal()
+```
+##14.Create a classification tree model where the splits continue until all the observations have been classified. Call this model iris_tree_full_mod. Plot this model using rpart.plot(). Do you expect this model to perform better or worse on new Irises?
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 1, cp = 0))
+rpart.plot(iris_tree_full_mod)
+```
+The model probably got less bias and high variance which perfectly classify all observation. But when we would like to test it on a validation data set we could fail.
