@@ -266,3 +266,53 @@ iris_tree_full_mod <- rpart(Species ~ ., data = iris,
 rpart.plot(iris_tree_full_mod)
 ```
 The model probably got less bias and high variance which perfectly classify all observation. But when we would like to test it on a validation data set we could fail.
+
+# Final assignment: Random forest for classification
+
+### Use the function randomForest() to create a random forest model on the iris dataset. Use the function importance() on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the lda_iris model?
+```{r}
+data(iris)
+set.seed(123)
+new<-tibble(ntree=numeric(),val=numeric())
+for(i in seq(5,1000,20)){
+  iris.rf <- randomForest(Species ~ ., data=iris,ntree=i)
+  good_pred<-sum(diag(iris.rf$confusion[,1:3]))/150
+  new %<>% add_row(ntree=i, val=good_pred)
+}
+#from the graph I saw I decided to go somewhere below 100 
+ggplot(data=new,mapping = aes(x=new$ntree,y=new$val))+geom_line()
+
+set.seed(90)
+new<-tibble(ntree=numeric(),val=numeric())
+for(i in seq(5,1000,20)){
+  iris.rf <- randomForest(Species ~ ., data=iris,ntree=i)
+  good_pred<-sum(diag(iris.rf$confusion[,1:3]))/150
+  new %<>% add_row(ntree=i, val=good_pred)
+}
+#from the graph I saw I decided to go somewhere below 100 
+ggplot(data=new,mapping = aes(x=new$ntree,y=new$val))+geom_line()
+
+set.seed(03)
+new<-tibble(ntree=numeric(),val=numeric())
+for(i in seq(5,1000,20)){
+  iris.rf <- randomForest(Species ~ ., data=iris,ntree=i)
+  good_pred<-sum(diag(iris.rf$confusion[,1:3]))/150
+  new %<>% add_row(ntree=i, val=good_pred)
+}
+#from the graph I saw I decided to go somewhere below 100 
+ggplot(data=new,mapping = aes(x=new$ntree,y=new$val))+geom_line()
+
+rf_best <- randomForest(Species ~ ., data=iris,ntree=100)
+sum(diag(rf_best$confusion[,1:3]))/150
+feature_import<-round(importance(rf_best), 2)
+
+```
+
+```{r}
+plot<-barplot(feature_import[order(feature_import[, 1],decreasing = TRUE),],ylim = c(0,max(feature_import)+5), main = "The Random forest predictors",           
+        xlab = "Features",        
+        ylab = "Mean decrease (Gini)",                  
+        border = "black",                     
+        col = c("#880D1E", "#DD2D4A", "#F26A8D","#F49CBB")) 
+```
+
