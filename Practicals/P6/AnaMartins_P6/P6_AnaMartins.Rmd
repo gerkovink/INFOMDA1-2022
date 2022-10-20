@@ -1,0 +1,93 @@
+---
+title: "Classification evaluation"
+author: "Ana Martins"
+date: "October 2022"
+output: html_document
+---
+
+## Introduction
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+```{r}
+set.seed(45)
+```
+
+
+## Confusion matrix, continued
+
+1. **Create a logistic regression model `lr_mod` for this data using the formula `response ~ .` and create a confusion matrix based on a .5 cutoff probability.**
+
+```{r}
+data <- read_csv("data/cardiovascular_treatment.csv")
+```
+
+
+```{r}
+lr_mod <- glm(formula = "response ~ .", data = data)
+```
+
+```{r}
+lr_pred <- predict(lr_mod, type = "response")
+```
+
+```{r}
+lr_pred <- ifelse(lr_pred < 0.5, 0, 1)
+```
+
+```{r}
+table(true = data$response, pred = lr_pred)
+```
+
+### Confusion matrix metrics
+
+2. **Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the [confusion matrix table on wikipedia](https://en.wikipedia.org/w/index.php?title=Sensitivity_and_specificity&oldid=862159646#Confusion_matrix). What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?**
+
+```{r}
+tpr <- 91 / (35 + 91) # true positives divided by the positives
+tnr <- 78 / (78 + 49) # true negatives divided by the negatives
+fpr <- 49 / (78 + 49) # false positives divided by the negatives
+ppv <- 91 / (49 + 91) # true positives divided by the predicted positives
+npv <- 78 / (78 + 35) # true negatives divided by the predicted negatives
+```
+
+The model does not seem to be very good. Taking into account we are trying to predict a disease, the most relevant values would be the TPR and the PPV.
+
+3. **Create an LDA model `lda_mod` for the same prediction problem. Compare its performance to the LR model.**
+
+```{r}
+lda_mod <- lda(response ~ ., data)
+```
+
+```{r}
+lda_pred <- predict(lda_mod)
+```
+
+```{r}
+table(true = data$response, pred = lda_pred$class)
+```
+
+It looks the exact same?
+
+4. **Compare the classification performance of `lr_mod` and `lda_mod` for the new patients in the `data/new_patients.csv`.**
+
+```{r}
+#lr_pred_new <- predict(lr_mod, newdata = )
+```
+
+
+## Iris dataset
+
+## Classification trees
+
+## Final assignment: Random forest for classification
