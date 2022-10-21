@@ -202,10 +202,101 @@ summary(iris)
 ```{r}
 iris %>% ggplot() + geom_point(mapping = aes(x = Sepal.Length, y = Sepal.Width),
                                color = "blue") + geom_point(mapping = aes(x = Petal.Length, y = Petal.Width),
-                                                            color = "green") + facet_wrap(Species ~ .) + ylab("Width") + xlab("Length")
+                                                            color = "green") + facet_wrap(Species ~ .) + ylab("Width") + xlab("Length") + theme_minimal()
 ```
 
+9. **Fit an additional LDA model, but this time with only `Sepal.Length` and `Sepal.Width` as predictors. Call this model `lda_iris_sepal`**
+
+```{r}
+lda_iris_sepal <-
+  lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+10. Create a confusion matrix of the `lda_iris` and `lda_iris_sepal` models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+
+```{r}
+pred_iris <- predict(lda_iris, type = "response")$class
+pred_iris_sepal <- predict(lda_iris_sepal, type = "response")$class
+```
+
+```{r}
+table(true = iris$Species, pred = pred_iris)
+table(true = iris$Species, pred = pred_iris_sepal)
+```
+
+The model that considers all variables is the better one.
 
 ## Classification trees
 
+11. **Use `rpart()` to create a classification tree for the `Species` of `iris`. Call this model `iris_tree_mod`. Plot this model using `rpart.plot()`.**
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+```
+
+```{r}
+rpart.plot(iris_tree_mod)
+```
+
+12. **How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?**
+
+Virginica with 98% certainty, or Versicolor with 2%.
+
+13. **Create a scatterplot where you map `Petal.Length` to the x position and `Petal.Width` to the y position. Then, manually add a vertical and a horizontal line (using `geom_segment`) at the locations of the splits from the classification tree. Interpret this plot.**
+
+```{r}
+iris %>%
+  ggplot() +
+  geom_point(mapping = aes(x = Petal.Length, y = Petal.Width, color = Species)) +
+  geom_segment(aes(
+    x = 2.5,
+    y = min(Petal.Width),
+    xend = 2.5,
+    yend = max(Petal.Width)
+  )) +
+  geom_segment(aes(
+    x = min(Petal.Length),
+    y = 1.8,
+    xend = max(Petal.Length),
+    yend = 1.8
+  ))
+```
+
+14. **Create a classification tree model where the splits continue until all the observations have been classified. Call this model `iris_tree_full_mod`. Plot this model using `rpart.plot()`. Do you expect this model to perform better or worse on new Irises?**
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ .,
+                            data = iris,
+                            control = rpart.control(minbucket = 1, cp = 0))
+```
+
+```{r}
+rpart.plot(iris_tree_full_mod)
+```
+
+Worse.
+
 ## Final assignment: Random forest for classification
+
+15. **Use the function `randomForest()` to create a random forest model on the iris dataset. Use the function `importance()` on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the `lda_iris` model?**
+
+```{r}
+iris_rf_mod <- randomForest(Species ~ ., data = iris)
+```
+
+```{r}
+iris_rf_imp <- importance(iris_rf_mod)
+```
+
+```{r}
+iris_rf_imp_df <-
+  tibble(importance = c(iris_rf_imp),
+         variable = rownames(iris_rf_imp))
+```
+
+```{r}
+iris_rf_imp_df %>%
+  ggplot() +
+  geom_bar(aes(y = importance, fill = variable))
+```
+
