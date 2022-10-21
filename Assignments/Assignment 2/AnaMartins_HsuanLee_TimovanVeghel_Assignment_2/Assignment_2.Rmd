@@ -14,6 +14,20 @@ library(readr)
 ```
 
 ```{r}
-name.basics <- read_tsv("name.basics.tsv/data.tsv")
+name.basics <- read_tsv("data/name.basics.tsv/data.tsv")
+title.akas <- read_tsv("data/title.akas.tsv/data.tsv")
+title.basics <- read_tsv("data/title.basics.tsv/data.tsv")
+title.principals <-
+  read_tsv("data/title.principals.tsv/data.tsv")
+title.ratings <-
+  read_tsv("data/title.ratings.tsv/data.tsv")
+```
+
+This dataset has every title on IMDb, and most of them are not full length movies. We are only interested in the ones that are, so let us take everything else out.
+
+```{r}
+title.basics <-
+  title.basics %>% 
+  filter(titleType == "movie")
 ```
 
