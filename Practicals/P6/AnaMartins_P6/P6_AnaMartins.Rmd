@@ -57,8 +57,10 @@ table(true = data$response, pred = lr_pred)
 tpr <- 91 / (35 + 91) # true positives divided by the positives
 tnr <- 78 / (78 + 49) # true negatives divided by the negatives
 fpr <- 49 / (78 + 49) # false positives divided by the negatives
-ppv <- 91 / (49 + 91) # true positives divided by the predicted positives
-npv <- 78 / (78 + 35) # true negatives divided by the predicted negatives
+ppv <-
+  91 / (49 + 91) # true positives divided by the predicted positives
+npv <-
+  78 / (78 + 35) # true negatives divided by the predicted negatives
 ```
 
 The model does not seem to be very good. Taking into account we are trying to predict a disease, the most relevant values would be the TPR and the PPV.
@@ -82,12 +84,232 @@ It looks the exact same?
 4. **Compare the classification performance of `lr_mod` and `lda_mod` for the new patients in the `data/new_patients.csv`.**
 
 ```{r}
-#lr_pred_new <- predict(lr_mod, newdata = )
+newdata <- read_csv("data/new_patients.csv")
 ```
 
 
+```{r}
+lr_pred_new <- predict(lr_mod, newdata = newdata)
+```
+
+```{r}
+lr_pred_new <- ifelse(lr_pred_new < 0.5, 0, 1)
+```
+
+```{r}
+table(true = newdata$response, pred = lr_pred_new)
+lda_pred_new <- predict(lda_mod, newdata = newdata)
+```
+
+```{r}
+table(true = newdata$response, pred = lda_pred_new$class)
+```
+
+Still the exact same...
+
+### Brier score
+
+**Calculate the out-of-sample brier score for the `lr_mod` and give an interpretation of this number.**
+
+```{r}
+lr_pred_percentages <- predict(lr_mod, type = "response")
+```
+
+```{r}
+lr_sq <- (lr_pred_percentages - data$response) ** 2
+BS <- 1 / nrow(data) * sum(lr_sq)
+BS
+```
+
+The Brier score gives a reasonable result.
+
+### ROC curve
+
+5. **Create two LR models: `lr1_mod` with `severity`, `age`, and `bb_score` as predictors, and `lr2_mod` with the formula `response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose`. Save the predicted probabilities on the training data.**
+
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score, data = data)
+lr2_mod <-
+  glm(response ~ age + I(age ^ 2) + gender + bb_score * prior_cvd * dose, data = data)
+```
+
+6. **Use the function `roc()` from the `pROC` package to create two ROC objects with the predicted probabilities: `roc_lr1` and `roc_lr2`. Use the `ggroc()` method on these objects to create an ROC curve plot for each. Which model performs better? Why?**
+
+```{r}
+lr1_pred <- predict(lr1_mod, type = "response")
+```
+
+```{r}
+lr1_pred <- ifelse(lr1_pred < 0.5, 0, 1)
+```
+
+```{r}
+roc_lr1 <- roc(data$response, lr1_pred)
+ggroc(roc_lr1)
+lr2_pred <- predict(lr2_mod, type = "response")
+```
+
+```{r}
+lr2_pred <- ifelse(lr2_pred < 0.5, 0, 1)
+```
+
+```{r}
+roc_lr2 <- roc(data$response, lr2_pred)
+ggroc(roc_lr2)
+```
+
+The second model performs better, because it has a higher AUC.
+
+7. **Print the `roc_lr1` and `roc_lr2` objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?**
+
+```{r}
+roc_lr1
+roc_lr2
+```
+
+The AUC for the 2nd model. It is the integral of the previous plots. The minimum AUC is 0.5 and the perfect one is 1 and it would look like the left and up sides of a square in a plot.
+
 ## Iris dataset
+
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[,-5]) %*% lda_iris$scaling[, 1])
+
+# plot
+tibble(ld = first_ld,
+       Species = iris$Species) %>%
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5,
+                 position = "identity",
+                 alpha = .9) +
+  scale_fill_viridis_d(guide =) +
+  theme_minimal() +
+  labs(x = "Discriminant function",
+       y = "Frequency",
+       main = "Fisher's linear discriminant function on Iris species") +
+  theme(legend.position = "top")
+```
+
+8. **Explore the iris dataset using summaries and plots.**
+
+```{r}
+summary(iris)
+```
+
+```{r}
+iris %>% ggplot() + geom_point(mapping = aes(x = Sepal.Length, y = Sepal.Width),
+                               color = "blue") + geom_point(mapping = aes(x = Petal.Length, y = Petal.Width),
+                                                            color = "green") + facet_wrap(Species ~ .) + ylab("Width") + xlab("Length") + theme_minimal()
+```
+
+9. **Fit an additional LDA model, but this time with only `Sepal.Length` and `Sepal.Width` as predictors. Call this model `lda_iris_sepal`**
+
+```{r}
+lda_iris_sepal <-
+  lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+10. Create a confusion matrix of the `lda_iris` and `lda_iris_sepal` models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+
+```{r}
+pred_iris <- predict(lda_iris, type = "response")$class
+pred_iris_sepal <- predict(lda_iris_sepal, type = "response")$class
+```
+
+```{r}
+table(true = iris$Species, pred = pred_iris)
+table(true = iris$Species, pred = pred_iris_sepal)
+```
+
+The model that considers all variables is the better one.
 
 ## Classification trees
 
+11. **Use `rpart()` to create a classification tree for the `Species` of `iris`. Call this model `iris_tree_mod`. Plot this model using `rpart.plot()`.**
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+```
+
+```{r}
+rpart.plot(iris_tree_mod)
+```
+
+12. **How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?**
+
+Virginica with 98% certainty, or Versicolor with 2%.
+
+13. **Create a scatterplot where you map `Petal.Length` to the x position and `Petal.Width` to the y position. Then, manually add a vertical and a horizontal line (using `geom_segment`) at the locations of the splits from the classification tree. Interpret this plot.**
+
+```{r}
+iris %>%
+  ggplot() +
+  geom_point(mapping = aes(x = Petal.Length, y = Petal.Width, color = Species)) +
+  geom_segment(aes(
+    x = 2.5,
+    y = min(Petal.Width),
+    xend = 2.5,
+    yend = max(Petal.Width)
+  )) +
+  geom_segment(aes(
+    x = min(Petal.Length),
+    y = 1.8,
+    xend = max(Petal.Length),
+    yend = 1.8
+  ))
+```
+
+14. **Create a classification tree model where the splits continue until all the observations have been classified. Call this model `iris_tree_full_mod`. Plot this model using `rpart.plot()`. Do you expect this model to perform better or worse on new Irises?**
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ .,
+                            data = iris,
+                            control = rpart.control(minbucket = 1, cp = 0))
+```
+
+```{r}
+rpart.plot(iris_tree_full_mod)
+```
+
+Worse.
+
 ## Final assignment: Random forest for classification
+
+15. **Use the function `randomForest()` to create a random forest model on the iris dataset. Use the function `importance()` on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the `lda_iris` model?**
+
+```{r}
+iris_rf_mod <- randomForest(Species ~ ., data = iris)
+```
+
+```{r}
+iris_rf_imp <- importance(iris_rf_mod)
+```
+
+```{r}
+iris_rf_imp_df <-
+  tibble(importance = c(iris_rf_imp),
+         variable = rownames(iris_rf_imp))
+```
+
+```{r}
+iris_rf_imp_df %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
+```
+
+Going back to the first decision tree, we see that Petal.Length is the first divider, which made me think that would be the one with most importance, but it second, still very close to the first one, Petal.Width, which is the second divider. Then the two others are predictibly the ones with less importance, with Sepal.Width being clearly the less important, not even appearing in the full decision tree.
+
+```{r}
+table(true = iris$Species, pred = iris_rf_mod$predicted)
+```
+
+The full LDA model is better than the Random Forest, but the one with only the sepals is worse.

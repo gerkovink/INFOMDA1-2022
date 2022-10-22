@@ -1,0 +1,33 @@
+---
+title: "Can we predict IMDb movie ratings?"
+author: "Ana Martins, Hsuan Lee, Timo van Veghel"
+date: "October/November 2022"
+output: html_document
+---
+
+In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDb Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset?select=title.akas.tsv). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for.
+
+We start by getting our initial datasets:
+
+```{r}
+library(readr)
+```
+
+```{r}
+name.basics <- read_tsv("data/name.basics.tsv/data.tsv")
+title.akas <- read_tsv("data/title.akas.tsv/data.tsv")
+title.basics <- read_tsv("data/title.basics.tsv/data.tsv")
+title.principals <-
+  read_tsv("data/title.principals.tsv/data.tsv")
+title.ratings <-
+  read_tsv("data/title.ratings.tsv/data.tsv")
+```
+
+This dataset has every title on IMDb, and most of them are not full length movies. We are only interested in the ones that are, so let us take everything else out.
+
+```{r}
+title.basics <-
+  title.basics %>% 
+  filter(titleType == "movie")
+```
+
