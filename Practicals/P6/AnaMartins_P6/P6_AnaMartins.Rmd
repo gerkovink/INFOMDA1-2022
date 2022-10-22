@@ -295,8 +295,21 @@ iris_rf_imp_df <-
 ```
 
 ```{r}
-iris_rf_imp_df %>%
-  ggplot() +
-  geom_bar(aes(y = importance, fill = variable))
+iris_rf_imp_df %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
 ```
 
+Going back to the first decision tree, we see that Petal.Length is the first divider, which made me think that would be the one with most importance, but it second, still very close to the first one, Petal.Width, which is the second divider. Then the two others are predictibly the ones with less importance, with Sepal.Width being clearly the less important, not even appearing in the full decision tree.
+
+```{r}
+table(true = iris$Species, pred = iris_rf_mod$predicted)
+```
+
+The full LDA model is better than the Random Forest, but the one with only the sepals is worse.
