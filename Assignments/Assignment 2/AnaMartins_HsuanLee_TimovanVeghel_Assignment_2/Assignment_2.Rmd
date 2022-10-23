@@ -5,29 +5,67 @@ date: "October/November 2022"
 output: html_document
 ---
 
-In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDb Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset?select=title.akas.tsv). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for.
+## Goals 
 
-We start by getting our initial datasets:
+In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDb Movies Dataset](https://www.kaggle.com/datasets/harshitshankhdhar/imdb-dataset-of-top-1000-movies-and-tv-shows). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. However, there is no garantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
+
+## About the Dataset
+
+The dataset we will be using is the [IMDb Movies Dataset](https://www.kaggle.com/datasets/harshitshankhdhar/imdb-dataset-of-top-1000-movies-and-tv-shows). This dataset contains only the top 1000 movies on IMDb, so we can already see that this might limit our predictions a bit, as our model will probably be worse at predicting lower scores. However, the only available dataset with all of the movies on IMDb was too big for us to be able to analyse it on our computers, so this one will have to do.
+
+I has 16 variables: `Poster_Link`, `Series_Title`, `Released_Year`, `Certificate`, `Runtime`, `Genre`, `IMDB_Rating`, `Overview`, `Meta_score`, `Director`, `Star1`, `Star2`, `Star3`, `Star4`, `No_of_Votes` and `Gross`. We will be taking away variables that do not interest us like `Poster_Link` and `Overview`, as those are not useful to analyse. And the variables we will try to predict are `IMDB_Rating` and `Gross`.
+
+## Getting the Data
+
+We start by getting our initial dataset:
 
 ```{r}
-library(readr)
+library(tidyverse)
 ```
 
 ```{r}
-name.basics <- read_tsv("data/name.basics.tsv/data.tsv")
-title.akas <- read_tsv("data/title.akas.tsv/data.tsv")
-title.basics <- read_tsv("data/title.basics.tsv/data.tsv")
-title.principals <-
-  read_tsv("data/title.principals.tsv/data.tsv")
-title.ratings <-
-  read_tsv("data/title.ratings.tsv/data.tsv")
+movies <- read_csv("data/imdb_top_1000.csv")
 ```
 
-This dataset has every title on IMDb, and most of them are not full length movies. We are only interested in the ones that are, so let us take everything else out.
+Let us clean this up a bit so we do not have to carry around more than we need to:
 
 ```{r}
-title.basics <-
-  title.basics %>% 
-  filter(titleType == "movie")
+movies <-
+  movies %>% 
+  select(-Poster_Link, -Overview)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(Released_Year = as.numeric(Released_Year), Certificate = as.factor(Certificate))
+```
+
+
+## Exploratory Data Analysis
+
+Let us now start by seeing what we are working with, by seeing some of the variables compared to each other, so we can start understanding what variables correlate to the IMDb Rating.
+
+```{r}
+summary(movies)
+```
+
+
+```{r}
+movies %>% 
+  ggplot(aes(x = IMDB_Rating)) +
+  geom_histogram(binwidth = 0.25) +
+  theme_minimal() +
+  xlim(0, 10)
+```
+
+We can see right away that, as expected, we only have very high scoring films, all above 7.
+
+```{r}
+movies %>% 
+  ggplot(aes(x = Released_Year, y = IMDB_Rating, color = Certificate)) +
+  geom_point() +
+  theme_minimal() +
+  scale_x_continuous(breaks=seq(1920, 2020, by = 10))
 ```
 
