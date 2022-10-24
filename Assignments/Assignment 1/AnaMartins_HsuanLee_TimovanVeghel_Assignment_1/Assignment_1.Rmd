@@ -13,17 +13,38 @@ The NYC Rat Sightings dataset describes mostly the location where there are rat 
 We will analyse if sightings depend on the month they happen. Additionally, we will analyse a dataset that describes borough populations so we can analyse if population density compares to number of rat sightings and which boroughs have more density of rat sightings. 
 
 The dataset we will be using can be found on [kaggle](https://www.kaggle.com/datasets/new-york-city/nyc-rat-sightings).
-
-```{r}
+```{r warning=FALSE}
 library(tidyverse)
+library(ggcharts) # for bar_chart() function
+library(pander) # for pander() function, make the descriptive stat have pretty output
+library(psych) # for psych() function, for descriptive stat
+```
+
+We will import an extension of the `ggplot2` library, the `ggmap` library. If you don't have the `ggmap` package installed, please do so by running `install.packages("ggmap")` on your R console. 
+```{r warning=FALSE}
+library("ggmap")
+```
+
+```{r include=FALSE}
+# the key for reaching the map
+KEY = "key"
+register_google(key = KEY)
 ```
 
 ## Data cleaning
 
-First, we create a function to use for splitting up the different dates.
+The dataset initially looks like this:
+```{r warning=FALSE}
+rat_dataset <-
+  read_csv("Rat_Sightings.csv", show_col_types = FALSE)
+head(rat_dataset)
+```
 
-```{r}
-date.split <- function(txtdate, x){
+In order to start cleaning up the dataset, a few custom functions need to be written in order to split out information from several columns. 
+
+First off, we have written a function to split a date into its constituent components. The function, as seen below, takes a date string and a specified x value. It formats the input date as an ISO8601 date-time and subsequently isolates each component. Based on the provided x-value, the function puts out the required component. 
+```{r warning=FALSE}
+.DateSplit <- function(txtdate, x){
   date <- parse_date(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   time <- parse_time(txtdate, format = "%m/%d/%Y %I:%M:%S %p")
   year <- as.factor(format(date, format = "%Y"))
@@ -39,12 +60,9 @@ date.split <- function(txtdate, x){
 }
 ```
 
-
-Secondly, we create a function to use when splitting a specific number from a data point, as used for both the address and the community boards.
-
-```{r}
-#Second attempt at a function that could split "Incident_Address" and "Community Board":
-get.number <- function(address){
+The second function can be used to isolate a specific number from a data point (in our case, this is either a house number of a community board number). The function only takes an address string. It first filters out NA values, after which it extracts and returns numerals from the input string. 
+```{r warning=FALSE}
+.GetNumber <- function(address){
   if(!identical(address, NA)){
     nums <- str_extract(address, "[0-9]+")
     return(nums)
@@ -52,33 +70,22 @@ get.number <- function(address){
 }
 ```
 
-The dataset initially looks like this:
-
-```{r}
-rat_dataset <-
-  read_csv("Rat_Sightings.csv", show_col_types = FALSE)
-head(rat_dataset)
-```
-
-with many empty features or with one single value. In this next step, we will be taking these features out and separating some interesting data in more features:
-
-```{r}
+With the necessary tools prepared, the dataset can be cleaned and prepared for further analysis. Empty columns and columns with only a single value represented are filtered, and the columns that are left are renamed to remove spaces. Next we split dates with the aforementioned .DateSplit() function, and use the .GetNumber() function to isolate relevant numeric values from strings. Following the use of these functions, the now redundant columns are removed. 
+```{r warning=FALSE}
 rat_dataset <-
   read_csv("Rat_Sightings.csv", show_col_types = FALSE) %>% 
-  #select("Unique Key", "Created Date", "Closed Date", "Location Type", "Incident Zip", "Incident Address", "Street Name", "Cross Street 1", "Cross Street 2", "Intersection Street 1", "Intersection Street 2", "Address Type", "Status", "Due Date", "Resolution Action Updated Date", "Community Board", "Borough", "Latitude", "Longitude") %>% 
   rename(Unique_Key = "Unique Key", Created_Date = "Created Date", Closed_Date = "Closed Date", Location_Type = "Location Type", Incident_Zip = "Incident Zip", Incident_Address = "Incident Address", Street_Name = "Street Name", Cross_Street_1 = "Cross Street 1", Cross_Street_2 = "Cross Street 2", Intersection_Street_1 = "Intersection Street 1", Intersection_Street_2 = "Intersection Street 2", Address_Type = "Address Type", Status = "Status", Due_Date = "Due Date", RAU_Date = "Resolution Action Updated Date", Community_Board = "Community Board", Borough = "Borough", Latitude = "Latitude", Longitude = "Longitude") %>% 
-  mutate(Created_Year = date.split(Created_Date, 1), Created_Month = date.split(Created_Date, 2), Created_Day = date.split(Created_Date, 3)) %>% 
-  mutate(Closed_Year = date.split(Closed_Date, 1), Closed_Month = date.split(Closed_Date, 2), Closed_Day = date.split(Closed_Date, 3)) %>%
-  mutate(Due_Year = date.split(Due_Date, 1), Due_Month = date.split(Due_Date, 2), Due_Day = date.split(Due_Date, 3), Due_Time = date.split(Due_Date, 4)) %>%
-  mutate(RAU_Year = date.split(RAU_Date, 1), RAU_Month = date.split(RAU_Date, 2), RAU_Day = date.split(RAU_Date, 3), RAU_Time = date.split(RAU_Date, 4)) %>% 
-  mutate(Address_Number = get.number(Incident_Address)) %>% 
-  mutate(Community_Board_Number = get.number(Community_Board)) %>% 
+  mutate(Created_Year = .DateSplit(Created_Date, 1), Created_Month = .DateSplit(Created_Date, 2), Created_Day = .DateSplit(Created_Date, 3)) %>% 
+  mutate(Closed_Year = .DateSplit(Closed_Date, 1), Closed_Month = .DateSplit(Closed_Date, 2), Closed_Day = .DateSplit(Closed_Date, 3)) %>%
+  mutate(Due_Year = .DateSplit(Due_Date, 1), Due_Month = .DateSplit(Due_Date, 2), Due_Day = .DateSplit(Due_Date, 3), Due_Time = .DateSplit(Due_Date, 4)) %>%
+  mutate(RAU_Year = .DateSplit(RAU_Date, 1), RAU_Month = .DateSplit(RAU_Date, 2), RAU_Day = .DateSplit(RAU_Date, 3), RAU_Time = .DateSplit(RAU_Date, 4)) %>% 
+  mutate(Address_Number = .GetNumber(Incident_Address)) %>% 
+  mutate(Community_Board_Number = .GetNumber(Community_Board)) %>% 
   select(Unique_Key, Created_Year, Created_Month, Created_Day, Closed_Year, Closed_Month, Closed_Day, Location_Type, Incident_Zip, Address_Number, Street_Name, Cross_Street_1, Cross_Street_2, Intersection_Street_1, Intersection_Street_2, Address_Type, Status, Due_Year, Due_Month, Due_Day, Due_Time, RAU_Year, RAU_Month, RAU_Day, RAU_Time, Community_Board_Number, Borough, Latitude, Longitude)
 ```
 
 We also want to make sure that all of the features have the proper value type.
-
-```{r}
+```{r warning=FALSE}
 rat_dataset$Location_Type <- 
   as.factor(rat_dataset$Location_Type)
 rat_dataset$Street_Name <-
@@ -95,30 +102,18 @@ rat_dataset$Borough <-
   as.factor(rat_dataset$Borough)
 ```
 
-
-So, our starting point data is:
-
-```{r}
+So, our dataset after cleaning is as follows:
+```{r warning=FALSE}
 head(rat_dataset)
-summary(rat_dataset)
+pander(describe(rat_dataset), caption="Descriptive statistics")
 ```
 
-## Where are the sightings more concentrated?
+## The distribution of Rat sightings on the NYC map
 
-To answer this question, we will import an extension of the `ggplot2` library, the `ggmap` library. If you don't have the `ggmap` package installed, please do so by running `install.packages("ggmap")` on your R console. 
-
-```{r}
-library("ggmap")
-```
-
-```{r}
-KEY = 
-register_google(key = KEY)
-```
+**Where are the sightings more concentrated?**
 
 Firstly, we take a look at how the sightings are distributed:
-
-```{r}
+```{r warning=FALSE}
 ggplot(rat_dataset, mapping = aes(y = Longitude)) +
   geom_boxplot() +
   theme_minimal()
@@ -127,10 +122,8 @@ ggplot(rat_dataset, mapping = aes(y = Latitude)) +
   theme_minimal()
 ```
 
-
 There is a concentration in the middle of the range, with many of what `geom_boxplot()` considers outliers. So the part of New York we will be looking at is:
-
-```{r}
+```{r ,fig.width=10, fig.height=7, warning=FALSE}
 data4lat <-
   rat_dataset %>% 
   select(Latitude) %>% 
@@ -151,28 +144,188 @@ newyork.map <- get_map(location= 'New York')
 sightings_map <-
   ggmap(newyork.map) +
   ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
+  xlim(min_lon, max_lon) +
+  ggtitle("New York Map")
 sightings_map
 ```
 
 From the distribution on the boxplots, we can assume that most of the sightings are concentrated in the middle of the map, which we can confirm by plotting the sightings. There is also a smaller concentration at the top middle of the map.
 
-```{r}
+```{r, fig.width=10, fig.height=7, warning=FALSE}
 sightings_map <-
   ggmap(newyork.map) +
   geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude), alpha = 0.1) +
   stat_density2d(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude)) +
   ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
+  xlim(min_lon, max_lon) +
+  ggtitle("Concentration of Rat Sightings in New York")
 sightings_map
 ```
 
-It seems like the sightings are mostly concentrated in 3 boroughs: Manhatten, Bronx and Brooklyn, with Staten Island having the least concentration by far.
+It seems like the sightings are mostly concentrated in 3 boroughs: Manhattan, Bronx and Brooklyn, with Staten Island having the lowest concentration by far.
 
-## We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).
+**Do the sighting locations change over the years?**
+```{r ,fig.width=10, fig.height=7, warning=FALSE}
+years_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Created_Year), alpha = 0.3) +
+  facet_wrap(~ Created_Year) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Concentration of Rat Sightings over the Years")
+years_map
+```
 
-```{r}
+It definitely looks like that is not the case, as the maps all look basically exactly the same, meaning the actual locations of the sightings are constant, which may indicate to no interventions ever having been done in any of the places.
 
+## Is the number of rat sightings in a given borough proportional to its population?
+
+Next up, we wanted to find out whether there are relative differences between boroughs when it comes to rat sightings, or if they are the same, when we account for differences in population and area respectively. 
+
+**Summarize Rat Sightings per borough per year from the original dataset**
+
+We started of by creating a new dataset centered around the boroughs. From our main dataset (`rat_dataset`), we took the borough column, and subsequently counted how often each borough was represented per year. 
+
+Side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively.
+
+```{r warning=FALSE}
+Borough_Rats <- 
+  rat_dataset %>% 
+  group_by(Borough, Due_Year) %>% 
+  tally(sort = TRUE) %>% 
+  pivot_wider(names_from = Due_Year, values_from = n) %>% 
+  select(Borough, "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
+  drop_na()
+
+head(Borough_Rats)
+```
+
+**Creating a dataset for borough population**
+
+In order to compare borough by population, we first need a dataset which contains population (over time).
+The dataset we will be using can be found on [kaggle](https://www.kaggle.com/datasets/muonneutrino/new-york-city-census-data).
+
+It should be noted that this dataset only contains census data, which only happens every 10 years. Therefore, we manually added population data for the remaining years (which can be found here: https://fred.stlouisfed.org/categories/29191) 
+
+Lastly, we also manually added area data from Wikipedia.
+
+```{r warning=FALSE}
+Borough_Population <- 
+  read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
+  select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
+  mutate(Borough = toupper(Borough)) %>% 
+  inner_join(Borough_Rats, by = "Borough") %>% 
+  rename(Borough = "Borough", Area = "Area", Population_2010 = "2010.x", Rat_Sightings_2010 = "2010.y", Population_2011 = "2011.x", Rat_Sightings_2011 = "2011.y", Population_2012 = "2012.x", Rat_Sightings_2012 = "2012.y", Population_2013 = "2013.x", Rat_Sightings_2013 = "2013.y", Population_2014 = "2014.x", Rat_Sightings_2014 = "2014.y", Population_2015 = "2015.x", Rat_Sightings_2015 = "2015.y", Population_2016 = "2016.x", Rat_Sightings_2016 = "2016.y", Population_2017 = "2017.x", Rat_Sightings_2017 = "2017.y") %>%
+  relocate(Borough, Area, Population_2010, Rat_Sightings_2010, Population_2011, Rat_Sightings_2011, Population_2012, Rat_Sightings_2012, Population_2013, Rat_Sightings_2013, Population_2014, Rat_Sightings_2014, Population_2015, Rat_Sightings_2015, Population_2016, Rat_Sightings_2016, Population_2017, Rat_Sightings_2017)
+
+head(Borough_Population)
+```
+
+**Creating a database for rats per population**
+
+We are interested in comparing boroughs, so we need to generate relative values to compare them on. In order to do this, we calculate the rate of rat sightings per 100.000 citizens. 
+
+```{r warning=FALSE}
+Rats_Per_Pop <-
+  Borough_Population %>% 
+  mutate('2010' = round(((Rat_Sightings_2010 / Population_2010) * 100000), digits = 2), '2011' = round(((Rat_Sightings_2011 / Population_2011) * 100000), digits = 2), '2012' = round(((Rat_Sightings_2012 / Population_2012) * 100000), digits = 2), '2013' = round(((Rat_Sightings_2013 / Population_2013) * 100000), digits = 2), '2014' = round(((Rat_Sightings_2014 / Population_2014) * 100000), digits = 2), '2015' = round(((Rat_Sightings_2015 / Population_2015) * 100000), digits = 2), '2016' = round(((Rat_Sightings_2016 / Population_2016) * 100000), digits = 2), '2017' = round(((Rat_Sightings_2017 / Population_2017) * 100000), digits = 2)) %>% 
+  select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
+
+head(Rats_Per_Pop)
+```
+
+**Creating a database for rats per area**
+
+For area, we followed the same process, but for rat sightings per kilometre squared. 
+
+```{r warning=FALSE}
+Rats_Per_Km <-
+  Borough_Population %>% 
+  mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
+  select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
+
+head(Rats_Per_Km)
+```
+
+**Visualization of borough comparisons**
+
+In order to create the necessary visualizations, we slightly need to restructure our datasets.
+
+**Rat/population rates**
+```{r , warning=FALSE}
+P_Rates <-
+  Rats_Per_Pop %>% 
+  pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
+
+as.factor(P_Rates$Year)
+
+head(P_Rates, n = 20)
+```
+
+**Population rate figures** 
+
+```{r warning=FALSE}
+P_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population", color = "Borough") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+```{r warning=FALSE}
+P_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, group = Borough)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ Borough) + 
+  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+**Rat/Area rates**
+
+```{r warning=FALSE}
+A_Rates <-
+  Rats_Per_Km %>% 
+  pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
+
+as.factor(A_Rates$Year)
+
+head(A_Rates, n = 20)
+```
+
+**Area rate figures**
+
+```{r warning=FALSE}
+A_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+```{r warning=FALSE}
+A_Rates %>% 
+  ggplot(aes(x=Year, y=Rate, group = Borough)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ Borough) +
+  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+We can see a rather obvious trend, where Manhattan has relatively the most rat sightings by far, both when compared on population as well as area. Queens and Staten Island both keep to the lower end of spectrum. 
+
+When it comes to change over the years, we see that the Bronx, Brooklyn, and Manhattan increase at a similar rate when it comes to population rate, while Queens and Staten Island remain relatively stable. When we compare on the basis of area, we see that Manhattan seems to grow faster than the Bronx and Brooklyn, while Queens and Staten Island still remain stable.
+
+**We can look at the numbers and see which Borough actually has more sightings (as that is a variable in our dataset too).**
+```{r, warning=FALSE}
 borough_population <-
   rat_dataset %>%
   ggplot(aes(x = Borough, fill = Borough)) +
@@ -194,9 +347,8 @@ borough_population
 
 It looks like Brooklyn is the borough with the most rat sightings. Even though the map shows that Manhatten, for example, looks more densely populated, Manhatten is also a bigger borough, so the sightings are more evenly distributed throughout it.
 
-## How evenly exactly?
-
-```{r}
+**How evenly exactly?**
+```{r ,fig.width=10, fig.height=7, warning=FALSE}
 
 data4lat_brooklyn <-
   rat_dataset %>% 
@@ -224,97 +376,17 @@ brooklyn_map <-
   ggmap(newyork.map) +
   geom_point(data = brooklyn_rats, mapping = aes(x = Longitude, y = Latitude), color = "Red", size = 0.1) +
   ylim(min_brooklyn_lat, max_brooklyn_lat) +
-  xlim(min_brooklyn_lon, max_brooklyn_lon)
+  xlim(min_brooklyn_lon, max_brooklyn_lon) +
+  ggtitle("Rat Sightings Concentration in Brooklyn")
 brooklyn_map
 ```
 
-The rats seem to stand away from the beach and the parks (they probably have work to do, like us). The denser the subway lines get, the denser the rat population too, it seems. 
-
-## And what type of location do these happen in, and how are they distributed on the map?
-
-```{r}
-location_map <-
-  ggmap(newyork.map) +
-  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map
-```
-
-That does not seem like a great visualization (as you really can't see anything), let's divide our facets into multiple plots so we can take a closer look at each of them.
-
-```{r}
-location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building", "3+ Family Mixed Use Building"))
-location_map1 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map1
-
-location_subset2 <- subset(rat_dataset, Location_Type %in% c("Catch Basin/Sewer", "Commercial Building", "Construction Site", "Day Care/Nursery"))
-location_map2 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map2
-
-location_subset3 <- subset(rat_dataset, Location_Type %in% c("Government Building", "Hospital", "Office Building", "Other (Explain Below)"))
-location_map3 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map3
-
-location_subset4 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs", "School/Pre-School"))
-location_map4 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map4
-
-location_subset5 <- subset(rat_dataset, Location_Type %in% c("Single Room Occupancy (SRO)", "Summer Camp", "Vacant Building", "Vacant Lot"))
-location_map5 <-
-  ggmap(newyork.map) +
-  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
-  facet_wrap(~ Location_Type, nrow = 2) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-location_map5
-```
-
-Looking at the Family Buildings, it is actually scary how evenly spread out (and still, always concentrated) around the maps. Even in Staten Island, which we already saw had the least concentration, we can still see that most of them were in Family Buildings.
-Looking at the map for the sightings at Sewers, it is no surprise the bigest concentration is in Manhatten, which is famously known in movies for having rats come out of sewers, as well as walking around stealing Dolar Slices, so you can see that Manhatten is also the one with more concentration in Public Spaces.
-It is also no surprise most of the sightings at Government Buildings are in Manhatten, as [most of the Government buildings in New York are in Downtown Manhatten](https://www.tripadvisor.com/Attractions-g60763-Activities-c47-t15-New_York_City_New_York.html).
-There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
-For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
-
-## Do the sighting locations change over the years?
-
-```{r}
-years_map <-
-  ggmap(newyork.map) +
-  geom_point(data = rat_dataset, mapping = aes(x = Longitude, y = Latitude, color = Created_Year), alpha = 0.3) +
-  facet_wrap(~ Created_Year) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-years_map
-```
-
-It definitely looks like that is not the case, as the maps all look basically exactly the same, meaning the actual locations of the sightings are constant, which may indicate to no interventions ever having been done in any of the places.
+The rats seem to stand away from the beach and the parks (they probably have work to do, like us). The denser the subway lines get, the denser the rat population too, it seems.
 
 ## Location Type and Rat number
 
-**Check how many location types it is.**
-```{r}
+**Check how many location types it is**
+```{r warning=FALSE}
 unique(rat_dataset$Location_Type)
 # 20 location types
 ```
@@ -322,19 +394,17 @@ unique(rat_dataset$Location_Type)
 There are 20 location types.
 
 **Compute the percentage of rat sighting in each location type**
-```{r}
+```{r warning=FALSE}
 loc_per <- rat_dataset %>%
   group_by(Location_Type) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)), 1))
+  summarise(Percentage = round(100*(n() / nrow(.)), 1)) %>%
+  arrange(desc(Percentage))
 
 loc_per
 ```
 
 **Plot the bar chart that reveals the occupation of rat sighting in each location type**
 ```{r, fig.width= 10, fig.height=7}
-
-library(ggcharts)
-
 loc_per %>%
   bar_chart(Location_Type, Percentage,
             bar_color = c("#882E72", "#B178A6", "#114477", "#1965B0", 
@@ -348,41 +418,81 @@ loc_per %>%
   ylim(NA, 45) +
   theme(plot.title = element_text(hjust=0.5)) +
   labs(x = "", y = "", title = "Percentage of Rat Sighting in Different Location Type",
-       fill = "Location Type")
+       fill = "Location Type") +
+  theme_minimal()
   
 ```
 
 Following the implications of the bar chart, the most frequent cases of rat sightings occurred in apartment buildings with 3 or more family members, accounting for 40.3%. This is followed by residences with 1 to 2 family members at 19.3%. Notably, mixed-use buildings with 3 or more family members also accounted for 7.8%. Overall, the types of locations associated with families held the most complaints of rat sightings.
 
-## Time and Rat number
+**What type of location do these happen in, and how are they distributed on the map?**
+```{r ,fig.width=10, fig.height=7, warning=FALSE}
+location_subset1 <- subset(rat_dataset, Location_Type %in% c("1-2 Family Dwelling", "1-2 Family Mixed Use Building", "3+ Family Apt. Building", "3+ Family Mixed Use Building"))
+location_map1 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset1, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration in Different Locations")
+location_map1
 
-**Plot the number of rat sightings each month**
-```{r}
-rat_dataset %>%
-  ggplot(aes(x = Created_Month, fill = Created_Month)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#B178A6", "#114477", "#1965B0", 
-                             "#5289C7", "#7BAFDE", "#4EB265", "#90C987", 
-                             "#CAE0AB", "#F7EE55", "#F6C141", "#F1932D", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA", 
-                             "#77AADD", "#117755", "#44AA88", "#99CCBB", 
-                             "#777711")) +
-  ylim(0, 15000) +
-  labs(x = "Month", y = "Total Number of Rat Sighting", 
-       title = "Number of Rat Sighting Each Month", fill = "Month") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust=0.5))
+location_subset2 <- subset(rat_dataset, Location_Type %in% c("Catch Basin/Sewer", "Commercial Building", "Construction Site", "Day Care/Nursery"))
+location_map2 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset2, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration in Different Locations")
+location_map2
+
+location_subset3 <- subset(rat_dataset, Location_Type %in% c("Government Building", "Hospital", "Office Building", "Other (Explain Below)"))
+location_map3 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset3, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration in Different Locations")
+location_map3
+
+location_subset4 <- subset(rat_dataset, Location_Type %in% c("Parking Lot/Garage", "Public Garden", "Public Stairs", "School/Pre-School"))
+location_map4 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset4, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration in Different Locations")
+location_map4
+
+location_subset5 <- subset(rat_dataset, Location_Type %in% c("Single Room Occupancy (SRO)", "Summer Camp", "Vacant Building", "Vacant Lot"))
+location_map5 <-
+  ggmap(newyork.map) +
+  geom_point(data = location_subset5, mapping = aes(x = Longitude, y = Latitude, color = Location_Type), alpha = 0.3) +
+  facet_wrap(~ Location_Type, nrow = 2) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration in Different Locations")
+location_map5
 ```
 
-In July, the highest number of rat sightings was recorded, with 11,982 cases, followed by August and June. In general, the number of rat sightings can be identified in relation to fluctuations in temperature, as in winter months, i.e. November, December, January and February, the number of rat sightings are the lowest. With rising temperatures, however, the number of rat sightings increased markedly.
+Looking at the Family Buildings, it is actually scary how evenly spread out (and still, always concentrated) around the maps. Even in Staten Island, which we already saw had the least concentration, we can still see that most of them were in Family Buildings.
+Looking at the map for the sightings at Sewers, it is no surprise the biggest concentration is in Manhatten, which is famously known in movies for having rats come out of sewers, as well as walking around stealing Dolar Slices, so you can see that Manhatten is also the one with more concentration in Public Spaces.
+It is also no surprise most of the sightings at Government Buildings are in Manhatten, as [most of the Government buildings in New York are in Downtown Manhatten](https://www.tripadvisor.com/Attractions-g60763-Activities-c47-t15-New_York_City_New_York.html).
+There are no rat sightings in Office Buildings in Staten Island, as it is a Borough known to be mostly residential.
+For the "Other (Explain Below)", it makes sense for this one to be the most densely populated (as there are many building types not listed as the primary ones) and the one with the sightings more evenly distributed (as there are "other" types of buildings everywhere).
+
+## Time and Rat number
 
 **Plot the Percentage of rat sightings by month**
-```{r}
+```{r warning=FALSE}
 # compute the percentage of each month on rat sighting
 month_per <- rat_dataset %>%
   group_by(Created_Month) %>%
-  summarise(Percentage = round(100*(n() / nrow(.)),1))
+  summarise(Percentage = round(100*(n() / nrow(.)),1)) %>%
+  arrange(desc(Percentage))
 
 month_per
 ```
@@ -403,7 +513,8 @@ month_per %>%
   ylim(NA, 15) +
   theme(plot.title = element_text(hjust=0.5)) +
   labs(x = "", y = "Percentage", title = "Percentage of Rat Sighting in Each Month",
-       fill = "Month")
+       fill = "Month") +
+  theme_minimal()
 ```
 
 A monthly percentage of rat sightings clearly reveals that rat sightings can be roughly divided by season. Rat sightings are highest in the summer months, followed by spring and fall, and lowest in the winter months.
@@ -411,7 +522,7 @@ A monthly percentage of rat sightings clearly reveals that rat sightings can be 
 ## Determine whether the cases of rat sightings evolve with the year
 
 **Plot the number of rat sightings versus year** 
-```{r}
+```{r warning=FALSE}
 rat_dataset %>%
   ggplot(aes(x = Created_Year, fill = Created_Year)) +
   geom_bar() +
@@ -430,7 +541,7 @@ Since 2010 to 2013, the number of rat sighting cases did not fluctuate measurabl
 Another thing that needs to be mentioned here is that data collection was interrupted in September 2017, hence the drop in rat sightings in 2017.
 
 **Plot the line chart of rat sightings versus year to more easily observe changes**
-```{r}
+```{r warning=FALSE}
 # Year with rat sighting (count)
 year_count <- rat_dataset %>%
   group_by(Created_Year) %>%
@@ -439,7 +550,7 @@ year_count <- rat_dataset %>%
 year_count
 ```
 
-```{r}
+```{r warning=FALSE}
 # Year with rat sighting (count)
 year_count %>%
   ggplot(aes(x = Created_Year, y = Number, group = 1)) +
@@ -454,14 +565,14 @@ year_count %>%
 The line graph offers a better experience in observing the trend of rat sightings by year. The line graph reaffirms the above discussion, with an alarming increase in rat sightings from 2013 to 2016.
 
 **Mapping the number of rat sightings for each month of each year**
-```{r}
+```{r warning=FALSE}
 # Number of Rat Sighting in each Months of Each Year
 year_month_count <- rat_dataset %>%
   group_by(Created_Year) %>%
   count(Created_Month)
 ```
 
-```{r}
+```{r warning=FALSE}
 # Number of Rat Sighting in each Months of Each Year
 year_month_count %>%
   ggplot(aes(x = Created_Month, y = n, color = Created_Year, group = Created_Year)) +
@@ -480,7 +591,7 @@ The graph reflects that the profile of the number of rat sightings is similar fr
 ## Check how long it took the administration to solve a case of rat sighting
 
 **Compute the length of time to solve a complaint of a rat sighting**
-```{r}
+```{r warning=FALSE}
 # combine the year, month, and day of started day
 starttime <- as.Date(with(rat_dataset, paste(Created_Year, Created_Month, 
                                              Created_Day, sep = "-")), "%Y-%m-%d")
@@ -515,7 +626,7 @@ solved_duration <-
 ```
 
 **Plot the time required to solve the problem**
-```{r}
+```{r warning=FALSE}
 solved_duration %>%
   ggplot(aes(x = month_cat, fill = month_cat)) +
   geom_bar() +
@@ -533,65 +644,8 @@ solved_duration %>%
 
 Apparently, the majority of rat sighting complaints were resolved within 1 month, with 64,371 cases, followed by less than 2 months, with 5,599 cases, suggesting that the administration is efficient in tackling rat sighting problems.
 
-## Does the location matter when it comes to how long they take to solve a case?
-
-```{r}
-duration_map <-
-  ggmap(newyork.map) +
-  geom_point(data = rat_dataset %>% filter_at(vars(Longitude, Latitude, month_cat),all_vars(!is.na(.))), mapping = aes(x = Longitude, y = Latitude, color = month_cat), alpha = 0.3) +
-  facet_wrap(~ month_cat) +
-  ylim(min_lat, max_lat) +
-  xlim(min_lon, max_lon)
-duration_map
-```
-
-The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
-
-**Plot the number of rat sighting case resolution times by year.**
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2010, 2011, 2012, 2013)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
-  scale_fill_manual(values=c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA")) +
-  ylim(0, 2300) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-```{r, fig.width=10, fig.height=7, warning=FALSE}
-# plot the duration taken to solved the issue of each year
-solved_duration %>%
-  filter(Sighting_Year == c(2014, 2015, 2016, 2017)) %>%
-  ggplot(aes(x = month_cat, fill = month_cat)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='count') +
-  geom_text(stat='count', aes(label=..count..), vjust= -1) +
-  scale_fill_manual(values = c("#882E72", "#5289C7", "#CAE0AB", 
-                             "#E8601C", "#DC050C", "#D6C1DE", "#4477AA"),
-                    labels = c("less than 1 month", "less than 2 month",
-                               "less than 3 month", "less than 4 month",
-                               "less than 5 month", "less than half year",
-                               "more than half year")) +
-  ylim(0, 3000) +
-  labs(x = "Time to Solve", y = "Cases Count", 
-       title = "Time to Solve Rat Sighting", fill = "Month") +
-  facet_grid(.~Sighting_Year) +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, vjust = 0),
-        plot.title = element_text(hjust=0.5))
-```
-
-On balance, from 2010 to 2017, an increasing number of sighting cases were solved within 1 month, with the number of cases requiring more than 2 months to be closed decreasing each year.
-
 **Plot the percentage of rat sighting case resolution times by year**
-```{r, fig.width=10, fig.height=7, warning=FALSE}
+```{r fig.height=7, fig.width=10, warning=FALSE}
 library(scales)
 
 solved_duration %>%
@@ -613,6 +667,7 @@ solved_duration %>%
        title = "Time to Solve Rat Sighting", fill = "Month") +
   facet_grid(~Sighting_Year) +
   scale_y_continuous(labels=percent) +
+  theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, 
                                    hjust = 1, vjust = 0),
         plot.title = element_text(hjust=0.5))
@@ -638,6 +693,7 @@ solved_duration %>%
        title = "Time to Solve Rat Sighting", fill = "Month") +
   facet_grid(~Sighting_Year) +
   scale_y_continuous(labels=percent) +
+  theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, 
                                    hjust = 1, vjust = 0),
         plot.title = element_text(hjust=0.5))
@@ -663,6 +719,7 @@ solved_duration %>%
        title = "Time to Solve Rat Sighting", fill = "Month") +
   facet_grid(~Sighting_Year) +
   scale_y_continuous(labels=percent) +
+  theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, 
                                    hjust = 1, vjust = 0),
         plot.title = element_text(hjust=0.5))
@@ -670,115 +727,20 @@ solved_duration %>%
 
 As seen in the graph, the overall efficiency of solving rat sighting cases has improved year by year, from 73.2% of cases resolved within 1 month in 2010 to approximately 80% of cases closed within 1 month in 2011, 2012, and further to 90% of cases settled within 1 month in 2013 to 2017.
 
-## Is the number of rat sightings in a given borough proportional to its population?
-
-Quick side note: 2008 and 2009 have been ignored because they only have 18 and 1 rat sightings respectively. Also, when looking up the data; some borough have different names as counties, but exactly the same area, so one should look up the county names instead. 
-
-
-
-```{r}
-Borough_Rats <- 
-  rat_dataset %>% 
-  group_by(Borough, Due_Year) %>% 
-  tally(sort = TRUE) %>% 
-  pivot_wider(names_from = Due_Year, values_from = n) %>% 
-  select(Borough, "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
-  drop_na()
-
-head(Borough_Rats)
-
-
-Borough_Population <- 
-  read_csv("New_York_City_Population_by_Borough__1950_-_2040.csv", show_col_types = FALSE) %>% 
-  select("Borough", "Area", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017") %>% 
-  mutate(Borough = toupper(Borough)) %>% 
-  inner_join(Borough_Rats, by = "Borough") %>% 
-  rename(Borough = "Borough", Area = "Area", Population_2010 = "2010.x", Rat_Sightings_2010 = "2010.y", Population_2011 = "2011.x", Rat_Sightings_2011 = "2011.y", Population_2012 = "2012.x", Rat_Sightings_2012 = "2012.y", Population_2013 = "2013.x", Rat_Sightings_2013 = "2013.y", Population_2014 = "2014.x", Rat_Sightings_2014 = "2014.y", Population_2015 = "2015.x", Rat_Sightings_2015 = "2015.y", Population_2016 = "2016.x", Rat_Sightings_2016 = "2016.y", Population_2017 = "2017.x", Rat_Sightings_2017 = "2017.y") %>%
-  relocate(Borough, Area, Population_2010, Rat_Sightings_2010, Population_2011, Rat_Sightings_2011, Population_2012, Rat_Sightings_2012, Population_2013, Rat_Sightings_2013, Population_2014, Rat_Sightings_2014, Population_2015, Rat_Sightings_2015, Population_2016, Rat_Sightings_2016, Population_2017, Rat_Sightings_2017) #%>% 
-  #mutate(Sightings_Rate = round(((Rat_Sightings / Population) * 100000), digits = 2))
-  
-
-head(Borough_Population)
+**Does the location matter when it comes to how long they take to solve a case?**
+```{r ,fig.width=10, fig.height=7, warning=FALSE}
+duration_map <-
+  ggmap(newyork.map) +
+  geom_point(data = rat_dataset %>% filter_at(vars(Longitude, Latitude, month_cat),all_vars(!is.na(.))), mapping = aes(x = Longitude, y = Latitude, color = month_cat), alpha = 0.3) +
+  facet_wrap(~ month_cat) +
+  ylim(min_lat, max_lat) +
+  xlim(min_lon, max_lon) +
+  ggtitle("Rat Sightings Concentration for Various Solving Times")
+duration_map
 ```
 
-##Creating two new databases; one for rats per population and one for rats per area
+The cases that take longer than 4 months to be closed are mostly localised in Manhatten, which makes sense, because, as you will see later, Mahantten is the borough with the biggest rat/population ratio.
 
-```{r}
-Rats_Per_Pop <-
-  Borough_Population %>% 
-  mutate('2010' = round(((Rat_Sightings_2010 / Population_2010) * 100000), digits = 2), '2011' = round(((Rat_Sightings_2011 / Population_2011) * 100000), digits = 2), '2012' = round(((Rat_Sightings_2012 / Population_2012) * 100000), digits = 2), '2013' = round(((Rat_Sightings_2013 / Population_2013) * 100000), digits = 2), '2014' = round(((Rat_Sightings_2014 / Population_2014) * 100000), digits = 2), '2015' = round(((Rat_Sightings_2015 / Population_2015) * 100000), digits = 2), '2016' = round(((Rat_Sightings_2016 / Population_2016) * 100000), digits = 2), '2017' = round(((Rat_Sightings_2017 / Population_2017) * 100000), digits = 2)) %>% 
-  select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
+## Conclusions
 
-head(Rats_Per_Pop)
-
-Rats_Per_Km <-
-  Borough_Population %>% 
-  mutate('2010' = round((Rat_Sightings_2010 / Area), digits = 2), '2011' = round((Rat_Sightings_2011 / Area), digits = 2), '2012' = round((Rat_Sightings_2012 / Area), digits = 2), '2013' = round((Rat_Sightings_2013 / Area), digits = 2), '2014' = round((Rat_Sightings_2014 / Area), digits = 2), '2015' = round((Rat_Sightings_2015 / Area), digits = 2), '2016' = round((Rat_Sightings_2016 / Area), digits = 2), '2017' = round((Rat_Sightings_2017 / Area), digits = 2)) %>% 
-  select(Borough, '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017')
-
-head(Rats_Per_Km)
-```
-
-##Summary statistics for above
-
-```{r}
-
-```
-
-##Visualization for above
-
-```{r}
-P_Rates <-
-  Rats_Per_Pop %>% 
-  pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
-
-as.factor(P_Rates$Year)
-
-head(P_Rates, n = 20)
-
-P_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
-  geom_point() +
-  geom_line() +
-  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population", color = "Borough") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-
-
-P_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, group = Borough)) +
-  geom_point() +
-  geom_line() +
-  facet_wrap(~ Borough) + 
-  labs(x = "Year", y = "Sightings per 100.000 population", title = "Rate of sightings by Borough population") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-
-A_Rates <-
-  Rats_Per_Km %>% 
-  pivot_longer(c('2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017'), names_to = "Year", values_to = "Rate") 
-
-as.factor(A_Rates$Year)
-
-head(A_Rates, n = 20)
-
-A_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, color = Borough, group = Borough)) +
-  geom_point() +
-  geom_line() +
-  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-
-A_Rates %>% 
-  ggplot(aes(x=Year, y=Rate, group = Borough)) +
-  geom_point() +
-  geom_line() +
-  facet_wrap(~ Borough) +
-  labs(x = "Year", y = "Sightings per square kilometre", title = "Rate of sightings by Borough area", color = "Borough") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust=0.5))
-
-```
-
-
+There are clear relations between most of the variables in the `rat_sightings` dataset. Particularly, we see that the place with the biggest rat sighting concentration is Manhatten, also having the highest rat/person ratio and the longest solving times. However, there are more overall sightings in Brooklyn. Most sightings happen at Family Buildings and most of the cases are solved within one month.
