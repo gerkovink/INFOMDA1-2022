@@ -1,0 +1,293 @@
+---
+title: "Supervised Learning and Visualization Practical 1"
+author: "Daniel Anadria"
+date: 16 September 2022
+output:
+  html_document:
+    css: Daniel_01_Data_Wrangling.css
+    
+---
+<p style="text-align: center;">**Practical 1: Data Wrangling**</p>
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+```
+
+1. Inspecting data types:
+
+```{r}
+object_1 <- 1:5
+object_2 <- 1L:5L
+object_3 <- "-123.456"
+object_4 <- as.numeric(object_2)
+object_5 <- letters[object_1]
+object_6 <- as.factor(rep(object_5, 2))
+object_7 <- c(1, 2, 3, "4", "5", "6")
+```
+
+```{r}
+class(object_1)
+class(object_2)
+class(object_3)
+class(object_4)
+class(object_5)
+class(object_4)
+class(object_5)
+class(object_6)
+class(object_7)
+```
+2. Convert `object_7` back to a vector of numbers using the `as.numeric()` function 
+
+```{r}
+object_7 <- as.numeric(object_7)
+class(object_7)
+```
+3. Make a list called `objects` containing object 1 to 7 using the `list()` function.
+
+```{r}
+objects <- list(object_1, object_2, object_3, object_4, object_5, object_6, object_7)
+```
+
+4. Make a data frame out of `object_1`, `object_2`, and `object_5` using the `data.frame()` function
+
+```{r}
+df <- data.frame(object_1, object_2, object_5)
+df$object_1
+df[[3]]
+```
+5. Useful functions for determining the size of a data frame are `ncol()` and `nrow()`. Try them out!
+
+```{r}
+ncol(df)
+nrow(df)
+dim(df)
+```
+6. Use the function `read_csv()` to import the file “data/googleplaystore.csv” and store it in a variable called `apps`.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+apps <- read_csv("Data/googleplaystore.csv")
+```
+
+7. Did any column get a variable type you did not expect?
+
+```{r}
+colnames(apps)
+```
+
+All column names look fine to me. Let's look at column types.
+
+```{r}
+apps <- as.data.frame(apps)
+for (i in 1:ncol(apps)){
+ x <- class(apps[,i])
+ print(c(i,x))}
+```
+Size is character because the millions are expressed as e.g. "19M".
+Price is character because the prices are expressed with dollar signs e.g. "$2.95".
+Installs are character because the number is expressed as e.g. "10,000+". 
+
+All of these cases show that when a column containing numbers also contains strings such as "M", "$" or "+", the whole column type becomes character.
+
+8. Use the function `head()` to look at the first few rows of the apps dataset
+
+```{r}
+apps <- as.tibble(apps)
+head(apps)
+```
+9. Repeat steps 5, 6, and 7 but now for “data/students.xlsx” (NB: You’ll need a function from the package readxl). Also try out the function tail() and View() (with a capital V).
+
+```{r}
+students <- readxl::read_xlsx("Data/students.xlsx")
+```
+
+```{r}
+dim(students)
+```
+```{r}
+colnames(students)
+```
+```{r}
+class(students)
+students <- as.data.frame(students)
+class(students)
+```
+
+
+```{r}
+for (i in 1:ncol(students)){
+    x <- class(students[,i])
+    print(c(i, x))}
+```
+Looks good, but I would prefer `students$program` being a factor.
+
+```{r}
+students$program <- as.factor(students$program)
+class(students$program)
+```
+
+```{r}
+students <- as_tibble(students)
+head(students)
+```
+
+```{r}
+tail(students)
+```
+```{r}
+View(students)
+```
+
+10. Create a summary of the three columns in the students dataset using the summary() function. What is the range of the grades achieved by the students?
+
+```{r}
+summary(students)
+```
+```{r}
+range(students$grade)
+```
+
+11. Look at the help pages for `filter()` (especially the examples) and show the students with a grade lower than 5.5
+
+```{r}
+students %>% filter(grade < 5.5)
+```
+
+12. Show only the students with a grade higher than 8 from programme A
+
+```{r}
+students %>% filter(grade > 8, programme == "A")
+```
+13. Sort the students dataset such that the students from programme A are on top of the data frame and within the programmes the highest grades come first.
+
+```{r}
+students %>% arrange(programme, -grade)
+```
+14. Show only the `student_number` and `programme` columns from the students dataset
+
+```{r}
+students %>% select(student_number, programme)
+```
+
+
+
+
+```{r}
+students <- mutate(students, pass = grade > 5.5)
+students
+```
+15. Use `mutate()` and `recode()` to change the codes in the programme column of the students dataset to their names. Store the result in a variable called `students_recoded`
+
+```{r}
+students_recoded <- mutate(students, programme = recode(programme, "A" = "Science", "B" = "Social Science"))
+students_recoded
+```
+```{r}
+students_dataset <-
+  read_xlsx("data/students.xlsx") %>% 
+  mutate(prog = recode(programme, "A" = "Science", "B" = "Social Science")) %>% 
+  filter(grade > 5.5) %>% 
+  arrange(programme, -grade) %>% 
+  select(student_number, prog, grade)
+students_dataset
+```
+16. Create a data processing pipeline that (a) loads the apps dataset, (b) parses the number of installs as ‘Downloads’ variable using mutate and parse_number(), (c) shows only apps with more than 500 000 000 downloads, (d) orders them by rating (best on top), and (e) shows only the relevant columns (you can choose which are relevant, but select at least the `Rating` and `Category` variables). Save the result under the name popular_apps.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+apps_dan <- read_csv("Data/googleplaystore.csv") %>%
+  mutate(Downloads = parse_number(Installs)) %>%
+  filter(Downloads > 50000) %>%
+  arrange(-Rating) %>%
+  select(Category, Rating, Downloads) %>% 
+  distinct(.keep_all = F)
+
+head(apps_dan)
+```
+```{r}
+students_dataset <- read_xlsx("Data/students.xlsx")
+
+students_dataset %>% summarize(mean = mean(grade), 
+                              variance = var(grade), 
+                              min = min(grade), 
+                              max = max(grade))
+```
+
+17. Show the median, minimum, and maximum for the popular apps dataset you made in the previous assignment.
+
+```{r}
+mode <- function(x) {
+  uniquex <- unique(x)
+  uniquex[which.max(tabulate(match(x, uniquex)))]
+}
+
+apps_dan %>% 
+  drop_na %>% summarize(
+    "Min Rating" = min(Rating),
+    "Median Rating" = median(Rating),
+    "Max Rating" = max(Rating),
+    "Min Downloads" = min(Downloads),
+    "Median Downloads" = median(Downloads),
+    "Max Downloads" = max(Downloads),
+    "Mode Category" = mode(Category))
+```
+
+18. Add the median absolute deviation to the summaries you made before
+
+```{r}
+apps_dan %>% 
+  drop_na %>% summarize(
+    "Min Rating" = min(Rating),
+    "Median Rating" = median(Rating),
+    "Max Rating" = max(Rating),
+    "MAD Ratings" = mad(Rating),
+    "Min Downloads" = min(Downloads),
+    "Median Downloads" = median(Downloads),
+    "Max Downloads" = max(Downloads),
+    "MAD Downloads" = mad(Downloads),
+    "Mode Category" = mode(Category))
+
+```
+
+```{r}
+students_dataset %>% 
+  group_by(programme) %>% 
+  summarise(
+    mean = mean(grade), 
+    variance = var(grade), 
+    min = min(grade), 
+    max = max(grade))
+```
+
+19. Create a grouped summary of the ratings per category in the popular apps dataset.
+
+```{r}
+apps_dan %>% group_by(Category) %>% 
+  drop_na %>%
+  summarize("Min Rating" = min(Rating),
+            "Median Rating" = median(Rating),
+            "Max Rating" = max(Rating),
+            "MAD Ratings" = mad(Rating))
+```
+20. Create an interesting summary based on the Google play store apps dataset. An example could be “do games get higher ratings than communication apps?”
+
+I made an overview of the apps that cost more than $5 and grouped them by genre. 
+Then I made a summary table of the cost values by genre.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+apps <- read_csv("Data/googleplaystore.csv") 
+
+apps %>% drop_na %>% 
+  mutate(Cost = parse_number(Price)) %>% 
+  mutate(Downloads = parse_number(Installs)) %>% 
+  filter(Cost > 5) %>% 
+  group_by(Genres) %>% 
+  summarize("Min Cost" = min(Cost),
+            "Mean Cost" = mean(Cost),
+            "Max Cost" = max(Cost),
+            "MAD Cost" = mad(Cost)) 
+
+```
+
+The end.

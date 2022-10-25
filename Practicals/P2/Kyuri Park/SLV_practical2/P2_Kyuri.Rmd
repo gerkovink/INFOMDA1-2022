@@ -1,0 +1,255 @@
+---
+title: "P2_Kyuri.Rmd"
+author: "Kyuri Park"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#mainfont: Courier New
+#fontsize: 11pt
+urlcolor: blue
+#geometry: margin = 1 in
+output: 
+  # pdf_document:
+  #   latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_depth: 1
+    toc_float: true
+    theme: paper
+    highlight: tango
+    df_print: paged
+---
+
+<style type="text/css">
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap');
+
+body{ /* Normal  */
+  font-size: 13px;
+  font-family: 'Lato', sans-serif;
+  }
+h1.title {
+  font-size: 25px;
+  color: DarkBlue;
+  margin-bottom:5px;
+}
+
+h1 { /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+h2 { /* Header 2 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+h3 { /* Header 3 */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre { /* Code block - determines code spacing between lines */
+  font-size: 13px;
+}
+
+</style>
+<hr>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE,
+               warning = FALSE,
+               comment = NA)
+```
+
+```{r load_packages}
+library(ISLR)
+library(tidyverse)
+```
+
+## 1. Name the aesthetics, geoms, scales, and facets of the above visualisation. Also name any statistical transformations or special coordinate systems.
+
+- aesthetics: x = number of hits, y = number of home  
+- geoms: density lines and points
+- scales: continuous(?)
+- facets: not applicable
+- neither a statistical transformation nor special coordinate system is observed.
+
+
+## 2. Run the code below to generate data. There will be three vectors in your environment. Put them in a data frame for entering it in a `ggplot()` call using either the `data.frame()` or the `tibble()` function. Give informative names and make sure the types are correct (use the `as.<type>()` functions). Name the result `gg_students`
+
+```{r datavecs}
+set.seed(1234)
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+
+gg_students <- data.frame(
+  grade = as.numeric(student_grade),
+  student_number = as.character(student_number),
+  programme = as.factor(programme)
+)
+  
+head(gg_students)
+```
+
+## 3. Plot the first `homeruns_plot` again, but map the `Hits` to the y-axis and the `HmRun` to the x-axis instead.
+
+```{r}
+Hitters %>%  ggplot(aes(x = HmRun, y = Hits)) +
+  geom_point()
+```
+
+## 4. Recreate the same plot once more, but now also map the variable `League` to the `colour` aesthetic and the variable `Salary` to the `size` aesthetic.
+```{r}
+Hitters %>%  ggplot(aes(x = HmRun, y = Hits, color=League, size = Salary)) +
+  geom_point()
+```
+
+
+## 5. Look at the many different geoms on the [reference website](https://ggplot2.tidyverse.org/reference/#section-layer-geoms).
+
+## 6. Use `geom_histogram()` to create a histogram of the grades of the students in the `gg_students` dataset. Play around with the `binwidth` argument of the `geom_histogram()` function.
+
+```{r}
+gg_students %>% ggplot(aes(x=grade)) +
+  geom_histogram()
+```
+
+## 7. Use `geom_density()` to create a density plot of the grades of the students in the `gg_students` dataset. Add the argument `fill = "light seagreen"` to `geom_density()`.
+
+```{r}
+gg_students %>% ggplot(aes(x=grade)) +
+  geom_density(fill = "light seagreen" )
+```
+
+## 8. Add rug marks to the density plot through `geom_rug()`. You can edit the colour and size of the rug marks using those arguments within the `geom_rug()` function.
+```{r}
+gg_students %>% ggplot(aes(x=grade)) +
+  geom_density(fill = "light seagreen") +
+  geom_rug(color = "light seagreen", size = 1.5)
+```
+
+## 9. Increase the data to ink ratio by removing the y axis label, setting the theme to `theme_minimal()`, and removing the border of the density polygon. Also set the limits of the x-axis to go from 0 to 10 using the `xlim()` function, because those are the plausible values for a student grade.
+
+```{r}
+gg_students %>% ggplot(aes(x=grade)) +
+  geom_density(fill = "light seagreen") +
+  geom_rug(color = "light seagreen", size = 1.5) + 
+  theme_minimal() + xlim(0, 10) +
+    theme(axis.title.y=element_blank())
+```
+
+## 10. Create a boxplot of student grades per programme in the `gg_students` dataset you made earlier: map the programme variable to the x position and the grade to the y position. For extra visual aid, you can additionally map the programme variable to the fill aesthetic.
+
+```{r}
+gg_students %>% ggplot(aes(x = programme, y = grade, fill = programme)) +
+  geom_boxplot() +
+  theme_minimal()
+```
+
+## 11. What do each of the horizontal lines in the boxplot mean? What do the vertical lines (whiskers) mean?
+
+The bottom and top horizontal lines refer to the 25th and 75th percentile of the grade in each group respectively. The thick horizontal line in the middle means the median grade per each group.  
+The whiskers are the two lines outside the box, that go from the minimum to the lower quartile (the start of the box) and then from the upper quartile (the end of the box) to the maximum. Neither the minimum nor the maximum value goes beyond $1.5 * IQR$. In case it does, that certain data point is considered to be an *outlier*.
+
+
+## 12. Comparison of distributions across categories can also be done by adding a fill aesthetic to the density plot you made earlier. Try this out. To take care of the overlap, you might want to add some transparency in the `geom_density()` function using the `alpha` argument.
+
+```{r}
+gg_students %>% ggplot(aes(x=grade, fill = programme)) +
+  geom_density(alpha = 0.5) +
+  geom_rug(mapping = aes(color = programme)) +
+  theme_minimal() + xlim(0, 10) +
+  theme(axis.title.y=element_blank())
+```
+
+## 13. Create a bar plot of the variable `Years` from the `Hitters` dataset. 
+```{r}
+Hitters %>% ggplot(aes(x=Years)) +
+  geom_bar() + theme_classic()
+```
+
+
+## 14. Use `geom_line()` to make a line plot out of the first 200 observations of the variable `Volume` (the number of trades made on each day) of the `Smarket` dataset. You will need to create a `Day` variable using `mutate()` to map to the x-position. This variable can simply be the integers from 1 to 200. Remember, you can select the first 200 rows using `Smarket[1:200, ]`.
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line()
+```
+
+## 15. Give the line a nice `colour` and increase its `size`. Also add points of the same colour on top.
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(color="darkgreen", size=1) +
+  geom_point(color="darkgreen")
+```
+
+
+## 16. Use the function `which.max()` to find out which of the first 200 days has the highest trade volume and use the function `max()` to find out how large this volume was.
+```{r}
+which.max(Smarket[1:200,]$Volume)
+max(Smarket[1:200,]$Volume)
+```
+
+## 17. Use `geom_label(aes(x = your_x, y = your_y, label = "Peak volume"))` to add a label to this day. You can use either the values or call the functions. Place the label near the peak!
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(color="darkgreen", size=1) +
+  geom_point(color="darkgreen") +
+  geom_label(aes(x = which.max(Volume), y = max(Volume)+0.1, label = "Peak volume")) # +0.1 for the label to not get overlapped with the graph
+```
+
+## 18. Create a data frame called `baseball` based on the `Hitters` dataset. In this data frame, create a factor variable which splits players' salary range into 3 categories. Tip: use the `filter()` function to remove the missing values, and then use the `cut()` function and assign nice `labels` to the categories. In addition, create a variable which indicates the proportion of career hits that was a home run.
+
+```{r}
+# check the summary of Salary
+summary(Hitters$Salary)
+
+# create a new df
+baseball <- Hitters %>% 
+  na.omit() %>%
+  mutate(salary_cat = case_when(Salary < 190 ~ "low",
+                                Salary <= 750 ~ "medium",
+                                Salary > 750 ~ "high"),
+         prop_homerun = CHmRun/CHits)
+```
+
+
+## 19. Create a scatter plot where you map `CWalks` to the x position and the proportion you calculated in the previous exercise to the y position. Fix the y axis limits to (0, 0.4) and the x axis to (0, 1600) using `ylim()` and `xlim()`. Add nice x and y axis titles using the `labs()` function. Save the plot as the variable `baseball_plot`.
+
+```{r}
+baseball_plot <- baseball %>% ggplot(aes(x = CWalks, y = prop_homerun)) +
+  geom_point() +
+  ylim(0, 0.4) + xlim(0, 1600) +
+  labs(x = "Number of walks", y = "Proportion of homruns")
+
+baseball_plot
+```
+
+## 20. Split up this plot into three parts based on the salary range variable you calculated. Use the `facet_wrap()` function for this; look at the examples in the help file for tips.
+
+```{r}
+baseball_plot + facet_wrap(~factor(salary_cat, levels = c("low", "medium", "high")))
+```
+
+
+## 21. Create an interesting data visualisation based on the `Carseats` data from the `ISLR` package.
+```{r}
+# check the data 
+glimpse(Carseats)
+#GGally::ggpairs(Carseats)
+
+# plot of price vs. sale per the shelve location 
+Carseats %>% 
+  mutate(Sloc = fct_relevel(ShelveLoc, "Bad", "Medium", "Good")) %>% 
+  ggplot(aes(x=Price, y = Sales, color=Income)) +
+  geom_point() + facet_wrap(~Sloc)
+```
+
+
+
+
+
+
+

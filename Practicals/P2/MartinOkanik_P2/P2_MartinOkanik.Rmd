@@ -1,0 +1,420 @@
+---
+title: "Practical 2"
+author: "Martin Okanik"
+date: "`r Sys.Date()`"
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# 
+
+```{r load_packages}
+library(ISLR)
+library(tidyverse)
+```
+
+Inspect the data
+
+```{r objects}
+head(Hitters)
+```
+
+```{r}
+hist(Hitters$Salary, xlab = "Salary in thousands of dollars")
+```
+
+```{r}
+Hitters$League
+```
+
+```{r}
+table(Hitters$League)
+```
+
+```{r}
+barplot(table(Hitters$League))
+```
+
+```{r}
+plot(x = Hitters$Hits, y = Hitters$HmRun, xlab="Hits", ylab="Home runs")
+```
+
+```{r}
+homeruns_plot <- 
+  ggplot(Hitters, aes(x = Hits, y = HmRun)) +
+  geom_point() +
+  labs(x = "Hits", y = "Home runs") +
+  geom_density_2d() +
+  labs(title = "Cool density and scatter plot") +
+  theme_minimal()
+
+homeruns_plot
+```
+
+------------------------------------------------------------------------
+
+## Question 1:
+
+**Name the aesthetics, geoms, scales, and facets of the above visualisation. Also name any statistical transformations or special coordinate systems.**
+
+------------------------------------------------------------------------
+
+aesthetics: hits mapped to x (horizontal coordinate), home runs mapped to y (vertical coordinate)
+
+geoms: geom_point (scatter plot), geom_dens_2d (contour plot)
+
+scales: continuous horizontal and vertical axes
+
+facets: no facets
+
+coords&transformations: plain Cartesian grid
+
+------------------------------------------------------------------------
+
+## Question 2:
+
+2.  **Run the code below to generate data. There will be three vectors in your environment. Put them in a data frame for entering it in a `ggplot()` call using either the `data.frame()` or the `tibble()` function. Give informative names and make sure the types are correct (use the `as.<type>()` functions). Name the result `gg_students`**
+
+```{r}
+set.seed(1234)
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+```
+
+------------------------------------------------------------------------
+
+```{r}
+gg_students <- data.frame(
+  id = as.character(student_number), 
+  grade = as.numeric(student_grade),  
+  programme = as.factor(programme)
+  )
+gg_students
+```
+
+------------------------------------------------------------------------
+
+## Question 3:
+
+**Plot the first homeruns_plot again, but map the Hits to the y-axis and the HmRun to the x-axis instead.**
+
+------------------------------------------------------------------------
+
+```{r}
+ggplot(Hitters, aes(x = HmRun, y = Hits)) +
+  geom_point() +
+  labs(y = "Hits", x = "Home runs")
+```
+
+------------------------------------------------------------------------
+
+## Question 4:
+
+**Recreate the same plot once more, but now also map the variable League to the colour aesthetic and the variable Salary to the size aesthetic.**
+
+------------------------------------------------------------------------
+
+```{r}
+ggplot(Hitters, aes(x = HmRun, y = Hits, colour = League, size = Salary)) +
+  geom_point() +
+  labs(y = "Hits", x = "Home runs")
+```
+
+------------------------------------------------------------------------
+
+## Question 5:
+
+**Look at the many different geoms on the reference website.**
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## Question 6:
+
+**Use geom_histogram() to create a histogram of the grades of the students in the gg_students dataset. Play around with the binwidth argument of the geom_histogram() function.**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_hist <- ggplot(data = gg_students, mapping = aes(x = grade)) +
+  geom_histogram(binwidth = 0.5, fill="Blue", colour="Red", alpha=0.5)
+gg_hist
+```
+
+------------------------------------------------------------------------
+
+## Question 7:
+
+**Use geom_density() to create a density plot of the grades of the students in the gg_students dataset. Add the argument fill = "light seagreen" to geom_density().**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_hist <- ggplot(data = gg_students, mapping = aes(x = grade)) +
+  #geom_histogram(binwidth = 0.5, fill="Blue", colour="Red", alpha=0.5) +
+  geom_density(fill = "light seagreen")
+gg_hist
+```
+
+------------------------------------------------------------------------
+
+## Question 8:
+
+**Add rug marks to the density plot through geom_rug(). You can edit the colour and size of the rug marks using those arguments within the geom_rug() function.**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_hist <- ggplot(data = gg_students, mapping = aes(x = grade)) +
+  geom_histogram(binwidth = 0.5, fill="Blue", colour="White", alpha=0.5) +
+  geom_density(fill = "light seagreen") +
+  geom_rug(colour = "Red", size = 0.5)
+gg_hist
+```
+
+------------------------------------------------------------------------
+
+## Question 9:
+
+**Increase the data to ink ratio by removing the y axis label, setting the theme to theme_minimal(), and removing the border of the density polygon. Also set the limits of the x-axis to go from 0 to 10 using the xlim() function, because those are the plausible values for a student grade.**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_hist <- ggplot(data = gg_students, mapping = aes(x = grade)) +
+  #geom_histogram(binwidth = 0.5, fill="Blue", colour="White", alpha=0.5) +
+  geom_density(fill = "light seagreen", colour = NA) +
+  geom_rug(colour = "Red", size = 0.5) +
+  xlim(0, 10) +
+  labs(y = "") +
+  theme_minimal()
+gg_hist
+```
+
+------------------------------------------------------------------------
+
+## Question 10:
+
+**Create a boxplot of student grades per programme in the gg_students dataset you made earlier: map the programme variable to the x position and the grade to the y position. For extra visual aid, you can additionally map the programme variable to the fill aesthetic.**
+
+## Question 11:
+
+**What do each of the horizontal lines in the boxplot mean? What do the vertical lines (whiskers) mean?**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_box <- ggplot(data = gg_students, ) +
+  geom_boxplot(mapping = aes(x = programme, y = grade, fill = programme))
+gg_box
+```
+
+vertical lines (whiskers) denote the lowest/highest values at most 1.5 IQR from the hinge
+
+thick horizontal line denotes the median
+
+thin horizontal lines at the edge of the box (hinges) denote the 25th and 75th percentiles
+
+------------------------------------------------------------------------
+
+## Question 12:
+
+**Comparison of distributions across categories can also be done by adding a fill aesthetic to the density plot you made earlier. Try this out. To take care of the overlap, you might want to add some transparency in the geom_density() function using the alpha argument.**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_hist <- ggplot(data = gg_students, mapping = aes(x = grade)) +
+  #geom_histogram(binwidth = 0.5, fill="Blue", colour="White", alpha=0.5) +
+  geom_density(aes(fill = programme), colour = "White", alpha = 0.5) +
+  geom_rug(aes(colour = programme), size = 0.5) +
+  xlim(0, 10) +
+  labs(y = "") +
+  theme_minimal()
+gg_hist
+```
+
+------------------------------------------------------------------------
+
+## Question 13:
+
+**Create a bar plot of the variable Years from the Hitters dataset.**
+
+------------------------------------------------------------------------
+
+```{r}
+gg_bar <- ggplot(data = Hitters, mapping = aes(x = Years)) +
+  geom_bar()
+gg_bar
+```
+
+------------------------------------------------------------------------
+
+## Question 14:
+
+**Use geom_line() to make a line plot out of the first 200 observations of the variable Volume (the number of trades made on each day) of the Smarket dataset. You will need to create a Day variable using mutate() to map to the x-position. This variable can simply be the integers from 1 to 200. Remember, you can select the first 200 rows using Smarket[1:200, ].**
+
+------------------------------------------------------------------------
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200 ) %>%
+  ggplot(mapping = aes(x = Day, y = Volume)) +
+  geom_line()
+  
+  
+```
+
+------------------------------------------------------------------------
+
+## Question 15:
+
+**Give the line a nice colour and increase its size. Also add points of the same colour on top.**
+
+------------------------------------------------------------------------
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200 ) %>%
+  ggplot(mapping = aes(x = Day, y = Volume)) +
+  geom_line(colour = "blue", size = 0.6) +
+  geom_point(colour = "blue")
+```
+
+------------------------------------------------------------------------
+
+## Question 16:
+
+**Use the function which.max() to find out which of the first 200 days has the highest trade volume and use the function max() to find out how large this volume was.**
+
+------------------------------------------------------------------------
+
+```{r}
+day_max = which.max(Smarket[1:200,]$Volume)
+```
+
+```{r}
+vol_max = max(Smarket[1:200,]$Volume)
+```
+
+------------------------------------------------------------------------
+
+## Question 17:
+
+**Use geom_label(aes(x = your_x, y = your_y, label = "Peak volume")) to add a label to this day. You can use either the values or call the functions. Place the label near the peak!**
+
+------------------------------------------------------------------------
+
+```{r}
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200 ) %>%
+  ggplot(mapping = aes(x = Day, y = Volume)) +
+  geom_line(colour = "blue", size = 0.6) +
+  geom_point(colour = "blue") +
+  geom_label(aes(x = day_max, y = 1.05*vol_max, label = paste("Peak volume =", as.character(vol_max))))
+```
+
+------------------------------------------------------------------------
+
+## Question 18:
+
+**Create a data frame called baseball based on the Hitters dataset. In this data frame, create a factor variable which splits players' salary range into 3 categories. Tip: use the filter() function to remove the missing values, and then use the cut() function and assign nice labels to the categories. In addition, create a variable which indicates the proportion of career hits that was a home run.**
+
+------------------------------------------------------------------------
+
+```{r}
+baseball <- Hitters %>% 
+  filter(!is.na(Salary)) %>%
+  mutate(
+    salary_range = cut(Salary, breaks = 3, labels = c("Low", "Medium", "High")),
+    homeruns_to_hits = CHmRun / CHits
+  )
+```
+
+------------------------------------------------------------------------
+
+## Question 19:
+
+**Create a scatter plot where you map CWalks to the x position and the proportion you calculated in the previous exercise to the y position. Fix the y axis limits to (0, 0.4) and the x axis to (0, 1600) using ylim() and xlim(). Add nice x and y axis titles using the labs() function. Save the plot as the variable baseball_plot.**
+
+------------------------------------------------------------------------
+
+```{r}
+baseball_plot <- ggplot(data = baseball, mapping = aes(x = CWalks, y = homeruns_to_hits)) +
+  geom_point() +
+  xlim(0, 1600) +
+  ylim(0, 0.4) +
+  labs(x = "number of career walks", y = "proportion of homeruns to hits")
+baseball_plot
+```
+
+------------------------------------------------------------------------
+
+## Question 20:
+
+**Split up this plot into three parts based on the salary range variable you calculated. Use the facet_wrap() function for this; look at the examples in the help file for tips.**
+
+------------------------------------------------------------------------
+
+```{r}
+baseball_plot +
+  facet_wrap(vars(salary_range), nrow = 3)
+```
+
+------------------------------------------------------------------------
+
+## Final exercise:
+
+**Create an interesting data visualisation based on the Carseats data from the ISLR package.**
+
+------------------------------------------------------------------------
+
+```{r}
+head(Carseats)
+```
+
+We would expect "Advertising" to be an important variable for predicting sales at a given location. Let us have a closer look at it:
+
+```{r}
+adv_plot <- ggplot(data = Carseats, mapping = aes(x = Advertising, y = Sales)) +
+  geom_point(mapping = aes(color = Income, size = Population )) +
+  geom_smooth()
+adv_plot
+```
+
+There seems to be quite little influence, but it might be more meaningful to plot "Advertising_per_person" vs "Sales_per_person" for a given location. This shows how heavy is the presence of advertising in a given location, and what is the fraction of people actually affected by it.
+
+Make a new dataset which has these quantities calculated per capita, as well as two different categories for age, since we expect young families to buy more car seats.
+
+```{r}
+CarseatsIntr <- Carseats %>% 
+  mutate(Sales_perCapita = Sales / Population,
+         Advertising_perCapita = Advertising / Population,
+         Age_category = cut(Age, breaks = 2, labels = c("Younger", "Older") ),
+         Advertising_category = cut(Advertising_perCapita, breaks = c(0, 0.0001, 0.1,Inf), labels =c("No advertising", "Below 0.1 $ p.c.", "Above 0.1 $ p.c."))
+  )
+  
+
+# now let us plot the same for "intrinsic" rather than exrtrinsic variables: 
+advIntr_plot <- ggplot(data = CarseatsIntr, mapping = aes(x = Advertising_perCapita, y = Sales_perCapita)) +
+  geom_point(mapping = aes(colour = Income, size = CompPrice)) +
+  geom_smooth(mapping = aes(linetype = Age_category), colour = "red") +
+  scale_x_continuous(trans='log10') +
+  scale_y_continuous(trans='log10') +
+  labs(title = "Per capita sales in various communities" )
+advIntr_plot
+```
+
+Until the per capita advertising expenditure reaches roughly 0.03, young people clearly spend more on child seats than old people. Interestingly, it seems that **big enough advertising can convince old people that they need child seats**. (not really, but it sounds like a catchy headline...) Also, there is no clear trend for richer locations to be better advertising investments than poorer locations.
+
+What is also interesting is that while really large per capita advertising produces larger per capita sales, the overall vertical range does not differ from the places with no advertising at all (collapsed onto y axis).
+
+```{r}
+2+2
+```
