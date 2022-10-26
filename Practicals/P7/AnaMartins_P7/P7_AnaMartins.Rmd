@@ -1,0 +1,122 @@
+---
+title: 'Supervised learning: Nonlinear Regression'
+author: "Ana Martins"
+date: "October 2022"
+output: html_document
+---
+
+## Introduction
+
+```{r}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+```
+
+```{r}
+set.seed(45)
+```
+
+
+## Prediction plot
+
+1. **Create a function called `pred_plot()` that takes as input an `lm` object, which outputs the above plot but with a prediction line generated from the model object using the `predict()` method.**
+
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+```
+
+
+```{r}
+pred_plot <- function(lm){
+  lm_pred <- predict(lm)
+  lm_pred
+  plot <-
+    Boston %>%
+    ggplot() +
+    geom_point(aes(x = lstat, y = medv)) +
+    geom_line(aes(x = lstat, y = lm_pred), color = 'red', size = 1)
+    theme_minimal()
+  plot
+}
+```
+
+2, **Create a linear regression object called `lin_mod` which models `medv` as a function of `lstat`. Check if your prediction plot works by running `pred_plot(lin_mod)`. Do you see anything out of the ordinary with the predictions?**
+
+```{r}
+lin_mod <- lm(medv ~ lstat, data = Boston)
+```
+
+```{r}
+pred_plot(lin_mod)
+```
+
+## Polynomial regression
+
+3. **Create another linear model pn3_mod, where you add the second and third-degree polynomial terms I(lstat^2) and I(lstat^3) to the formula. Create a pred_plot() with this model.**
+
+```{r}
+pn3_mod <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = Boston)
+```
+
+```{r}
+pred_plot(pn3_mod)
+```
+
+4. **Play around with the poly() function. What output does it generate with the arguments `degree = 3` and `raw = TRUE?`**
+
+```{r}
+poly_mod <- lm(medv ~ poly(lstat, degree = 3, raw = TRUE), data = Boston)
+```
+
+```{r}
+pred_plot(poly_mod)
+```
+
+5. **Use the poly() function directly in the model formula to create a 3rd-degree polynomial regression predicting `medv` using `lstat`. Compare the prediction plot to the previous prediction plot you made. What happens if you change the poly() function to `raw = FALSE`?**
+
+```{r}
+poly_raw_false_mod <- lm(medv ~ poly(lstat, degree = 3, raw = FALSE), data = Boston)
+```
+
+```{r}
+pred_plot(poly_raw_false_mod)
+```
+
+I don't see a difference...
+
+## Piecewise regression
+
+6. **Create a model called pw2_mod with one predictor: I(lstat <= median(lstat)). Create a pred_plot with this model. Use the coefficients in coef(pw2_mod) to find out what the predicted value for a low-lstat neighbourhood is.**
+
+```{r}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+```
+
+```{r}
+pred_plot(pw2_mod)
+coef(pw2_mod)
+```
+
+The predicted value for low stat neighbourhoods is 16.67747 + 11.71067.
+
+7. **Use the `cut()` function in the formula to generate a piecewise regression model called `pw5_mod` that contains 5 equally spaced sections. Again, plot the result using `pred_plot`.**
+
+```{r}
+pw5_mod <- lm(medv ~ cut(lstat, breaks = 5), data = Boston)
+```
+
+```{r}
+pred_plot(pw5_mod)
+```
+
+
+## Piecewise polynomial regression
+
+## Splines
+
+## Programming assignment (optional)
