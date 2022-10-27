@@ -7,13 +7,15 @@ output: html_document
 
 ## Goals 
 
-In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDb Movies Dataset](https://www.kaggle.com/datasets/harshitshankhdhar/imdb-dataset-of-top-1000-movies-and-tv-shows). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. However, there is no garantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
+In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/carolzhangdc/imdb-5000-movie-dataset). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. However, there is no garantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the popularity of the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
 
 ## About the Dataset
 
-The dataset we will be using is the [IMDb Movies Dataset](https://www.kaggle.com/datasets/harshitshankhdhar/imdb-dataset-of-top-1000-movies-and-tv-shows). This dataset contains only the top 1000 movies on IMDb, so we can already see that this might limit our predictions a bit, as our model will probably be worse at predicting lower scores. However, the only available dataset with all of the movies on IMDb was too big for us to be able to analyse it on our computers, so this one will have to do.
+The dataset we will be using is the [IMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/carolzhangdc/imdb-5000-movie-dataset). This dataset contains 5000 random (see below why we can call them random) movies that are on IMDB. The only available dataset with all of the movies on IMDb was too big for us to be able to analyse it on our computers, so this was the best one we could find, and we believe it can do almost as good a job, as it should have the same distributions, but with less cases.
 
-I has 16 variables: `Poster_Link`, `Series_Title`, `Released_Year`, `Certificate`, `Runtime`, `Genre`, `IMDB_Rating`, `Overview`, `Meta_score`, `Director`, `Star1`, `Star2`, `Star3`, `Star4`, `No_of_Votes` and `Gross`. We will be taking away variables that do not interest us like `Poster_Link` and `Overview`, as those are not useful to analyse. And the variables we will try to predict are `IMDB_Rating` and `Gross`.
+The dataset has 28 variables: `color`, `director_name`, `num_critic_for_reviews`, `duration`, `director_facebook_likes`, `actor_3_facebook_likes`, `actor_2_name`, `actor_1_facebook_likes`, `gross`, `genres`, `actor_1_name`, `movie_title`, `num_voted_users`, `cast_total_facebook_likes`, `actor_3_name`, `facenumber_in_poster`, `plot_keywords`, `movie_imdb_link`, `num_user_for_reviews`, `language`, `country`, `content_rating`, `budget`, `title_year`, `actor_2_facebook_likes`, `imdb_score`, `aspect_ratio`, `movie_facebook_likes`.
+
+We will be taking away variables that do not interest us, like `plot_keywords` and `movie_imdb_link`, as those are not useful to analyse or to look back on. Variables like the actors names are also not useful to analyse, as if we tried to fit a model to so many actors we would definitely be overfitting, but they are good to keep if we want to look back at them later. And the variables we will try to predict are `imdb_score` and `gross`.
 
 ## Getting the Data
 
@@ -24,7 +26,7 @@ library(tidyverse)
 ```
 
 ```{r}
-movies <- read_csv("data/imdb_top_1000.csv")
+movies <- read_csv("data/movie_metadata.csv")
 ```
 
 Let us clean this up a bit so we do not have to carry around more than we need to:
@@ -32,13 +34,28 @@ Let us clean this up a bit so we do not have to carry around more than we need t
 ```{r}
 movies <-
   movies %>% 
-  select(-Poster_Link, -Overview)
+  select(-plot_keywords, -movie_imdb_link)
 ```
 
 ```{r}
 movies <-
   movies %>% 
-  mutate(Released_Year = as.numeric(Released_Year), Certificate = as.factor(Certificate))
+  mutate(color = as.factor(color), language = as.factor(language), country = as.factor(country), content_rating = as.factor(content_rating))
+```
+
+We also realised there are some random episodes and tvshows in the midst of the dataset, so let us take them out, since the ratings for movies and tvshows usually differ slightly (7.5 for a movie = good movie! 7.5 for a tvshow = average). First, let's check if taking out titles with less than 60 minutes would be a good guess.
+
+```{r}
+movies %>% 
+  filter(duration < 60)
+```
+
+This seems to be a good guess. If there are any other lost tvshows that have a runtime bigger than 60 minutes, those are usually more closely scored to movies than other tvshows (e.g. Sherlock vs. The Vampire Diaries).
+
+```{r}
+movies <- 
+  movies %>% 
+  filter(duration >= 60)
 ```
 
 
@@ -53,19 +70,82 @@ summary(movies)
 
 ```{r}
 movies %>% 
-  ggplot(aes(x = IMDB_Rating)) +
-  geom_histogram(binwidth = 0.25) +
+  ggplot(aes(x = imdb_score)) +
+  geom_histogram(binwidth = 0.5) +
   theme_minimal() +
   xlim(0, 10)
 ```
 
-We can see right away that, as expected, we only have very high scoring films, all above 7.
+Refering back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
+
+What about the distribution of the movie gross?
 
 ```{r}
 movies %>% 
-  ggplot(aes(x = Released_Year, y = IMDB_Rating, color = Certificate)) +
+  ggplot(aes(x = gross)) +
+  geom_histogram(bins = 50) +
+  theme_minimal()
+```
+
+It seems most of the concentration is at lower  grosses, and the higher the gross, the less movies with it there are.
+
+Let us keep exploring our variables and see if we get new information.
+
+```{r}
+movies %>% 
+  ggplot(aes(x = title_year, y = imdb_score, color = color)) +
   geom_point() +
   theme_minimal() +
-  scale_x_continuous(breaks=seq(1920, 2020, by = 10))
+  scale_x_continuous(breaks=seq(round(min(movies$title_year, na.rm = TRUE), digits = -1), max(movies$title_year, na.rm = TRUE), by = 10))
+```
+
+We have much more information about more recent movies, the most recent year being 2016. The ratings seemed to be higher for previous years, and they get more spread out the more recent the movie is. As expected, we have many more movies in color now than before. It might seem strange to analyse these variables, but our aim is to understand which variables influence the rating, so we will not be ruling anything out for now.
+
+How does this look for the gross?
+
+```{r}
+movies %>% 
+  ggplot(aes(x = title_year, y = gross, color = color)) +
+  geom_point() +
+  theme_minimal() +
+  scale_x_continuous(breaks=seq(round(min(movies$title_year, na.rm = TRUE), digits = -1), max(movies$title_year, na.rm = TRUE), by = 10))
+```
+
+It seems lately movies are grossing more than a few years back.
+
+Is the number of Facebook likes of the Director and the Cast related to the IMDb score?
+
+```{r}
+movies %>% 
+  ggplot(aes(x = director_facebook_likes, y = imdb_score, size = cast_total_facebook_likes)) +
+  geom_point() +
+  theme_minimal()
+```
+
+It seems there are quite a people with zero facebook likes, which most likely means they do not have a page. Let us take these values out for the sake of the analysis for now, but this may mean these variables will not be useful for the predictions. PROBLEM????
+
+```{r}
+movies %>% 
+  filter(director_facebook_likes > 0, cast_total_facebook_likes > 0) %>% 
+  ggplot(aes(x = director_facebook_likes, y = imdb_score, size = cast_total_facebook_likes)) +
+  geom_point() +
+  theme_minimal()
+```
+
+```{r}
+movies %>% 
+  filter(director_facebook_likes > 0, cast_total_facebook_likes > 0) %>% 
+  ggplot(aes(x = director_facebook_likes, y = gross, size = cast_total_facebook_likes)) +
+  geom_point() +
+  theme_minimal()
+```
+
+Is the number of reviews related to the score and/or the gross?
+
+```{r}
+movies %>% 
+  ggplot(aes(x = num_user_for_reviews, y = imdb_score, color = num_critic_for_reviews)) +
+  geom_point() +
+  theme_minimal()
 ```
 
