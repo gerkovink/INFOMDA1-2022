@@ -1,0 +1,39 @@
+---
+title: "Practical 8"
+author: "Judith Neve"
+date: '2022-10-28'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+```
+
+## 1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.
+
+```{r}
+str(df)
+```
+
+```{r}
+summary(df)
+```
+
+## 2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+
+```{r}
+
+```
+
