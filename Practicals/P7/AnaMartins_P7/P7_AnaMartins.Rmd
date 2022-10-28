@@ -115,6 +115,12 @@ pw5_mod <- lm(medv ~ cut(lstat, breaks = 5), data = Boston)
 pred_plot(pw5_mod)
 ```
 
+8. **Optional: Create a piecewise regression model `pwq_mod` where the sections are not equally spaced, but have equal amounts of training data. Hint: use the `quantile()` function.**
+
+```{r}
+pwq_mod <- lm(medv ~ cut(lstat, breaks = 5), data = Boston)
+```
+
 
 ## Piecewise polynomial regression
 
