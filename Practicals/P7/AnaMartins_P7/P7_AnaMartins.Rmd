@@ -117,6 +117,99 @@ pred_plot(pw5_mod)
 
 ## Piecewise polynomial regression
 
+```{r}
+# function declaration: has the arguments vec and knots, with default to 1
+piecewise_cubic_basis <- function(vec, knots = 1) {
+  
+  # if knots are set to 0 we get a 3rd degree polynomial from the vec data
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+  
+  # if we do have knots, we cut the vec data into knots + 1 parts
+  cut_vec <- cut(vec, breaks = knots + 1)
+  
+  # we declare out to be a column vector with the same length as vec
+  out <- matrix(nrow = length(vec), ncol = 0)
+  
+  # loop in eat of the parts of cut_vec
+  for (lvl in levels(cut_vec)) {
+    # setting tmp equal to vec
+    tmp <- vec
+    # sets the parts we're not in to 0
+    tmp[cut_vec != lvl] <- 0
+    # sets out to a polynomial fit to each part
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+  }
+  
+  #returns out
+  out
+}
+```
+
+9. **This function does not have comments. Copy - paste the function and add comments to each line. To figure out what each line does, you can first create “fake” `vec` and `knots` variables, for example `vec <- 1:20` and `knots <- 2` and try out the lines separately.**
+
+```{r}
+vec <- 1:20
+knots <- 2
+```
+
+```{r}
+piecewise_cubic_basis(vec, knots)
+```
+
+10. **Create piecewise cubic models with 1, 2, and 3 knots (pc1_mod - pc3_mod) using this piecewise cubic basis function. Compare them using the pred_plot() function.**
+
+```{r}
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 1), data = Boston)
+pc2_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 2), data = Boston)
+pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 3), data = Boston)
+```
+
+```{r}
+pred_plot(pc1_mod)
+pred_plot(pc2_mod)
+pred_plot(pc3_mod)
+```
+
+
 ## Splines
+
+11. **Create a data frame called boston_tpb with the columns medv and lstat from the Boston dataset.**
+
+```{r}
+boston_tpb <- 
+  Boston %>% 
+  select(medv, lstat)
+```
+
+12. Now use `mutate` to add squared and cubed versions of the `lstat` variable to this dataset.
+
+```{r}
+boston_tpb <-
+  boston_tpb %>% 
+  mutate(lstat_squared = lstat^2, lstat_cubed = lstat^3)
+```
+
+13. **Use `mutate` to add a column `lstat_tpb` to this dataset which is 0 below the median and has value `(lstat - median(lstat))^3` above the median. Tip: you may want to use `ifelse()` within your `mutate()` call.**
+
+```{r}
+boston_tpb <-
+  boston_tpb %>% 
+  mutate(lstat_tpb = ifelse(lstat < median(lstat), 0, (lstat - median(lstat))^3))
+```
+
+14. **Create a linear model `tpb_mod` using the `lm()` function. How many predictors are in the model? How many degrees of freedom does this model have?**
+
+```{r}
+tpb_mod <- lm(medv ~ ., data = boston_tpb)
+```
+
+4 predictors and 506 degrees of freedom.
+
+15. **Create a cubic spline model `bs1_mod` with a knot at the median using the `bs()` function. Compare its predictions to those of the `tpb_mod` using the `predict()` function on both models.**
+
+```{r}
+bs1_mod <- bs(Boston$medv, knots = 1, degree = 3)
+```
+
 
 ## Programming assignment (optional)
