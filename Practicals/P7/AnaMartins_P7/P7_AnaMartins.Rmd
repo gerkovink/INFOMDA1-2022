@@ -32,15 +32,16 @@ Boston %>%
 
 
 ```{r}
-pred_plot <- function(lm){
+pred_plot <- function(lm, title = "My Plot"){
   lm_pred <- predict(lm)
   lm_pred
   plot <-
     Boston %>%
     ggplot() +
     geom_point(aes(x = lstat, y = medv)) +
-    geom_line(aes(x = lstat, y = lm_pred), color = 'red', size = 1)
-    theme_minimal()
+    geom_line(aes(x = lstat, y = lm_pred), color = 'red', size = 1) +
+    theme_minimal() +
+    ggtitle(title)
   plot
 }
 ```
@@ -208,7 +209,47 @@ tpb_mod <- lm(medv ~ ., data = boston_tpb)
 15. **Create a cubic spline model `bs1_mod` with a knot at the median using the `bs()` function. Compare its predictions to those of the `tpb_mod` using the `predict()` function on both models.**
 
 ```{r}
-bs1_mod <- bs(Boston$medv, knots = 1, degree = 3)
+bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat), degree = 3), data = Boston)
+tpb_pred <- predict(tpb_mod)
+```
+
+```{r}
+bs1_pred <- predict(bs1_mod)
+```
+
+```{r}
+mean(abs(tpb_pred - bs1_pred))
+```
+
+16. **Create a prediction plot from the `bs1_mod` object using the `plot_pred()` function.**
+
+```{r}
+pred_plot(bs1_mod)
+```
+
+17. **Create a natural cubic spline model (`ns3_mod`) with 3 degrees of freedom using the `ns()` function. Plot it, and compare it to the `bs1_mod`.**
+
+```{r}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston)
+```
+
+```{r}
+pred_plot(ns3_mod)
+```
+
+18. **Plot `lin_mod`, `pn3_mod`, `pw5_mod`, `pc3_mod`, `bs1_mod`, and `ns3_mod` and give them nice titles by adding + ggtitle("My title") to the plot. You may use the function plot_grid() from the package cowplot to put your plots in a grid.**
+
+```{r}
+lin_plot <- pred_plot(lin_mod, "lin")
+pn3_plot <- pred_plot(pn3_mod, "pn3")
+pw5_plot <- pred_plot(pw5_mod, "pw5")
+pc3_plot <- pred_plot(pc3_mod, "pc3")
+bs1_plot <- pred_plot(bs1_mod, "bs1")
+ns3_plot <- pred_plot(ns3_mod, "ns3")
+```
+
+```{r}
+cowplot::plot_grid(lin_plot, pn3_plot, pw5_plot, pc3_plot, bs1_plot, ns3_plot)
 ```
 
 
