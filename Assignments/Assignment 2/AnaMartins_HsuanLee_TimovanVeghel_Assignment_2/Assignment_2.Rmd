@@ -5,6 +5,14 @@ date: "October/November 2022"
 output: html_document
 ---
 
+```{r}
+library(rjson)
+JsonData <- fromJSON(file = 'data/data.json')$results
+
+jsonData_to_DataFrame <- as.data.frame(JsonData)
+```
+
+
 ## Goals 
 
 In this project, we aim to find out if there is a way to predict IMDb movie ratings based on the [IMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/carolzhangdc/imdb-5000-movie-dataset). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. However, there is no garantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the popularity of the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
