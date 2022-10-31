@@ -107,10 +107,10 @@ table(`true default`=default_test$default, `predicted default` = knn_5_pred)
 ```
 
 
-#Logistic regession
+# Logistic regession
 
 
-```{r}
+```{r, results='hide'}
 lr_mod <- glm(default ~ ., family = binomial, data = default_train)
 
 #predicted probabilities of defaulting
