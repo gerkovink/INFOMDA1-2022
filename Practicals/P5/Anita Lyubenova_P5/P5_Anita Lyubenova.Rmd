@@ -1,0 +1,207 @@
+---
+title: "Practical 5 - Classification"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+
+
+
+
+
+```{r}
+view(Default)
+str(Default)
+?Default
+
+```
+
+
+# 1. Initial Plots
+
+
+```{r}
+ggplot(Default, aes(x=balance, y = income, colour=default))+
+  geom_point()+
+  facet_grid(cols = vars(student))
+```
+
+Transform “student” into a dummy variable using ifelse() (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set default_train (80%) and a test set default_test (20%)
+
+```{r}
+df<-
+  Default %>% 
+  mutate(student = ifelse(Default$student=="No", 0, 1)) %>% 
+  mutate(split = sample(rep(c("train", "test"), times=c(0.8*nrow(Default), 0.2*nrow(Default)))))
+
+default_train <-subset(df, split=="train", select=-split)
+
+default_test <-subset(df, split=="test", select=-split)
+
+```
+
+# 2. K-Nearest Neighbours
+
+## 5 nearest neighbours
+```{r}
+knn_5_pred <- knn(
+  train = default_train %>% select(-default), #use all variables in the df except for the DV
+  test  = default_test  %>% select(-default),
+  cl    = as_factor(default_train$default),
+  k     = 5
+)
+
+default_test %>% 
+  ggplot(aes(x = balance, y = income, colour = default)) +
+  geom_point()
+
+default_test %>% 
+  mutate(knn_5_pred = knn_5_pred) %>% 
+  ggplot(aes(x = balance, y = income, colour = knn_5_pred)) +
+  geom_point()
+
+```
+
+
+
+## 2 nearest neighbours
+```{r}
+knn_2_pred <- knn(
+  train = default_train %>% select(-default),
+  test  = default_test  %>% select(-default),
+  cl    = as_factor(default_train$default),
+  k     = 2
+)
+
+
+default_test %>% 
+  mutate(knn_2_pred = knn_2_pred) %>% 
+  ggplot(aes(x = balance, y = income, colour = knn_2_pred)) +
+  geom_point()
+
+#confusion matrix
+table(`true default`=default_test$default, `predicted default` = knn_2_pred)
+
+#in case of perfect prediction
+table(`true default`=default_test$default, `predicted default` = default_test$default)
+
+# confusion matrix for k=5
+table(`true default`=default_test$default, `predicted default` = knn_5_pred)
+
+
+```
+
+
+#Logistic regession
+
+
+```{r}
+lr_mod <- glm(default ~ ., family = binomial, data = default_train)
+
+#predicted probabilities of defaulting
+predict(lr_mod, type = "response")
+
+#plot predicted probability per observed classs in the training dataset
+data.frame(observed  = default_train$default, 
+           predicted = predict(lr_mod, type = "response")) %>% 
+  ggplot(aes(y = predicted, x = observed, colour = observed)) +
+  geom_point(position = position_jitter(width = 0.2), alpha = .3) +
+  theme_minimal() +
+  labs(y = "Predicted probability to default")
+
+```
+
+## Using coefficients of the logistic regression
+```{r}
+summary(lr_mod)
+coefs<-lr_mod$coefficients
+#balance: 0.0057
+
+
+logodds <- coefs[1] + 4000*coefs[4] + 3000*coefs[3]
+
+#cnvert to prob
+1 / (1 + exp(-logodds))
+```
+## Visualising the effect of the balance variable
+```{r}
+balance_df <- tibble(
+  student = rep(0, 500),
+  balance = seq(0, 3000, length.out = 500),
+  income  = rep(mean(default_train$income), 500)
+)
+
+balance_df$predprob <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df %>% 
+  ggplot(aes(x = balance, y = predprob)) +
+  geom_line(col = "dark blue", size = 1) +
+  theme_minimal()
+
+```
+## Evaluate performace with a confusion matrix
+
+```{r}
+pred_prob <- predict(lr_mod, newdata = default_test, type = "response")
+pred_lr   <- factor(pred_prob > .5, labels = c("No", "Yes"))
+
+table(true = default_test$default, predicted = pred_lr)
+
+```
+# Linear discriminant analysis
+
+```{r}
+
+lda_mod <- lda(default ~ ., data = default_train)
+lda_mod
+
+
+```
+## Confusion matrix
+
+```{r}
+
+pred_lda <- predict(lda_mod, newdata = default_test)
+table(true = default_test$default, predicted = pred_lda$class)
+```
+
+# Final Assignment
+
+Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?
+```{r}
+titanic <- read_csv("data/Titanic.csv") %>%
+  subset(select=-Name)
+
+#logistic regression model with all possible interactions between the 3 predictors
+mod<-glm(Survived ~ ., data = titanic[-1,], family = binomial)
+
+summary(mod)
+
+coefs<-mod$coefficients
+
+#14 year old boy from 3rd class
+logodds<-coefs[1] + coefs[3] + 14*coefs[4] + coefs[5]
+1/(1+exp(-logodds)) #0.1255581 
+
+#14 year old girl from the second class
+logodds<-coefs[1] + coefs[2] + 14*coefs[4]
+1/(1+exp(-logodds)) #0.8718162  
+
+
+```
+
