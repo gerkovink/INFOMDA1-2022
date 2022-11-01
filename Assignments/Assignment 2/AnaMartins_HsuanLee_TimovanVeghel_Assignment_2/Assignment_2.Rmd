@@ -6,12 +6,9 @@ output: html_document
 ---
 
 ```{r}
-library(rjson)
 library(tidyverse)
-JsonData <- fromJSON(file = 'data/data.json')$results
 
-data <- read_csv("data/output.csv")
-#jsonData_to_DataFrame <- as.data.frame(JsonData)
+data <- read_csv("data/data_file.csv")
 ```
 
 
