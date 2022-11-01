@@ -1,0 +1,119 @@
+---
+title: "Practical 6 - Anita Lyubenova"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+```{r}
+set.seed(45)
+```
+
+```{r}
+treat <- read_csv("data/cardiovascular_treatment.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+lr_mod <- glm(response ~ ., "binomial", treat)
+
+prob_lr <- predict(lr_mod, type = "response")
+pred_lr <- ifelse(prob_lr > .5, 1, 0)
+
+cmat_lr <- table(`true response` = treat$response, `predicted response` = pred_lr)
+cmat_lr
+
+TN <- cmat_lr[1, 1]
+FN <- cmat_lr[2, 1]
+FP <- cmat_lr[1, 2]
+TP <- cmat_lr[2, 2]
+
+
+tibble(
+  Acc = (TP + TN) / sum(cmat_lr),
+  TPR = TP / (TP + FN),
+  TNR = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+
+```
+
+
+
+```{r}
+lda_mod <- lda(response ~ ., treat)
+
+
+pred_lda <- predict(lda_mod)$class
+
+cmat_lda <- table(true = treat$response, pred = pred_lda)
+
+TN <- cmat_lda[1, 1]
+FN <- cmat_lda[2, 1]
+FP <- cmat_lda[1, 2]
+TP <- cmat_lda[2, 2]
+
+# PPV
+TP / (TP + FP)
+
+# NPV
+TN / (TN + FN)
+```
+
+```{r}
+#Predict performance for new patients
+new_patients <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+pred_lda_new <- predict(lda_mod, newdata = new_patients)$class
+prob_lr_new <- predict(lr_mod, newdata = new_patients, type = "response")
+pred_lr_new <- ifelse(prob_lr_new > .5, 1, 0)
+
+# lda
+cmat_lda_new <- table(true = new_patients$response, pred = pred_lda_new)
+
+# lr
+cmat_lr_new <- table(true = new_patients$response, pred = pred_lr_new)
+
+cmat_lda_new
+cmat_lr_new
+
+PPV <- cmat_lda_new[2, 2] / sum(cmat_lda_new[, 2])
+PPV
+
+NPV <- cmat_lda_new[1, 1] / sum(cmat_lda_new[, 1])
+NPV
+
+```
+
+Brier score - measure of accuracy of probabilistic predictions
+
+```{r}
+mean((prob_lr_new - (as.numeric(new_patients$response) - 1)) ^ 2)
+```
+
+
+
