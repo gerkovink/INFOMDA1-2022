@@ -178,7 +178,7 @@ head(data)
 
 ```{r}
 #now I use logistic regression to predict the probability of survival
-model_glm<-glm(Survived~PClass*Age*Sex,data=data)
+model_glm<-glm(Survived~PClass*Age*Sex,data=data,family = "binomial")
 
 probability<- function(model,PClass,Age,Sex){
   new<-tibble(PClass=PClass,
