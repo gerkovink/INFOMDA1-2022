@@ -13,13 +13,14 @@ csv_writer = csv.writer(data_file)
 for letter in alphabet:
     for i in range(0, 2):
         if asc:
-            url = "https://imdb-api.com/API/AdvancedSearch/k_vg4dpwb1?title=" + letter + "a&title_type=feature&count=250&sort=alpha,asc&moviemeter=60,240"
+            url = "https://imdb-api.com/API/AdvancedSearch/k_opudepox?title=" + letter + "&title_type=feature&count=250&sort=alpha,asc&moviemeter=60,240"
             asc = False
         else:
-            url = "https://imdb-api.com/API/AdvancedSearch/k_vg4dpwb1?title=" + letter + "a&title_type=feature&count=250&sort=alpha,desc&moviemeter=60,240"
+            url = "https://imdb-api.com/API/AdvancedSearch/k_opudepox?title=" + letter + "&title_type=feature&count=250&sort=alpha,desc&moviemeter=60,240"
             asc = True
 
         response = requests.request("GET", url)
+        print(response.text)
         data = json.loads(response.text)
 
         movies = data['results']

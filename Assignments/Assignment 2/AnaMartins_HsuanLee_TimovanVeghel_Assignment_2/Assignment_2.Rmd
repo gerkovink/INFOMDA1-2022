@@ -8,7 +8,7 @@ output: html_document
 ```{r}
 library(tidyverse)
 
-data <- read_csv("data/data_file.csv")
+data <- read_csv("data/movie_data.csv")
 ```
 
 

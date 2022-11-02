@@ -5,7 +5,7 @@ import json
 data_file = open('movie_data.csv', 'a')
 csv_writer = csv.writer(data_file)
 
-url = "https://imdb-api.com/en/API/Top250Movies/k_vg4dpwb1"
+url = "https://imdb-api.com/en/API/Top250Movies/k_opudepox"
 response = requests.request("GET", url)
 data = json.loads(response.text)
 movies = data['results']
