@@ -1,0 +1,323 @@
+---
+title: "P8_MartinOkanik"
+author: "Martin Okanik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Practical 8
+
+# Ensemble methods
+
+# Introduction
+
+Today, we will learn how to use different ensemble methods in `R`, recap on how to evaluate the performance of the methods, and learn how we can substantively interpret the model output.
+
+In this practical we will work with the ILPD (Indian Liver Patient Dataset) from the UCI Machine Learning Repository (you can find the data [here](https://archive.ics.uci.edu/ml/datasets/ILPD+(Indian+Liver+Patient+Dataset))). This data set contains data on 414 liver disease patients, and 165 non-patients. In general, medical researchers have two distinct goals when doing research: (1) to be able to classify people in their waiting room as either patients or non-patients, and (2) get insight into the factors that are associated with the disease. In this practical, we will look at both aspects.
+
+In this practical, we will use the `tidyverse`, `magrittr`, `psych`, `GGally` and `caret` libraries.
+
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+First, we specify a seed and load the training data. We will use this data to make inferences and to train a prediction model.
+
+```{r}
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+```
+
+------------------------------------------------------------------------
+
+**1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.**
+
+```{r}
+str(df)
+```
+
+```{r}
+df %>%
+  select(-c(Gender, Disease)) %>%
+  describeBy(df$Disease, fast = TRUE)
+```
+
+------------------------------------------------------------------------
+
+**2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.**
+
+*Hint:* Think about adding a color aesthetic for the variable `Disease`.
+
+```{r}
+df_long <- df %>% 
+  select(-Gender) %>% 
+  pivot_longer(where(is.numeric))
+df_long
+```
+
+```{r}
+df_long %>% 
+  ggplot(aes(x = value, fill = Disease, colour = Disease)) +
+  geom_boxplot() +
+  facet_wrap(~ name, scale = "free")
+```
+
+```{r}
+df_long %>% 
+  ggplot(aes(x = value, fill = Disease, colour = Disease)) +
+  geom_density(alpha=0.5) +
+  facet_wrap(~ name, scale = "free")
+```
+
+```{r}
+df_gendered_long <- df %>% 
+  pivot_longer(where(is.numeric))
+df_gendered_long
+
+df_gendered_long %>% 
+  ggplot(aes(x = value, fill = Gender, colour = Gender)) +
+  geom_density(alpha=0.5) +
+  facet_grid(Disease ~ name, scale = "free", margins = c("Disease"))
+```
+
+------------------------------------------------------------------------
+
+**3. Shortly reflect on the difference between bagging, random forests, and boosting.**
+
+------------------------------------------------------------------------
+
+Bagging: train an ensemble model based on single trees trained on bootstrapped samples of the original training set. The resulting model, when applied to predict on new data, takes the majority vote (classification) or averages the results (regression).
+
+Random forest: like bagging, but in addition to bootstrapping the training data, it also restricts the predictive variables. At each node of every tree, a subset of predictors is taken by random, and only those are used to find the best split. This makes individually trees less powerful (sub-optimal splits are chosen most of the time), but introduces statistical independence, which improves the reduction of variance when aggregating the tree result in the ensemble (as opposed to e.g. bagging, where the error decreases slower with the number of ensemble models). It also takes less time to train, since it only examines a fraction of possible splits every time.
+
+Boosting: Iterative process, in which small (insufficient complexity) trees are fitted to the data, but misclassifications are given more weight in the next iteration, thus new decision surfaces at each step receive an extra incentive to "fix" these issues. Composite model is built by linear combination of these partial models. Quite different from previous two, but a very powerful technique.
+
+We are going to apply different machine learning models using the `caret` package.
+
+**4. Apply bagging to the training data, to predict the outcome `Disease`, using the `caret` library.**
+
+*Note.* We first specify the internal validation settings, like so:
+
+```{r}
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+```
+
+These settings can be inserted within the `train` function from the `caret` package. Make sure to use the `treebag` method, to specify `cvcontrol` as the `trControl` argument and to set `importance = TRUE`.
+
+```{r}
+bag_mod <- train(Disease ~ ., data = df, trControl = cvcontrol, method = "treebag", importance = TRUE)
+```
+
+------------------------------------------------------------------------
+
+**5. Interpret the variable importance measure using the `varImp` function on the trained model object.**
+
+```{r}
+varImp(bag_mod) %>% plot()
+```
+
+The bigger the importance measure, the more useful predictor variable.
+
+------------------------------------------------------------------------
+
+**6. Create training set predictions based on the bagged model, and use the `confusionMatrix()` function from the `caret` package to assess it's performance.\`**
+
+*Hint: You will have to create predictions based on the trained model for the training data, and evaluate these against the observed values of the training data.*
+
+```{r}
+confusionMatrix(predict(bag_mod, type = "raw"), df$Disease)
+```
+
+**7. Now ask for the output of the bagged model. Explain why the under both approaches differ.**
+
+------------------------------------------------------------------------
+
+```{r}
+bag_mod
+```
+
+The two approaches differ because in the first case, we evaluated the model on the same data as it was trained on, but in the second case (output of the model itself), there was 10-fold CV which ensured that the result "Accuracy = 0.688" came from unseen data.
+
+We will now follow the same approach, but rather than bagging, we will train a random forest on the training data.
+
+------------------------------------------------------------------------
+
+**8. Fit a random forest to the training data to predict the outcome `Disease`, using the `caret` library.**
+
+*Note.* Use the same `cvcontrol` settings as in the previous model.
+
+```{r}
+rf_mod <- train(Disease ~ ., data = df, trControl = cvcontrol, method = "rf", importance = TRUE)
+```
+
+------------------------------------------------------------------------
+
+**9. Again, interpret the variable importance measure using the `varImp` function on the trained model object. Do you draw the same conclusions as under the bagged model?**
+
+```{r}
+varImp(rf_mod) %>% plot()
+```
+
+```{r}
+varImp(rf_mod)
+varImp(bag_mod)
+```
+
+The other parameters (i.e. 2nd and worse) are now more important. This is expected, since the randomness in rf ensures that each variables "gets its shot" at making splits.
+
+------------------------------------------------------------------------
+
+**10. Output the model output from the random forest. Are we doing better than with the bagged model?**
+
+```{r}
+rf_mod
+```
+
+We are doing very slightly better. Note that the accuracy for the case mtry = 10 coincides with the one for bagging, just as it should.
+
+------------------------------------------------------------------------
+
+**11. Now, fit a boosting model using the `caret` library to predict disease status.\`**
+
+*Hint:* Use gradient boosting (the `gbm` method in `caret`).
+
+```{r}
+boost_mod <- train(Disease ~ ., data = df, trControl = cvcontrol, method = "gbm", verbose = FALSE)
+```
+
+------------------------------------------------------------------------
+
+**12. Again, interpret the variable importance measure. You will have to call for `summary()` on the model object you just created. Compare the output to the previously obtained variable importance measures.**
+
+```{r}
+summary(boost_mod)
+```
+
+------------------------------------------------------------------------
+
+**13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?**
+
+------------------------------------------------------------------------
+
+```{r}
+boost_mod
+```
+
+We are doing very slightly better than bagging and random forest, but the difference is not too trustworthy.
+
+For now, we will continue with extreme gradient boosting, although we will use a difference procedure.
+
+We will use `xgboost` to train a binary classification model, and create some visualizations to obtain additional insight in our model. We will create the visualizations using `SHAP` (**SH**apley **A**dditive ex**P**lanations) values, which are a measure of importance of the variables in the model. In fact, `SHAP` values indicate the influence of each input variable on the predicted probability for each person. Essentially, these give an indication of the difference between the predicted probability with and without that variable, for each person's score.
+
+------------------------------------------------------------------------
+
+**14. Download the file `shap.R` from [this](https://github.com/pablo14/shap-values) Github repository.**
+
+*Note.* There are multiple ways to this, of which the simplest is to run the following code.
+
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+Additionally, you could simply go to the file `shap.R` and copy-and-paste the code into the current repository. However, you could also fork and clone the repository, to make adjustments to the functions that are already created.
+
+------------------------------------------------------------------------
+
+**15. Specify your model as follows, and use it to create predictions on the training data.**
+
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred = pred$Disease, true = df$Disease)
+```
+
+------------------------------------------------------------------------
+
+**16. First, calculate the `SHAP` rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.**
+
+```{r}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+```
+
+------------------------------------------------------------------------
+
+**17. Plot the `SHAP` values for every individual for every feature and interpret them.**
+
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+------------------------------------------------------------------------
+
+**18. Verify which of the models you created in this practical performs best on the test data.**
+
+------------------------------------------------------------------------
+
+```{r}
+test <- readRDS("data/test_disease.RDS")
+
+bag_test <- predict(bag_mod, newdata = test)
+rf_test  <- predict(rf_mod, newdata = test)
+gbm_test <- predict(boost_mod, newdata = test)
+xgb_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>% factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+head(bag_test)
+head(rf_test)
+head(gbm_test)
+head(xgb_test)
+```
+
+```{r}
+for (this_test in list(bag_test, rf_test, gbm_test, xgb_test) ) {
+  #print(this_test)
+  print("-------------------")
+  print(confusionMatrix(this_test, test$Disease))
+}
+```
+
+Slightly another way, used in the official solutions:
+
+```{r}
+#list(bag_test, 
+#     rf_test, 
+#     gbm_test, 
+#     xgb_test) %>%
+#  map(~ confusionMatrix(.x, test$Disease))
+```
+
+# Hand-in
