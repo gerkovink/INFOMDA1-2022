@@ -1,0 +1,240 @@
+---
+title: "Practical 3 Exploratory Data Analysis" 
+subtitle: "Supervised Learning & Visualization"
+author: "Ernst Paul Swens"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output: 
+   html_document:
+      toc: true
+      number_sections: false
+      toc_float:
+         collapsed: true
+         smooth_scroll: true
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+# Q1
+
+**Create a histogram of the variable age using the function `geom_histogram()`.** 
+
+```{r}
+ggplot(boys, aes(x = age)) +
+   geom_histogram(bins = 30) + 
+   theme_minimal()
+```
+
+
+# Q2
+
+**Create a bar chart of the variable gen using the function `geom_bar()`** 
+
+```{r}
+ggplot(boys, aes(x = gen)) +
+   geom_bar() + 
+   theme_minimal()
+```
+
+
+# Q3
+
+**Create a missingness indicator for the variables `gen`, `phb` and `tv`.** 
+
+```{r}
+boys.2 <- boys %>% 
+   mutate(
+      rgen = as.factor(ifelse(is.na(gen), 1, 0)),
+      rphb = as.factor(ifelse(is.na(phb), 1, 0)),
+      rtv = as.factor(ifelse(is.na(tv), 1, 0))
+   )
+```
+
+
+# Q4
+
+**Assess whether missingness in the variables `gen`, `phb` and `tv` is related to someones `age`.** 
+
+```{r}
+boys.2 %>%
+   summarise(
+      gen = cor(as.numeric(rgen), age),
+      phb = cor(as.numeric(rphb), age),
+      tv = cor(as.numeric(rtv), age)
+   )
+```
+
+# Q5
+
+**Create a histogram for the variable `age`, faceted by whether or not someone has a missing value on gen.** 
+
+```{r}
+ggplot(boys.2, aes(x = age, fill = rgen)) + 
+   geom_density(alpha = 0.3) +
+   theme_minimal()
+
+ggplot(boys.2, aes(x = age, fill = rphb)) + 
+   geom_density(alpha = 0.3) +
+   theme_minimal()
+
+ggplot(boys.2, aes(x = age, fill = rtv)) + 
+   geom_density(alpha = 0.3) +
+   theme_minimal() 
+```
+
+
+# Q6
+
+**Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function `geom_point()`.**
+
+```{r}
+boys.2 %>% ggplot(aes(x = age, y = bmi)) + 
+   geom_point() +
+   theme_minimal()
+```
+
+
+# Q7
+
+**Add a colour aesthetic to the previous plot using the missingness indicator of the variable gen.**
+
+```{r}
+boys.2 %>% ggplot(aes(x = age, y = bmi, color = rgen)) + 
+   geom_point() +
+   theme_minimal()
+```
+
+
+# Q8 
+
+**Visualize the relationship between reg (region) and age using a boxplot.**
+
+```{r}
+boys.2 %>% ggplot(aes(x = reg, y = age)) +
+   geom_boxplot() + 
+   theme_minimal()
+```
+
+
+# Q9
+
+**Create a density plot of age, splitting the densities by gen using the fill aesthetic.**
+
+```{r}
+boys.2 %>% ggplot(aes(x = age, fill = gen)) + 
+   geom_density(alpha = 0.2) + 
+   theme_minimal()
+```
+
+# Q10
+
+**Create a diverging bar chart for hgt in the boys data set, that displays for every age year that year’s mean height in deviations from the overall average hgt.**
+
+```{r}
+boys.2 %>% mutate(age = round(age),
+                  hgt = hgt - mean(boys.2$hgt, na.rm = TRUE)) %>%
+   group_by(age) %>%
+   summarise(hgt = mean(hgt, na.rm = TRUE)) %>%
+   mutate(group = ifelse(hgt < 1, 0, 1)) %>%
+   ggplot(aes(x = age, y = hgt, fill = as.factor(group))) + 
+   geom_bar(stat = "identity") + 
+   theme_minimal()
+```
+
+# Q11
+
+**Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2.**
+
+```{r}
+elastic <- bind_rows(
+   "Elastic1" = elastic1,
+   "Elastic2" = elastic2,
+   .id = "Set"
+)
+```
+
+
+# Q12
+
+**Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic.**
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() 
+```
+
+
+# Q13
+
+**Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line.**
+
+```{r}
+elastic %>%
+   ggplot(aes(x = stretch, y = distance, col = Set)) +
+   geom_point() +
+   geom_smooth(method = "lm", se = FALSE) +
+   scale_color_brewer(palette = "Set1") +
+   theme_minimal()
+```
+
+# Q14
+
+**For each of the data sets `elastic1` and `elastic2`, fit a regression model with y = distance on x = stretch using `lm(y ~ x, data)`.**
+
+```{r}
+lm.1 <- lm(distance ~ stretch, elastic1)
+lm.2 <- lm(distance ~ stretch, elastic2)
+```
+
+# Q15
+
+**For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance $R^2$.**
+
+```{r}
+predict(lm.1, se.fit = TRUE)
+predict(lm.2, se.fit = TRUE)
+
+lm.1 %>% summary() %$% r.squared
+lm.2 %>% summary() %$% r.squared
+```
+
+# Q16
+
+**Study the residual versus leverage plots for both models.**
+
+```{r message=FALSE, warning=FALSE}
+plot(lm.1, which = 5)
+lm.1$residuals
+
+plot(lm.2, which = 5)
+lm.2$residuals
+```
+
+# Q17
+
+**Use the `elastic2` variable stretch to obtain predictions on the model fitted on `elastic1`.**
+
+```{r}
+pred <- predict(lm.1, newdata = elastic2)
+```
+
+# Q18
+
+**# 18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for `elastic2`.**
+
+```{r fig.height=7, fig.width=7}
+data.frame(pred = pred,
+           obs = elastic2$distance) %>%
+   ggplot(aes(x = obs, y = pred)) + 
+   geom_point() +
+   geom_abline(intercept = 0, slope = 1) +
+   theme_minimal()
+```
+
