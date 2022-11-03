@@ -5,18 +5,20 @@ import json
 first = True
 
 # set up
-alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+genres = ["action", "adventure", "animation", "biography", "comedy", "crime", "documentary", "drama", "family", "fantasy", "film-noir", "game-show", "history", "horror", "music", "musical", "mystery", "news", "reality-tv", "romance", "sci-fi", "sport", "talk-show", "thriller", "war", "western"]
 asc = True
-data_file = open('movie_data.csv', 'a')
+data_file = open('movie_data.csv', 'a', encoding="utf-8")
 csv_writer = csv.writer(data_file)
+api_key = "k_opudepox"
 
-for letter in alphabet:
+for genre in genres:
+    print(genre)
     for i in range(0, 2):
         if asc:
-            url = "https://imdb-api.com/API/AdvancedSearch/k_opudepox?title=" + letter + "&title_type=feature&count=250&sort=alpha,asc&moviemeter=60,240"
+            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,asc&moviemeter=60,"
             asc = False
         else:
-            url = "https://imdb-api.com/API/AdvancedSearch/k_opudepox?title=" + letter + "&title_type=feature&count=250&sort=alpha,desc&moviemeter=60,240"
+            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,desc&moviemeter=60,"
             asc = True
 
         response = requests.request("GET", url)
