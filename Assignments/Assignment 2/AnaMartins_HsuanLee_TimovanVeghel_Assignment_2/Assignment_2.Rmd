@@ -101,15 +101,28 @@ movies <-
          talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
          thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
          war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
-         western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),)
+         western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),) %>% 
+  select(-genres)
 ```
 
 These are all of the Genres available in the IMDb API. However, when retrieving the values, the search couldn't find any movies with certain genres within our search criteria (runtime > 60 and num of votes > 25000), so we can take those out to not carry variables we don't need.
 
 ```{r}
-movies <-
-  movies %>% 
-  filter(-if_all(equals(0)))
+movies = movies[ , colSums(movies != 0, na.rm = TRUE) > 0]
+```
+
+Now, to use the `director` variable in some way, we need to create another dummy value. For this, we are going to create `director_top250`. Let us load our second dataset:
+
+```{r}
+top250 <- read_csv("data/top250_data.csv")
+```
+
+Again, let us arrange it in a similar way as the last one:
+
+```{r}
+top250 <-
+  top250 %>%
+  select(-fullTitle, )
 ```
 
 
