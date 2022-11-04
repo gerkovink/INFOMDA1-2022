@@ -18,99 +18,24 @@ library(ggforce)
 
 ```{r}
 set.seed(45)
-df <-
-  read_csv("data/Indian_Liver_Patient_Dataset_(ILPD).csv", col_names = FALSE) %>%
-  mutate(
-    age = X1,
-    gender = X2,
-    tb = X3,
-    db = X4,
-    alkphos = X5,
-    sgpt = X6,
-    sgot = X7,
-    tp = X8,
-    alb = X9,
-    ag = X10,
-    split = X11
-  ) %>%
-  select(-X1,-X2,-X3,-X4,-X5,-X6,-X7,-X8,-X9,-X10,-X11)
-```
-
-```{r}
-summary(df)
-
-train_df <- df %>%
-  filter(split == 1) %>%
-  select(-split)
-test_df <- df %>%
-  filter(split == 2) %>%
-  select(-split)
+df <- readRDS("data/train_disease.RDS")
 ```
 
 1. **Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.**
 
+```{r}
+summary(df)
+```
+
+
 2. **2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.**
 
 ```{r}
-train_df %>% 
-  ggplot(aes(x = age)) +
-  geom_point(aes(y = tb), color = "red") +
-  geom_point(aes(y = db), color = "orange") +
-  geom_point(aes(y = ag), color = "yellow") +
-  geom_point(aes(y = sgpt), color = "green") +
-  geom_point(aes(y = sgot), color = "cyan") +
-  geom_point(aes(y = tp), color = "blue") +
-  geom_point(aes(y = alb), color = "purple") +
-  geom_point(aes(y = ag), color = "brown")
+df %>% 
+  ggplot(aes(x = Disease, y = Total_Bilirubin)) +
+  geom_point()
 ```
 
-This is not very useful. Cyan (`sgot`) and green (`sgpt`) seem to be much larger than the others.
-
-```{r}
-train_df %>% 
-  ggplot(aes(x = age)) +
-  geom_point(aes(y = sgpt), color = "green") +
-  geom_point(aes(y = sgot), color = "cyan")
-```
-
-Not very useful either.
-
-```{r}
-train_df %>% 
-  ggplot(aes(y = tb)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = db)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = alkphos)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = sgpt)) +
-  geom_boxplot()
-train_df %>% 
-  ggplot(aes(y = sgot)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = tp)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = alb)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = ag)) +
-  geom_boxplot()
-```
-
-Most of the variables have multiple outliers, which we can assume would be the non-patients, since we have more patients than non-patients.
-
-There is no `Disease` variable though...
 
 3. **Shortly reflect on the difference between bagging, random forests, and boosting.**
 
