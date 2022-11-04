@@ -11,16 +11,16 @@ genres = ["action", "adventure", "animation", "biography", "comedy", "crime", "d
 asc = True
 data_file = open('movie_data.csv', 'a', encoding="utf-8")
 csv_writer = csv.writer(data_file)
-api_key = "k_opudepox"
+api_key = "k_awpz8wnu"
 
 for genre in genres:
     print(genre)
     for i in range(0, 2):
         if asc:
-            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,asc&moviemeter=60,&num_votes=1000,"
+            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,asc&moviemeter=60,&num_votes=5000,"
             asc = False
         else:
-            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,desc&moviemeter=60,&num_votes=1000,"
+            url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,desc&moviemeter=60,&num_votes=5000,"
             asc = True
 
         response = requests.request("GET", url)
