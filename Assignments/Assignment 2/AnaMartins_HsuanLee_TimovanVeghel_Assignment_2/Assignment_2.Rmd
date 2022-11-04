@@ -54,35 +54,20 @@ movies <-
 Actually, looking at the `stars`, we can see that the first name listed is the Director of that film, so let us take them out.
 
 ```{r}
-strsplit(movies$stars, ", ")[, 1]
-# NOT WORKING
+movies <-
+  movies %>% 
+  mutate(director = sub(", .*", "", movies$stars)) %>% 
+  mutate(stars = substring(sub(director, "", stars) %>% str_trim(), first=3))
 ```
 
+
+Also, because of the way the data was retrieved, we have multiples in there (e.g. on movie can be on the action and drama genres and get retrieved both times), so let's get rid of them.
 
 ```{r}
 movies <-
   movies %>% 
-  mutate(director = head(), n=1)
+  filter(!duplicated(id))
 ```
-
-
-Also, because of the way the data was retrieved, we have multiples in there (e.g. on movie can be on the action and drama genres and get retrieved both times)
-
-We also realised there are some random episodes and tvshows in the midst of the dataset, so let us take them out, since the ratings for movies and tvshows usually differ slightly (7.5 for a movie = good movie! 7.5 for a tvshow = average). First, let's check if taking out titles with less than 60 minutes would be a good guess.
-
-```{r}
-movies %>% 
-  filter(duration < 60)
-```
-
-This seems to be a good guess. If there are any other lost tvshows that have a runtime bigger than 60 minutes, those are usually more closely scored to movies than other tvshows (e.g. Sherlock vs. The Vampire Diaries).
-
-```{r}
-movies <- 
-  movies %>% 
-  filter(duration >= 60)
-```
-
 
 ## Exploratory Data Analysis
 
