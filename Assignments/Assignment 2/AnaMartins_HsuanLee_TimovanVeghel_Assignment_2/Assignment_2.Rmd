@@ -69,6 +69,50 @@ movies <-
   filter(!duplicated(id))
 ```
 
+## Creating New Useful Variables
+
+Seeing as our dataset right now is mostly made up of character variables, this will not be very useful. So, we will start by transforming the `genres` into dummy variables for each one of them.
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(action = ifelse(grepl("Action", genres, fixed = TRUE), 1, 0),
+         adventure = ifelse(grepl("Adventure", genres, fixed = TRUE), 1, 0),
+         animation = ifelse(grepl("Animation", genres, fixed = TRUE), 1, 0),
+         biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
+         comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
+         crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
+         documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
+         drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
+         family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
+         fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
+         filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
+         gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
+         history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
+         horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
+         music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
+         musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
+         mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
+         news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
+         realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
+         romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
+         scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
+         sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
+         talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
+         thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
+         war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
+         western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),)
+```
+
+These are all of the Genres available in the IMDb API. However, when retrieving the values, the search couldn't find any movies with certain genres within our search criteria (runtime > 60 and num of votes > 25000), so we can take those out to not carry variables we don't need.
+
+```{r}
+movies <-
+  movies %>% 
+  filter(-if_all(equals(0)))
+```
+
+
 ## Exploratory Data Analysis
 
 Let us now start by seeing what we are working with, by seeing some of the variables compared to each other, so we can start understanding what variables correlate to the IMDb Rating.
@@ -86,7 +130,7 @@ movies %>%
   xlim(0, 10)
 ```
 
-Refering back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
+Referring back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
 
 What about the distribution of the movie gross?
 
