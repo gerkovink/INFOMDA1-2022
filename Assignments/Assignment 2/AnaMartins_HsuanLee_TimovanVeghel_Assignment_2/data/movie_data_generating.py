@@ -11,7 +11,7 @@ genres = ["action", "adventure", "animation", "biography", "comedy", "crime", "d
 asc = True
 data_file = open('movie_data.csv', 'a', encoding="utf-8")
 csv_writer = csv.writer(data_file)
-api_key = "k_opudepox"
+api_key = "k_jlg40bbp"
 
 for genre in genres:
     print(genre)
