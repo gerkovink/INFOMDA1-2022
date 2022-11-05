@@ -12,11 +12,11 @@ However, there is no garantee that we can actually predict the score based on su
 
 ## About the Dataset
 
-The dataset we will be using is taken from the [IMDb API](https://imdb-api.com), as we did not find any dataset online that satisfied what we wanted (they were either too big, too small, or had wrong data). The maximum amount of data we can get at once is 250 movies, so what we do to try to generate (mostly) random data is searching for movies with each of the genres available and getting them by ascending and descending alphabetical order (see [data/movie_data_generating.py](data/movie_data_generating.py) for more details). The starting dataset contains 11649 random (see below why we can call them random) movies that are on IMDB.
+The dataset we will be using is taken from the [IMDb API](https://imdb-api.com) on the 4th of November of 2022, as we did not find any dataset online that satisfied what we wanted (they were either too big, too small, or had wrong data). The maximum amount of data we can get at once is 250 movies, so what we do to try to generate (mostly) random data is searching for movies with each of the genres available and getting them by ascending and descending alphabetical order (see [data/movie_data_generating.py](data/movie_data_generating.py) for more details). The starting dataset contains 11649 random (see below why we can call them random) movies that are on IMDB.
 
 The dataset has 14 variables: `id`, `image`, `title`, `description`, `runtimeStr`, `genres`, `genresList`, `contentRating`, `imDbRating`, `imDbRatingVotes`, `metacriticRating`, `plot`, `stars` and `starList`.
 
-We will be taking away variables that do not interest us, like `image`, `description`, `genresList` (we have the genres in `genres` already), `plot` and `starList` (again, we have the starts in `stars` already), as those are not useful to analyse or to look back on. Variables like the `stars` are also not useful to analyse, as if we tried to fit a model to so many actors we would definitely be overfitting, but they are good to keep if we want to look back at them later or to use them for constructing dummy variables. And the variables we will try to predict are `imDbRating`. Another particularity of the dataset is that this data was already taken only for Feature Films, for runtime longer than 60 minutes and for more IMDb votes than 25000 (what IMDb considers to make the rating official) to eliminate titles we do not want to analyse.
+We will be taking away variables that do not interest us, like `image`, `genresList` (we have the genres in `genres` already), `plot` and `starList` (again, we have the starts in `stars` already), as those are not useful to analyse or to look back on. Variables like the `stars` are also not useful to analyse, as if we tried to fit a model to so many actors we would definitely be overfitting, but they are good to keep if we want to look back at them later or to use them for constructing dummy variables. And the variables we will try to predict are `imDbRating`. Another particularity of the dataset is that this data was already taken only for Feature Films, for runtime longer than 60 minutes and for more IMDb votes than 25000 (what IMDb considers to make the rating official) to eliminate titles we do not want to analyse.
 
 ## Getting the Data
 
@@ -35,7 +35,7 @@ Let us clean this up a bit so we do not have to carry around more than we need t
 ```{r}
 movies <-
   movies %>%
-  select(-image,-description,-genreList,-plot,-starList)
+  select(-image,-genreList,-plot,-starList)
 ```
 
 ```{r}
@@ -51,13 +51,21 @@ movies <-
   mutate(contentRating = as.factor(contentRating))
 ```
 
+```{r}
+movies <-
+  movies %>% 
+  mutate(year = as.numeric(gsub('[()]', '', description))) %>% 
+  select(-description)
+```
+
+
 Actually, looking at the `stars`, we can see that the first name listed is the Director of that film, so let us take them out.
 
 ```{r}
 movies <-
   movies %>% 
   mutate(director = sub(", .*", "", movies$stars)) %>% 
-  mutate(stars = substring(sub(director, "", stars) %>% str_trim(), first=3))
+  mutate(stars = sub(director, "", stars) %>% str_trim())
 ```
 
 
@@ -122,7 +130,35 @@ Again, let us arrange it in a similar way as the last one:
 ```{r}
 top250 <-
   top250 %>%
-  select(-fullTitle, )
+  select(-fullTitle, -image)
+```
+
+From here, we only need the Directors' names:
+
+```{r}
+top250 <-
+  top250 %>% 
+  mutate(director = sub(", .*", "", top250$crew))
+top250 <-
+  top250 %>% 
+  mutate(director = sub("dir.", "", top250$director))
+top250 <-
+  top250 %>% 
+  mutate(director = gsub("[()]", "", top250$director))
+top250 <-
+  top250 %>% 
+  mutate(director = str_sub(director, end = -2))
+```
+
+```{r}
+directors <- top250$director 
+directors <- unique(directors)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(top_director = ifelse(director %in% directors, 1, 0))
 ```
 
 
