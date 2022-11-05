@@ -1,0 +1,279 @@
+---
+title: "Practical 5 Supervised learning: Classification 1" 
+subtitle: "Supervised Learning & Visualization"
+author: "Ernst Paul Swens"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output: 
+   html_document:
+      toc: true
+      number_sections: false
+      toc_float:
+         collapsed: true
+         smooth_scroll: true
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+
+# Q1
+
+**Create a scatterplot of the `Default` dataset, where balance is mapped to the `x` position, `income` is mapped to the y position, and `default` is mapped to the `colour.` Can you see any interesting patterns already?** 
+
+```{r}
+Default %>%
+   ggplot(aes(x = balance, y = income, colour = default)) + 
+   geom_point(alpha = 0.4) + 
+   theme_minimal()
+```
+
+# Q2
+
+**Add `facet_grid(cols = vars(student))` to the plot. What do you see?** 
+
+```{r}
+Default %>%
+   ggplot(aes(x = balance, y = income, colour = default)) + 
+   geom_point(alpha = 0.2) + 
+   facet_grid(cols = vars(student)) + 
+   theme_minimal()
+```
+
+# Q3
+
+**Transform “student” into a dummy variable using `ifelse()` (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set `default_train` (80%) and a test set `default_test` (20%)** 
+
+```{r}
+default <- Default %>% 
+   mutate(student = ifelse(student == "No", 0, 1),
+          split = sample(rep(c("train", "test"), times = c(8000, 2000)))) 
+
+default_train <- default %>% filter(split == "train") %>% select(-split)
+default_test <- default %>% filter(split == "test") %>% select(-split)
+```
+
+# Q4
+
+**Create class predictions for the test set using the `knn()` function. Use `student`, `balance`, and `income` (but no basis functions of those variables) in the `default_train` dataset. Set `k` to 5. Store the predictions in a variable called `knn_5_pred`.** 
+
+```{r}
+knn_5_pred <- knn(
+   train = default_train %>% select(-default),
+   test  = default_test  %>% select(-default),
+   cl    = as_factor(default_train$default),
+   k     = 5
+)
+```
+
+# Q5
+
+**Create two scatter plots with income and balance as in the first plot you made. One with the true class (`default`) mapped to the colour aesthetic, and one with the predicted class (`knn_5_pred`) mapped to the colour aesthetic.** 
+
+```{r}
+default_test %>%
+   ggplot(aes(x = balance, y = income, colour = default)) + 
+   geom_point(alpha = 0.6) + 
+   theme_minimal()
+```
+
+```{r}
+bind_cols(default_test, pred = knn_5_pred) %>% 
+  arrange(default) %>% 
+  ggplot(aes(x = balance, y = income, colour = pred)) +
+  geom_point(alpha = 0.6) + 
+  theme_minimal() 
+```
+
+# Q6
+
+**Repeat the same steps, but now with a `knn_2_pred` vector generated from a 2-nearest neighbours algorithm. Are there any differences?** 
+
+```{r}
+knn_2_pred <- knn(
+   train = default_train %>% select(-default),
+   test  = default_test  %>% select(-default),
+   cl    = as_factor(default_train$default),
+   k     = 2
+)
+```
+
+```{r}
+bind_cols(default_test, pred = knn_2_pred) %>% 
+  arrange(default) %>% 
+  ggplot(aes(x = balance, y = income, colour = pred)) +
+  geom_point(alpha = 0.6) + 
+  theme_minimal()
+```
+
+# Q7
+
+**What would this confusion matrix look like if the classification were perfect?** 
+
+```{r}
+#              predicted
+#              No       Yes
+# true   No    1930     0
+#        Yes   0        70
+```
+
+# Q8
+
+**Make a confusion matrix for the 5-nn model and compare it to that of the 2-nn model. What do you conclude?** 
+
+```{r}
+table(predicted = knn_2_pred, true = default_test$default)
+table(predicted = knn_5_pred, true = default_test$default)
+```
+
+```{r}
+# the 5-nn model has less FP than the 2-nn
+# however, the 5-nn model has more FN than the 2-nn
+```
+
+# Q9
+
+**Use `glm()` with argument `family = binomial` to fit a logistic regression model `lr_mod` to the `default_train` data.** 
+
+```{r}
+lr_mod <- glm(default ~ ., family = binomial, data = default_train)
+```
+
+# Q10
+
+**Visualise the predicted probabilities versus observed class for the training dataset in lr_mod. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot.** 
+
+```{r}
+lr_mod_pred <- predict(lr_mod, newdata = default_test, type = "response") 
+
+default_test %>% 
+   mutate(pred = lr_mod_pred > .5) %>%
+   ggplot(aes(x = balance, y = income, color = pred)) + 
+   geom_point() +
+   theme_minimal()
+
+default_test %>% 
+   mutate(pred = lr_mod_pred) %>%
+   ggplot(aes(x = default, y = lr_mod_pred)) + 
+   geom_point(alpha = 0.4) +
+   theme_minimal()
+```
+
+# Q11
+
+**Look at the coefficients of the `lr_mod` model and interpret the coefficient for `balance.` What would the probability of default be for a person who is not a student, has an income of 40000, and a balance of 3000 dollars at the end of each month? Is this what you expect based on the plots we’ve made before?** 
+
+```{r}
+summary(lr_mod)
+```
+
+
+```{r}
+# So increasing the balance by 1 unit multiplies the odds of having 
+# the outcome by exp(5.736e-03).
+```
+
+```{r}
+newdata <- data.frame(student = 0, balance = 3000, income = 40000)
+
+predict(lr_mod, newdata = newdata, type = "response")
+```
+
+# Q12
+
+**Create a data frame called `balance_df` with 3 columns and 500 rows: `student` always 0, `balance` ranging from 0 to 3000, and `income` always the mean income in the `default_train` dataset.** 
+
+```{r}
+balance_df <- data.frame(balance = seq(from = 0, to = 3000, length.out = 500))
+
+balance_df <- balance_df %>%
+   mutate(student = 0, income = mean(balance))
+
+head(balance_df)
+```
+
+# Q13
+
+**Use this dataset as the `newdata` in a `predict()` call using `lr_mod` to output the predicted probabilities for different values of `balance`. Then create a plot with the `balance_df$balance` variable mapped to x and the predicted probabilities mapped to y. Is this in line with what you expect?**
+
+```{r}
+balance_df %>% 
+   mutate(prob = predict(lr_mod, newdata = balance_df, type = "response")) %>%
+   ggplot(aes(x = balance, y = prob)) +
+   geom_line() + 
+   theme_minimal()
+```
+
+# Q14
+
+**Create a confusion matrix just as the one for the KNN models by using a cutoff predicted probability of 0.5. Does logistic regression perform better?**
+
+```{r}
+true = default_test$default == "Yes"
+pred = predict(lr_mod, newdata = default_test, type = "response") > .5
+
+table(true = true, predicted = pred)
+```
+
+# Q15
+
+**Train an LDA classifier `lda_mod` on the training set.**
+
+```{r}
+lda_mod <- lda(default ~ ., data = default_train)
+```
+
+# Q16
+
+**Look at the `lda_mod` object. What can you conclude about the characteristics of the people who default on their loans?**
+
+```{r}
+lda_mod
+```
+
+# Q17
+
+**Look at the `lda_mod` object. What can you conclude about the characteristics of the people who default on their loans?**
+
+```{r}
+pred <- predict(lda_mod, newdata = default_test)
+pred <- pred$class == "Yes"
+
+table(true = true, predicted = pred)
+```
+
+# Q18
+
+**Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/folder. Would the passenger have survived if they were a girl in 2nd class?**
+
+```{r}
+titanic <- read.csv("Data/titanic.csv", na.strings = "")
+
+titanic <- titanic %>% 
+   select(-PassengerId, -Name, -Ticket, -Cabin) %>% 
+   mutate(Pclass = as.factor(Pclass),
+          Sex = as.factor(Sex), 
+          SibSp = as.factor(SibSp),
+          Parch = as.factor(Parch),
+          Embarked = as.factor(Embarked)) 
+
+log_model <- glm(Survived ~ Pclass + Sex + Age, data = titanic, family = binomial())
+lda_model <- lda(Survived ~ Pclass + Sex + Age, data = titanic)
+
+newdata = data.frame(
+   Pclass = factor(x = c("3", "2"), levels = c("1", "2", "3")),
+   Sex = factor(x = c("male", "female"), levels = c("male", "female")),
+   Age = c(14, 14)
+)
+
+predict(log_model, newdata = newdata, type = "response")
+predict(lda_model, newdata = newdata)
+```
+
+
+
+
