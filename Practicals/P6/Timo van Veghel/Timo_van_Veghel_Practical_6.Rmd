@@ -1,0 +1,269 @@
+---
+title: "Timo_van_Veghel_Practical_6"
+author: "Timo"
+date: "2022-11-05"
+output: html_document
+---
+
+```{r}
+install.packages("pROC")
+install.packages("rpart")
+install.packages("rpart.plot")
+install.packages("randomForest")
+```
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+library(pROC)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+
+
+##Question 1:
+
+```{r}
+treatment <- read_csv("Practicals/P6/Timo van Veghel/cardiovascular_treatment.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender = as.factor(gender), 
+         dose = as.factor(dose),
+         response = as.factor(response))
+
+lr_mod <- glm(response ~ ., family = binomial, data = treatment)
+
+prob_lr <- predict(lr_mod, type = "response")
+pred_lr <- ifelse(prob_lr > 0.5, 1, 0)
+
+table(true = treatment$response, pred = pred_lr)
+```
+
+##Question 2:
+
+```{r}
+cmat_lr <- table(true = treatment$response, pred = pred_lr)
+
+TN <- cmat_lr[1,1]
+FN <- cmat_lr[2,1]
+FP <- cmat_lr[1,2]
+TP <- cmat_lr[2,2]
+
+tibble(
+  Acc = (TP + TN) / sum(cmat_lr),
+  TPR = TP / (TP + FN),
+  TNR = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+```
+
+##Question 3:
+
+```{r}
+lda_mod <- lda(response ~ ., treatment)
+
+pred_lda <- predict(lda_mod)$class
+
+cmat_lda <- table(true = treatment$response, pred = pred_lda)
+
+TN <- cmat_lda[1,1]
+FN <- cmat_lda[2,1]
+FP <- cmat_lda[1,2]
+TP <- cmat_lda[2,2]
+
+PPV <- TP/(TP + FP)
+PPV
+
+NPV <- TN/(TN + FN)
+NPV
+
+
+```
+##Question 4:
+
+```{r}
+new_patients <- read_csv("Practicals/P6/Timo van Veghel/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender = as.factor(gender), 
+         dose = as.factor(dose),
+         response = as.factor(response))
+
+pred_lda_new <- predict(lda_mod, newdata = new_patients)$class
+prob_lr_new <- predict(lr_mod, newdata = new_patients, type = "response")
+pred_lr_new <- ifelse(prob_lr_new > 0.5, 1, 0)
+
+cmat_lda_new <- table(true = new_patients$response, pred = pred_lda_new)
+cmat_lr_new <- table(true = new_patients$response, pred = pred_lr_new)
+
+cmat_lda_new
+cmat_lr_new
+
+PPV <- cmat_lda_new[2, 2] / sum(cmat_lda_new[, 2])
+NPV <- cmat_lda_new[1, 1] / sum(cmat_lda_new[, 1])
+
+PPV
+NPV
+```
+```{r}
+mean((prob_lr_new - (as.numeric(new_patients$response) -1)) ^2)
+```
+
+##QUestion 5:
+
+```{r}
+lr1_mod <- glm(response ~ severity + bb_score + age, family = "binomial", data = treatment)
+prob_lr1 <- predict(lr1_mod, type = "response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, family = "binomial", data = treatment)
+prob_lr2 <- predict(lr2_mod, type = "response")
+```
+
+##Question 6:
+
+```{r}
+roc_lr1 <- roc(treatment$response, prob_lr1)
+roc_lr2 <- roc(treatment$response, prob_lr2)
+
+ggroc(roc_lr1) +
+  theme_minimal() +
+  labs(title = "LR1")
+
+ggroc(roc_lr2) +
+  theme_minimal() +
+  labs(title = "LR2")
+```
+
+##Question 7:
+
+```{r}
+roc_lr1
+roc_lr2
+
+ggplot(data.frame(x = c(1, 1, 0), y = c(0, 1, 1)),
+       aes(x = x, y = y)) +
+  geom_line() +
+  xlim(1, 0) +
+  labs(y = "sensitivity",
+       x = "specificity",
+       title = "Perfect model") +
+  theme_minimal()
+```
+
+##Question 8:
+
+```{r}
+lda_iris <- lda(Species ~ ., data = iris)
+
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+```{r}
+summary(iris)
+
+iris %>% 
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, colour = Species)) + 
+  geom_point() +
+  scale_colour_viridis_d() +
+  theme_minimal() +
+  ggtitle("Lengths")
+
+iris %>% 
+  ggplot(aes(x = Sepal.Width, y = Petal.Width, colour = Species)) + 
+  geom_point() +
+  scale_colour_viridis_d() +
+  theme_minimal() +
+  ggtitle("Widths")
+```
+
+##Question 9:
+
+```{r}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+##Question 10:
+
+```{r}
+table(true = iris$Species, predicted = predict(lda_iris)$class)
+
+table(true = iris$Species, predicted = predict(lda_iris_sepal)$class)
+
+```
+
+##Question 11:
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+```
+
+##Question 12:
+Versicolor
+
+##Question 13:
+
+```{r}
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf),
+               colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.75, yend = 1.75), 
+               colour = "black") +
+  scale_colour_viridis_d() +
+  theme_minimal()
+```
+
+##Question 14:
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 1, cp = 0))
+
+rpart.plot(iris_tree_full_mod)
+```
+
+##Question 15:
+
+```{r}
+rf_mod <- randomForest(Species ~ ., data = iris)
+
+var_imp <- importance(rf_mod)
+tibble(
+  importance = c(var_imp), 
+  variable = rownames(var_imp)
+) %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
+
+rf_mod
+
+table(iris$Species, predict(lda_iris)$class)
+```
+
