@@ -8,7 +8,7 @@ library(tidyverse)
 library(magrittr)
 library(psych)
 library(caret)
-library(gbm)
+library(gbm) # load the method of boosting for caret
 library(xgboost)
 library(data.table)
 library(ggforce)
@@ -29,7 +29,7 @@ summary(df)
 ```{r}
 df %>%
   select(-c(Gender, Disease)) %>% # exclude the categorical variables
-  describeBy(df$Disease, fast = TRUE) # make summary dieciption by group
+  describeBy(x = ., group = df$Disease, fast = TRUE) # make summary dieciption by group
 # fast = T <- remove skewness and kurtosis
 ```
 
@@ -102,6 +102,7 @@ df %>%
   pivot_longer(where(is.numeric)) %>%
   ggplot(aes(x = value, col = Disease, fill = Disease)) +
   geom_density(alpha = 0.8) +
+  geom_rug(aes(color = Disease)) +
   facet_wrap(~name, scales = "free") +
   scale_color_brewer(palette = "Paired") +
   scale_fill_brewer(palette = "Paired") +
@@ -110,9 +111,9 @@ df %>%
 
 **3. Shortly reflect on the difference between bagging, random forests, and boosting.**
 
-Bagging: It is a type of classifier which uses bootstrap aggregating as a method. It samples from the sample many times to have many training datasets, fitting the tree of each training dataset, and employs Majority vote for classification or simple average for regression. The out of bag data can serve as the validation datasets.
+Bagging: It is a type of classifier which uses bootstrap aggregating as a method. It samples from the sample many times to have many training datasets, fitting the tree of each training dataset, and employs Majority vote for classification or simple average for regression. The out of bag data can serve as the validation datasets. The issue is that the trees are highly correlated
 
-Random Forests: Also uses bootstrap aggregating as a method, the main difference with Bagging is that: in Random Forest, the tree only considers part of the features, not takes all the features into account.
+Random Forests: Also uses bootstrap aggregating as a method, the main difference with Bagging is that: in Random Forest, the tree only considers part of the features, not takes all the features into account. The trees are not as correlate as bagging.
 
 Boosting: This classifier first fits a tree to the data which may include some misclassification, then it specified a heavier weight to those misclassification to obtain a new split, iterating the above steps. And we combine them to get a single decision for every new observation.
 
@@ -141,6 +142,7 @@ Repeated k-fold cross-validation provides a way to improve the estimated perform
 These settings can be inserted within the train function from the caret package. Make sure to use the treebag method, to specify cvcontrol as the trControl argument and to set importance = TRUE.
 
 ```{r}
+# fit bagging model
 bag_train <- train(Disease ~ .,
                    data = df, 
                    method = 'treebag',
@@ -150,6 +152,7 @@ bag_train <- train(Disease ~ .,
 
 **5. Interpret the variable importance measure using the varImp function on the trained model object.**
 ```{r}
+# varIMP is from package caret, it is relative to ohters
 bag_train %>%
   varImp %>%
   plot
@@ -159,13 +162,14 @@ bag_train %>%
 
 Hint: You will have to create predictions based on the trained model for the training data, and evaluate these against the observed values of the training data.
 ```{r}
+# first argumnt is predict, second is true
 confusionMatrix(predict(bag_train, type = "raw"),
                 df$Disease)
 ```
 
 It is perfect on train, but we do not know the performance of it on the new data, so we need to evaluate it on the test data.
 
-**7. Now ask for the output of the bagged model. Explain why the under both approaches differ.**
+**7. Now ask for the output of the bagged model. Explain why the both approaches differ.**
 ```{r}
 # the average MSE from the internal test datasets of k-fold CV
 bag_train
@@ -194,7 +198,7 @@ rf_train %>%
 **10. Output the model output from the random forest. Are we doing better than with the bagged model?**
 ```{r}
 rf_train
-# mtry <- the number of predictors sampled in eac split
+# mtry <- the number of predictors sampled in each split
 ```
 
 Random Forest model looks slightly better than the Bagging one.
@@ -213,6 +217,11 @@ gbm_train <- train(Disease ~ .,
 **12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.**
 ```{r}
 summary(gbm_train)
+
+# this is better
+gbm_train %>%
+  varImp %>%
+  plot
 ```
 
 **13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?**
@@ -234,10 +243,14 @@ source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
 
 Additionally, you could simply go to the file shap.R and copy-and-paste the code into the current repository. However, you could also fork and clone the repository, to make adjustments to the functions that are already created.
 
+shap <- variable imoortance
+
 **15. Specify your model as follows, and use it to create predictions on the training data.**
 ```{r}
+# here we dont do k-fold cv, only on train data
+
 train_x <- model.matrix(Disease ~ ., df)[,-1]
-train_y <- as.numeric(df$Disease) - 1
+train_y <- as.numeric(df$Disease) - 1 # as.numeric make binary var into 1|2
 xgboost_train <- xgboost(data = train_x,
                          label = train_y, 
                          max.depth = 10, # = interaction.depth
@@ -265,6 +278,7 @@ shap_results <- shap.score.rank(xgboost_train,
                                 X_train = train_x,
                                 shap_approx = F)
 
+# from shap github package
 var_importance(shap_results)
 ```
 
