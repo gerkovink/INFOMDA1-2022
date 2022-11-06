@@ -300,7 +300,13 @@ movies <- movies %>%
 ## Split the data into training data and test data.
 
 ```{r}
+# split data
+movies <- movies[sample(nrow(movies)), ]
+train <- seq(1, nrow(movies)*0.8)
+test <- seq(max(train) + 1, nrow(movies))
 
+movies_train <- movies[train, ]
+movies_test <- movies[test, ]
 ```
 
 
@@ -336,7 +342,10 @@ It is also an interesting topic to predict whether a movie has the potential to 
 
 **First, we create a feature providing us with information about whether the movie has a rating higher than 7.6.**
 ```{r}
-movies_top1000 <- movies %>%
+movies_train <- movies_train %>%
+  mutate(top1000 = ifelse(imDbRating > 7.6, 1, 0))
+
+movies_test <- movies_test %>%
   mutate(top1000 = ifelse(imDbRating > 7.6, 1, 0))
 ```
 
