@@ -8,7 +8,7 @@ output: html_document
 ## Goals 
 
 In this project, we aim to find out if there is a way to predict IMDb movie ratings based on a dataset we retrieve from the [IMDb API](https://imdb-api.com). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. 
-However, there is no garantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the popularity of the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
+However, there is no guarantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the popularity of the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
 
 ## About the Dataset
 
@@ -266,3 +266,96 @@ movies %>%
 ```
 
 Referring back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
+
+## Specify the appropriate level of measurement for each feature.
+
+```{r}
+movies <- movies %>%
+  mutate(action = as.factor(action),
+         adventure = as.factor(adventure),
+         animation = as.factor(animation),
+         biography = as.factor(biography),
+         comedy = as.factor(comedy),
+         crime = as.factor(crime),
+         drama = as.factor(drama),
+         family = as.factor(family),
+         fantasy = as.factor(fantasy),
+         filmnoir = as.factor(filmnoir),
+         history = as.factor(history),
+         horror = as.factor(horror),
+         music = as.factor(music),
+         musical = as.factor(musical),
+         mystery = as.factor(mystery),
+         realitytv = as.factor(realitytv),
+         romance = as.factor(romance),
+         scifi = as.factor(scifi),
+         sport = as.factor(sport),
+         thriller = as.factor(thriller),
+         war = as.factor(war),
+         western = as.factor(western), 
+         top_director = as.factor(top_director),
+         top_actor = as.factor(top_actor))
+```
+
+## Split the data into training data and test data.
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Predicting whether a movie is likely to be in the top 1000 of IMDB
+
+It is also an interesting topic to predict whether a movie has the potential to be in the top 1000 of IMDB. According to the IMDB website(`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), if a movie wishes to be in the top 1000, it requires an IMDB rating above 7.6. The 7.6 rating will hence be considered as a threshold for us to examine a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
+
+**First, we create a feature providing us with information about whether the movie has a rating higher than 7.6.**
+```{r}
+movies_top1000 <- movies %>%
+  mutate(top1000 = ifelse(imDbRating > 7.6, 1, 0))
+```
+
+**Second, the analysis can begin.**
+
+In the statistical analysis section, four models will be fitted, they are the simplest model, the logistic regression model with 5-fold cross validation; classifiers such as: bagging, random forest, and boosting with 5-fold cross validation. Finally, the performance of all the mentioned models will be examined on a test dataset to identify the best predictive model.
+
+*1. logistic regression with 5-fold cross validation*
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
