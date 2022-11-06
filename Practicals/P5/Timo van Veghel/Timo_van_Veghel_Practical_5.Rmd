@@ -203,17 +203,17 @@ table(true = default_test$default, predicted = pred_lda$class)
 ##Question 18:
 
 ```{r}
-#titanic <- read_csv("data/Titanic.csv")
+titanic <- read_csv("Titanic.csv")
 
-#lr_mod_titanic <- glm(Survived ~ PClass * Sex * Age, data = titanic)
+lr_mod_titanic <- glm(Survived ~ PClass * Sex * Age, data = titanic)
 
-#predict(lr_mod_titanic,
-        #newdata = tibble (
-          #PClass = c("3rd", "2nd"),
-          #Age = c(14, 14),
-          #Sex = c("male", "female")
-        #),
-        #type = "response"
-      #)
+predict(lr_mod_titanic,
+        newdata = tibble (
+          PClass = c("3rd", "2nd"),
+          Age = c(14, 14),
+          Sex = c("male", "female")
+        ),
+        type = "response"
+      )
 ```
 

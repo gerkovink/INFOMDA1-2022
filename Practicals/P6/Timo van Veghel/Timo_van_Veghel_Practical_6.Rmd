@@ -6,10 +6,10 @@ output: html_document
 ---
 
 ```{r}
-install.packages("pROC")
-install.packages("rpart")
-install.packages("rpart.plot")
-install.packages("randomForest")
+#install.packages("pROC")
+#install.packages("rpart")
+#install.packages("rpart.plot")
+#install.packages("randomForest")
 ```
 ```{r}
 library(MASS)
@@ -27,7 +27,7 @@ set.seed(45)
 ##Question 1:
 
 ```{r}
-treatment <- read_csv("Practicals/P6/Timo van Veghel/cardiovascular_treatment.csv") %>% 
+treatment <- read_csv("cardiovascular_treatment.csv") %>% 
   mutate(severity = as.factor(severity),
          gender = as.factor(gender), 
          dose = as.factor(dose),
@@ -86,7 +86,7 @@ NPV
 ##Question 4:
 
 ```{r}
-new_patients <- read_csv("Practicals/P6/Timo van Veghel/new_patients.csv") %>% 
+new_patients <- read_csv("new_patients.csv") %>% 
   mutate(severity = as.factor(severity),
          gender = as.factor(gender), 
          dose = as.factor(dose),
