@@ -24,6 +24,7 @@ We start by getting our initial dataset:
 
 ```{r}
 library(tidyverse)
+library(caret)
 ```
 
 ```{r}
@@ -118,6 +119,27 @@ These are all of the Genres available in the IMDb API. However, when retrieving 
 
 ```{r}
 movies = movies[ , colSums(movies != 0, na.rm = TRUE) > 0]
+```
+
+Additionally, we filter out missing values for content ratings and create dummy variables for content ratings. 
+```{r}
+movies <- movies %>%
+  filter(contentRating != c("Not Rated", "Unrated")) %>%
+  mutate(PG13 = ifelse(contentRating == "PG-13", 1,0),
+         R = ifelse(contentRating == "R", 1,0),
+         PG = ifelse(contentRating == "PG", 1,0),
+         Passed = ifelse(contentRating == "Passed", 1,0),
+         G = ifelse(contentRating == "G", 1,0),
+         TVMA = ifelse(contentRating == "TV-MA", 1,0),
+         TV14 = ifelse(contentRating == "TV-14", 1,0),
+         Approved = ifelse(contentRating == "Approved", 1,0),
+         TVPG = ifelse(contentRating == "TV-PG", 1,0),
+         GP = ifelse(contentRating == "GP", 1,0),
+         NC17 = ifelse(contentRating == "NC-17", 1,0),
+         twelve = ifelse(contentRating == "12", 1,0),
+         M_PG = ifelse(contentRating == "M/PG", 1,0),
+         M = ifelse(contentRating == "M", 1,0)) %>%
+  select(-contentRating)
 ```
 
 Now, to use the `director` variable in some way, we need to create another dummy value. For this, we are going to create `director_top250`. Let us load our second dataset:
@@ -241,7 +263,6 @@ movies <-
   select(-actor1, -actor2, -actor3, -actor4, -actor5, -actor6, -actor7, -actor8, -actor9, -actor10, -actor11, -actor12, -actor13, -actor14, -actor15)
 ```
 
-
 ## Exploratory Data Analysis
 
 Let us now start by seeing what we are working with, by seeing some of the variables compared to each other, so we can start understanding what variables correlate to the IMDb Rating.
@@ -294,12 +315,30 @@ movies <- movies %>%
          war = as.factor(war),
          western = as.factor(western), 
          top_director = as.factor(top_director),
-         top_actor = as.factor(top_actor))
+         top_actor = as.factor(top_actor),
+         
+         PG13 = as.factor(PG13),
+         R = as.factor(R),
+         PG = as.factor(PG),
+         Passed = as.factor(Passed),
+         G = as.factor(G),
+         TVMA = as.factor(TVMA),
+         TV14 = as.factor(TV14),
+         Approved = as.factor(Approved),
+         TVPG = as.factor(TVPG),
+         GP = as.factor(GP),
+         NC17 = as.factor(NC17), 
+         twelve = as.factor(twelve),
+         M_PG = as.factor(M_PG),
+         M = as.factor(M))
 ```
 
 ## Split the data into training data and test data.
 
 ```{r}
+# remove the missing values
+movies <- movies %>%
+  drop_na()
 # split data
 movies <- movies[sample(nrow(movies)), ]
 train <- seq(1, nrow(movies)*0.8)
@@ -343,10 +382,10 @@ It is also an interesting topic to predict whether a movie has the potential to 
 **First, we create a feature providing us with information about whether the movie has a rating higher than 7.6.**
 ```{r}
 movies_train <- movies_train %>%
-  mutate(top1000 = ifelse(imDbRating > 7.6, 1, 0))
+  mutate(top1000 = as.factor(ifelse(imDbRating > 7.6, 1, 0)))
 
 movies_test <- movies_test %>%
-  mutate(top1000 = ifelse(imDbRating > 7.6, 1, 0))
+  mutate(top1000 = as.factor(ifelse(imDbRating > 7.6, 1, 0)))
 ```
 
 **Second, the analysis can begin.**
@@ -355,8 +394,41 @@ In the statistical analysis section, four models will be fitted, they are the si
 
 *1. logistic regression with 5-fold cross validation*
 ```{r}
-
+#specify the cross-validation method
+train_control <- trainControl(method = "cv", number = 5)
 ```
+
+```{r}
+movies_train <- movies_train %>%
+  select(-id, -title, -imDbRating, -director, -actors, -realitytv, -year)
+```
+
+```{r}
+# fit the LR model on training dataset
+lr_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+summary(lr_cv)
+```
+
+```{r}
+pred_lr <- predict(lr_cv, method = "response")
+
+table(pred_lr, movies_train$top1000)
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
