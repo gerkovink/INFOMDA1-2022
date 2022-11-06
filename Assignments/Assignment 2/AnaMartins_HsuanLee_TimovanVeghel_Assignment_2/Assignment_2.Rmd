@@ -65,7 +65,8 @@ Actually, looking at the `stars`, we can see that the first name listed is the D
 movies <-
   movies %>% 
   mutate(director = sub(", .*", "", movies$stars)) %>% 
-  mutate(stars = sub(director, "", stars) %>% str_trim())
+  mutate(stars = substring(stars, first = nchar(director) + 3)) %>% 
+  mutate(actors = stars)
 ```
 
 
@@ -161,6 +162,85 @@ movies <-
   mutate(top_director = ifelse(director %in% directors, 1, 0))
 ```
 
+It would be useful to have a similar thing for the actors:
+
+```{r}
+top250 <-
+  top250 %>% 
+  mutate(director = sub(", .*", "", top250$crew)) %>% 
+  mutate(crew = substring(crew, first = nchar(director) + 3))
+```
+
+```{r}
+actors <- unlist(strsplit(top250$crew, ", "))
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(actors = stars)
+movies <-
+  movies %>%
+  mutate(actor1 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor1) + 3))
+movies <-
+  movies %>%
+  mutate(actor2 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor2) + 3))
+movies <- movies %>%
+  mutate(actor3 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor3) + 3))
+movies <- movies %>%
+  mutate(actor4 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor4) + 3))
+movies <- movies %>%
+  mutate(actor5 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor5) + 3))
+movies <- movies %>%
+  mutate(actor6 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor6) + 3))
+movies <- movies %>%
+  mutate(actor7 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor7) + 3))
+movies <- movies %>%
+  mutate(actor8 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor8) + 3))
+movies <- movies %>%
+  mutate(actor9 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor9) + 3))
+movies <- movies %>%
+  mutate(actor10 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor10) + 3))
+movies <- movies %>%
+  mutate(actor11 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor11) + 3))
+movies <- movies %>%
+  mutate(actor12 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor12) + 3))
+movies <- movies %>%
+  mutate(actor13 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor13) + 3))
+movies <- movies %>%
+  mutate(actor14 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor14) + 3))
+movies <-
+  movies %>% 
+  mutate(actor15 = stars) %>% 
+  select(-stars)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(top_actor = ifelse(actor1 %in% actors | actor2 %in% actors | actor3 %in% actors | actor4 %in% actors | actor5 %in% actors | actor6 %in% actors | actor7 %in% actors | actor8 %in% actors | actor9 %in% actors | actor10 %in% actors | actor11 %in% actors | actor12 %in% actors | actor13 %in% actors | actor14 %in% actors | actor15 %in% actors, 1, 0))
+```
+
+```{r}
+movies <-
+  movies %>% 
+  select(-actor1, -actor2, -actor3, -actor4, -actor5, -actor6, -actor7, -actor8, -actor9, -actor10, -actor11, -actor12, -actor13, -actor14, -actor15)
+```
+
 
 ## Exploratory Data Analysis
 
@@ -170,85 +250,19 @@ Let us now start by seeing what we are working with, by seeing some of the varia
 summary(movies)
 ```
 
+We can take a quick look to what these statistics tell us, just for fun (and also to make sure our sample is actually random).
+The minimum rating film we have from IMDb users has 1.0 out of 10 and the maximum has 9.2, with the mean of the score being 6.74. The minimum rating film we have from critics has 6.0 out of 100 and the maximum has the max score of 100, with a mean at 59.61, which is close-ich to the IMDb ratings. It is expected that the critics scores are lower than the IMDb ratings in general though, so this seems about right.
+The lowest runtime we have has 46 minutes, which means somehow a movie got to escape the API filter, and the longest is longer than 5 hours (I had to look that up... it's an italian movie, of course).
+The first movie we have is from 1920 and the latest is from 2022 (which makes sense as this was taken directly from the IMDb database, which is always up to date with the movies coming out). The mean for the year is at 2001, which means we have more recent movies than older movies, which makes sense since there are more movies being produced now.
+Looking at the genres, we can see the genre that we have more of is drama, with about half of the movies earning that title, and the one we have least of is Reality-TV, only having one movie from that category.
+We have almost 20% of movies having a top director, while only 0.4% have a top actor.
 
 ```{r}
 movies %>% 
-  ggplot(aes(x = imdb_score)) +
+  ggplot(aes(x = imDbRating)) +
   geom_histogram(binwidth = 0.5) +
   theme_minimal() +
   xlim(0, 10)
 ```
 
 Referring back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
-
-What about the distribution of the movie gross?
-
-```{r}
-movies %>% 
-  ggplot(aes(x = gross)) +
-  geom_histogram(bins = 50) +
-  theme_minimal()
-```
-
-It seems most of the concentration is at lower  grosses, and the higher the gross, the less movies with it there are.
-
-Let us keep exploring our variables and see if we get new information.
-
-```{r}
-movies %>% 
-  ggplot(aes(x = title_year, y = imdb_score, color = color)) +
-  geom_point() +
-  theme_minimal() +
-  scale_x_continuous(breaks=seq(round(min(movies$title_year, na.rm = TRUE), digits = -1), max(movies$title_year, na.rm = TRUE), by = 10))
-```
-
-We have much more information about more recent movies, the most recent year being 2016. The ratings seemed to be higher for previous years, and they get more spread out the more recent the movie is. As expected, we have many more movies in color now than before. It might seem strange to analyse these variables, but our aim is to understand which variables influence the rating, so we will not be ruling anything out for now.
-
-How does this look for the gross?
-
-```{r}
-movies %>% 
-  ggplot(aes(x = title_year, y = gross, color = color)) +
-  geom_point() +
-  theme_minimal() +
-  scale_x_continuous(breaks=seq(round(min(movies$title_year, na.rm = TRUE), digits = -1), max(movies$title_year, na.rm = TRUE), by = 10))
-```
-
-It seems lately movies are grossing more than a few years back.
-
-Is the number of Facebook likes of the Director and the Cast related to the IMDb score?
-
-```{r}
-movies %>% 
-  ggplot(aes(x = director_facebook_likes, y = imdb_score, size = cast_total_facebook_likes)) +
-  geom_point() +
-  theme_minimal()
-```
-
-It seems there are quite a people with zero facebook likes, which most likely means they do not have a page. Let us take these values out for the sake of the analysis for now, but this may mean these variables will not be useful for the predictions. PROBLEM????
-
-```{r}
-movies %>% 
-  filter(director_facebook_likes > 0, cast_total_facebook_likes > 0) %>% 
-  ggplot(aes(x = director_facebook_likes, y = imdb_score, size = cast_total_facebook_likes)) +
-  geom_point() +
-  theme_minimal()
-```
-
-```{r}
-movies %>% 
-  filter(director_facebook_likes > 0, cast_total_facebook_likes > 0) %>% 
-  ggplot(aes(x = director_facebook_likes, y = gross, size = cast_total_facebook_likes)) +
-  geom_point() +
-  theme_minimal()
-```
-
-Is the number of reviews related to the score and/or the gross?
-
-```{r}
-movies %>% 
-  ggplot(aes(x = num_user_for_reviews, y = imdb_score, color = num_critic_for_reviews)) +
-  geom_point() +
-  theme_minimal()
-```
-
