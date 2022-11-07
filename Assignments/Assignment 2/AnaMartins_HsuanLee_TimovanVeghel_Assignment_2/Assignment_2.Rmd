@@ -24,7 +24,10 @@ We start by getting our initial dataset:
 
 ```{r}
 library(tidyverse)
-library(caret)
+library(caret) # for fitting the trees and LR with CV
+library(gbm) # for boosting
+library(psych) # for making a pretty summary
+options(scipen = 999) # remove e
 ```
 
 ```{r}
@@ -392,9 +395,10 @@ movies_test <- movies_test %>%
 
 In the statistical analysis section, four models will be fitted, they are the simplest model, the logistic regression model with 5-fold cross validation; classifiers such as: bagging, random forest, and boosting with 5-fold cross validation. Finally, the performance of all the mentioned models will be examined on a test dataset to identify the best predictive model.
 
-*1. logistic regression with 5-fold cross validation*
+*1. Logistic Regression with 5-fold cross validation*
 ```{r}
-#specify the cross-validation method
+# specify the cross-validation method, and number of k-fold
+set.seed(2022)
 train_control <- trainControl(method = "cv", number = 5)
 ```
 
@@ -403,7 +407,7 @@ movies_train <- movies_train %>%
   select(-id, -title, -imDbRating, -director, -actors, -realitytv, -year)
 ```
 
-```{r}
+```{r, warning=FALSE}
 # fit the LR model on training dataset
 lr_cv <- train(top1000 ~ .,
                data = movies_train,
@@ -414,13 +418,141 @@ summary(lr_cv)
 ```
 
 ```{r}
+# create the confusion matrix on the training data
 pred_lr <- predict(lr_cv, method = "response")
 
-table(pred_lr, movies_train$top1000)
+confusionMatrix(pred_lr, movies_train$top1000)
+```
+
+As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`),and the running time of a movie (`runtime`) are the critical factors affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
+
+In terms of the type of movie, 
+
+
+
+
+*2. Bagging*
+```{r}
+# fit the bagging model on training dataset
+bag_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "treebag",
+               importance = T)
+```
+
+```{r, fig.height=7.5, fig.width=10}
+# Check the feature importance plot
+bag_cv %>%
+  varImp %>%
+  plot
+```
+
+```{r}
+# create confusion matrix
+pred_bag <- predict(bag_cv, type = "raw")
+confusionMatrix(pred_bag, movies_train$top1000)
+```
+
+```{r}
+# check the results on internal validation dataset
+bag_cv
 ```
 
 
 
+
+
+
+
+
+
+*3. Random Forest*
+```{r}
+# fit the bagging model on training dataset
+rf_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "rf",
+               importance = T)
+```
+
+```{r, fig.height=7.5, fig.width=10}
+# Check the feature importance plot
+rf_cv %>%
+  varImp %>%
+  plot
+```
+
+```{r}
+# create confusion matrix
+pred_rf <- predict(rf_cv, type = "raw")
+confusionMatrix(pred_rf, movies_train$top1000)
+```
+
+```{r}
+# check the results on internal validation dataset
+rf_cv
+```
+
+
+
+
+
+
+
+
+
+
+*4. Boosting*
+```{r, warning=FALSE}
+# fit the bagging model on training dataset
+boost_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "gbm",
+               verbose = F,)
+```
+
+```{r, fig.height=7.5, fig.width=10}
+# Check the feature importance plot
+boost_cv %>%
+  varImp %>%
+  plot
+```
+
+```{r}
+# create confusion matrix
+pred_boost <- predict(boost_cv, type = "raw")
+confusionMatrix(pred_boost, movies_train$top1000)
+```
+
+```{r}
+# check the results on internal validation dataset
+boost_cv
+```
+
+
+
+
+
+**Third, let's test on the test data and determine which model has the best performance.**
+```{r}
+# fit all the models on the test data
+lr_test <- predict(lr_cv, newdata = movies_test)
+bag_test <- predict(bag_cv, newdata = movies_test)
+rf_test  <- predict(rf_cv, newdata = movies_test)
+boost_test <- predict(boost_cv, newdata = movies_test)
+```
+
+```{r}
+# show the confusion matrix and related info of each model
+list(lr_test = lr_test,
+     bag_test = bag_test, 
+     rf_test = rf_test, 
+     boost_test = boost_test) %>%
+  map(~ confusionMatrix(.x, movies_test$top1000))
+```
 
 
 
