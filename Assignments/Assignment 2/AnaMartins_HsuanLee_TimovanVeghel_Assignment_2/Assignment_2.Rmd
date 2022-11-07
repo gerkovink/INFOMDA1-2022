@@ -514,7 +514,7 @@ movies_test <- movies_test %>%
 
 In the statistical analysis section, four models will be fitted, they are the simplest model, the logistic regression model with 5-fold cross validation; classifiers such as: bagging, random forest, and boosting with 5-fold cross validation. Finally, the performance of all the mentioned models will be examined on a test dataset to identify the best predictive model.
 
-*1. Logistic Regression with 5-fold cross validation*
+*1. 5-fold cross-validation Logistic Regression*
 ```{r}
 # specify the cross-validation method, and number of k-fold
 set.seed(2022)
@@ -554,6 +554,13 @@ confusionMatrix(pred_lr, movies_train$top1000)
 We built a confusion matrix for the 5-fold cross-validated logistic regression model on the training data. It can be seen that the accuracy of this model is 0.91, which is not bad. 
 
 In our case, we are most concerned about the positive predictive value (PPV) and negative predictive value (NPV) as we would like to know if a movie is identified as likely to be in the top 1000 of IMDB, what is the probability of it really being in the top 1000 of IMDB, PPV can give us the information; conversely, if a movie is determined as not likely to be in the top 1000, what is the probability that it really does not make it to the top 1000 of IMDB, NPV can provide information. Here, the logistic regression model with 5-fold cross-validation has a PPV of 0.93 and an NPV of 0.76 on the training dataset.
+
+```{r}
+# check the results on validation dataset
+lr_cv
+```
+
+Furthermore, Itcan be seen that the accuracy of the 5-fold cross-validation logistic regression model on the validation datasets is 0.9.
 
 *2. Bagging*
 ```{r}
@@ -623,9 +630,9 @@ Similar to the output of the bagging model, the confusion matrix of the random f
 rf_cv
 ```
 
-Due to the similarity with the bagging method, the random forest has its own internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 21 features are sampled in each split.
+Due to the similarity with the bagging method, the random forest has the internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 21 features are sampled in each split.
 
-*4. Boosting*
+*4. 5-fold cross-validation Boosting*
 ```{r, warning=FALSE}
 # fit the bagging model on training dataset
 boost_cv <- train(top1000 ~ .,
@@ -670,28 +677,17 @@ boost_test <- predict(boost_cv, newdata = movies_test)
 
 ```{r}
 # show the confusion matrix and related info of each model
-list(lr_test = lr_test,
-     bag_test = bag_test, 
-     rf_test = rf_test, 
-     boost_test = boost_test) %>%
+list(Five_fold_CV_LR = lr_test,
+     Bagging = bag_test, 
+     Random_Forest = rf_test, 
+     Five_fold_CV_Boosting = boost_test) %>%
   map(~ confusionMatrix(.x, movies_test$top1000))
 ```
 
+All four models (i.e., the 5-fold cross-validation logistic regression model, the bagging model, the random forest model, and the 5-fold cross-validation boosting model) were fitted to the test dataset we partitioned at the beginning to test and compare the performance of each model.
 
+First, we evaluated the accuracy of each model - the boosting model had the highest accuracy at 0.92, followed by the random forest model and logistic regression model at 0.91, and the bagging model had the lowest accuracy at 0.908.
 
+Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.93 and an NPV of 0.78.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+To conclude, among the four models we compared, the boosting model is the idealist model so that it is served as our final model.
