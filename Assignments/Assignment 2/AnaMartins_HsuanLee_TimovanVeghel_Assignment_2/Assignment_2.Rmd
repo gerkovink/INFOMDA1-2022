@@ -378,6 +378,25 @@ movies_test <- movies[test, ]
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Predicting whether a movie is likely to be in the top 1000 of IMDB
 
 It is also an interesting topic to predict whether a movie has the potential to be in the top 1000 of IMDB. According to the IMDB website(`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), if a movie wishes to be in the top 1000, it requires an IMDB rating above 7.6. The 7.6 rating will hence be considered as a threshold for us to examine a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
@@ -417,6 +436,14 @@ lr_cv <- train(top1000 ~ .,
 summary(lr_cv)
 ```
 
+As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`),and the running time of a movie (`runtime`) are the critical elements affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
+
+In terms of the genre of the movie, six genres influence a movie's ability to enter the IMDB Top 1000: `adventure`, `animation`, `comedy`, `horror`, `science fiction`, and `sports`. Among them, except for animation, the other five genres relate negatively to entering the IMDB Top 1000. In other words, if a movie belongs to the adventure category, the log-odds of entering the IMDB top 1000 drops by 1.1; if a movie belongs to the comedy category, the log-odds of entering the IMDB top 1000 declines by 0. 7; if a movie is a horror movie, the log-odds of entering the IMDB top 1000 decreases by 1.5; if a movie is a science fiction movie, the log-odds of entering the IMDB top 1000 falls by 1.5. On the contrary, if a movie is an animated movie, the log-odds of entering the IMDB top 1000 increases by 1.1.
+ 
+Regarding content ratings, there are four content ratings that affect a movie's chances of making the IMDB Top 1000: `PG-13`, `R`, `PG`, `G`. They all have a negative association with entry into the IMDB Top 1000, i.e., if a movie is listed as one of the above content ratings, the log-odds of entering the IMDB Top 1000 will decrease.
+
+Notably, the `director` of the movie also serves as an influencing element. If a movie is directed by a top 250 director, the log-odds of entering the IMDB top 1000 will increase by 0.5.
+
 ```{r}
 # create the confusion matrix on the training data
 pred_lr <- predict(lr_cv, method = "response")
@@ -424,12 +451,9 @@ pred_lr <- predict(lr_cv, method = "response")
 confusionMatrix(pred_lr, movies_train$top1000)
 ```
 
-As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`),and the running time of a movie (`runtime`) are the critical factors affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
+We built a confusion matrix for the 5-fold cross-validated logistic regression model on the training data. It can be seen that the accuracy of this model is 0.91, which is not bad. 
 
-In terms of the type of movie, 
-
-
-
+In our case, we are most concerned about the positive predictive value (PPV) and negative predictive value (NPV) as we would like to know if a movie is identified as likely to be in the top 1000 of IMDB, what is the probability of it really being in the top 1000 of IMDB, PPV can give us the information; conversely, if a movie is determined as not likely to be in the top 1000, what is the probability that it really does not make it to the top 1000 of IMDB, NPV can provide information. Here, the logistic regression model with 5-fold cross-validation has a PPV of 0.93 and an NPV of 0.76 on the training dataset.
 
 *2. Bagging*
 ```{r}
@@ -441,31 +465,29 @@ bag_cv <- train(top1000 ~ .,
                importance = T)
 ```
 
-```{r, fig.height=7.5, fig.width=10}
+```{r, fig.height=7.5, fig.width=9}
 # Check the feature importance plot
 bag_cv %>%
   varImp %>%
   plot
 ```
 
+The variable importance plot indicates that the four features with the highest importance in the bagging model are the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`), the running time of the movie (`runtime`), and a movie's director being a top 250 director(`top_director`) or not. The remaining features are relatively less important than the above four.
+
 ```{r}
-# create confusion matrix
+# create confusion matrix on training data
 pred_bag <- predict(bag_cv, type = "raw")
 confusionMatrix(pred_bag, movies_train$top1000)
 ```
+
+The confusion matrix of the bagging model shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
 
 ```{r}
 # check the results on internal validation dataset
 bag_cv
 ```
 
-
-
-
-
-
-
-
+The most characteristic of the bagging method is that it uses bootstrap aggregation to obtain many training datasets by sampling multiple times from the sample, fitting a tree to each training dataset, and using majority vote for classification or simple average for regression. The out of bag data can be served as the internal validation datasets. Hence, we can observe that the accuracy of the internal validation dataset shown here is 0.9.
 
 *3. Random Forest*
 ```{r}
@@ -477,12 +499,25 @@ rf_cv <- train(top1000 ~ .,
                importance = T)
 ```
 
-```{r, fig.height=7.5, fig.width=10}
+```{r, fig.height=7.5, fig.width=9}
 # Check the feature importance plot
 rf_cv %>%
   varImp %>%
   plot
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 # create confusion matrix
