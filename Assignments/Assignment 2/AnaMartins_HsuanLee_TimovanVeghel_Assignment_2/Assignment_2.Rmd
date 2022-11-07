@@ -352,14 +352,70 @@ movies_test <- movies[test, ]
 ```
 
 
+##Very simple linear model
 
+```{r}
+lms <- lm(imDbRating ~ imDbRatingVotes + metacriticRating + runtime + year + top_director, data = movies_train)
+```
 
+Extract intercept and slope:
 
+```{r}
+coef(lms)
+```
+Let's summarize:
 
+```{r}
+summary(lms)
+```
 
+Predicted y values to a variable:
 
+```{r}
+y_pred <- predict(lms)
+```
 
+Let's plot this son of a bitch (be sure to take this text out! :T)
 
+```{r}
+tibble(pred = y_pred, obs = movies_train$imDbRating) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point(size = 1, col = "dark blue") +
+  geom_abline(slope = 1, size = 1, col = "dark red") +
+  theme_minimal()
+```
+
+Now let's predict:
+
+```{r}
+y_pred_new <- predict(lms, newdata = movies_test)
+```
+
+Plotting again:
+
+```{r}
+tibble(pred = y_pred_new, obs = movies_test$imDbRating) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point(col = "dark blue") +
+  geom_abline(slope = 1, size = 1, col = "dark red") +
+  theme_minimal()
+```
+
+Let's try to get an MSE:
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+
+mse(1:10, 10:1)
+```
+
+Our MSE:
+
+```{r}
+mse(movies_train$imDbRating, predict(lms))
+```
 
 
 
