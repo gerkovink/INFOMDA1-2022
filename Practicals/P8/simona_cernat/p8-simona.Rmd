@@ -1,0 +1,257 @@
+---
+title: "p8-simona"
+output: html_document
+date: "2022-11-04"
+---
+
+```{r }
+library(tidyverse)
+library(randomForest)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+```{r }
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+```
+
+
+1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.
+
+
+```{r }
+summary(df)
+df = tibble(df)
+
+df %>% group_by(Gender, Disease) %>% summarise(counts = n()) 
+
+```
+
+Based on this table females have a 50% chance of having the disease, much higher than the males (30%).
+
+
+2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+
+```{r }
+df %>% ggplot(mapping = aes( x= Albumin, y = Ratio_Albumin_Globulin, color = Disease)) +
+  geom_point()
+```
+
+
+There is a linear relationship between albumin and globun_albumin ratio, as expected. The higher values do not indicate the disease state.
+
+```{r }
+df %>% ggplot(mapping = aes( x= Alkaline_Phosphotase, y = Total_Bilirubin, color = Disease)) +
+  facet_wrap(~Gender) +
+  geom_point() +
+  theme_minimal()
+```
+
+Higher values of bilirubin or alkaline_phospatase seem to indicate an healthy state irrespective of gender.
+
+
+```{r }
+df %>% ggplot(mapping = aes( x= Disease, y = Alkaline_Phosphotase, color = Disease)) +
+  geom_boxplot()
+```
+
+3.Shortly reflect on the difference between bagging, random forests, and boosting.
+
+
+All three methods are ensemble methods. Bagging deals with variation reduction in cassifiers. The principle is that by averaging the dependent variable outputs between multiple classifiers created by bootstraping sampling, the variation is reduced. Random forest (for trees only) employs a bagging method with the difference between a classical bagging algorithm and random-forest being that only a subset of the parameters are used every time a split is made. Finally boosting is similar to bagging only that each time a new classifier is created it re-updates its residuals based on the previous model error.
+
+
+
+4. Apply bagging to the training data, to predict the outcome Disease, using the caret library.
+```{r }
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+treeFit <- train(
+  Disease ~ .,
+  data = df,
+  method = "treebag",
+  trControl = cvcontrol,
+  importance = TRUE
+)
+
+
+```
+
+
+
+5. Interpret the variable importance measure using the varImp function on the trained model object.
+```{r }
+varImp(treeFit)
+```
+6. Create training set predictions based on the bagged model, and use the confusionMatrix() function from the caret package to assess it’s performance.`
+
+```{r }
+prediction = predict(treeFit, type = "raw")
+
+matrix_tree = confusionMatrix(df$Disease,  prediction)
+```
+
+7. Now ask for the output of the bagged model. Explain why the under both approaches differ.
+
+
+```{r }
+treeFit
+```
+
+
+
+8.  Fit a random forest to the training data to predict the outcome Disease, using the caret library.
+
+```{r }
+rf_model = randomForest(Disease ~ ., data = df)
+```
+
+
+```{r }
+rfst = train(Disease ~ ., method = "rf", data = df, trControl = cvcontrol,
+  importance = TRUE)
+
+
+```
+
+9.  Again, interpret the variable importance measure using the varImp function on the trained model object. Do you draw the same conclusions as under the bagged model?
+
+
+```{r }
+varImp(rfst)
+```
+
+
+Here the bilirubin is the most important predictor compared to the alkaline phosphatase.
+
+
+10. Output the model output from the random forest. Are we doing better than with the bagged model?
+
+
+```{r }
+rfst
+```
+
+
+11. Now, fit a boosting model using the caret library to predict disease status.`
+Hint: Use gradient boosting (the gbm method in caret).
+
+```{r }
+treeboost <- train(
+  Disease ~ .,
+  data = df,
+  method = "gbm",
+  trControl = cvcontrol,
+  verbose = FALSE
+)
+
+```
+
+
+12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.
+
+
+
+```{r }
+varImp(treeboost)
+summary(treeboost)
+```
+
+
+13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?
+
+```{r }
+treeboost
+```
+
+
+The boosted method has a higher accuracy.
+
+
+14. Download the file shap.R from this Github repository.
+
+```{r }
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+15. Specify your model as follows, and use it to create predictions on the training data.
+
+```{r }
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+
+
+
+16. First, calculate the SHAP rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.
+```{r }
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+
+```
+
+17. Plot the SHAP values for every individual for every feature and interpret them.
+
+```{r }
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+```
+
+
+
+```{r }
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+HIgh SHAP values show a higher probability of being diseased. For example high bilirubin values show a low chance of having the disease. This is the opposite for albumin values, as we can see the SHAP values go up with higher albumin values but only between 4-5. This could also be due to sampling variation.
+
+
+
+18. Verify which of the models you created in this practical performs best on the test data.
+
+```{r }
+test <- readRDS("data/test_disease.RDS")
+
+bag_test <- predict(treeFit, newdata = test)
+rf_test  <- predict(rfst, newdata = test)
+gbm_test <- predict(treeboost, newdata = test)
+xgb_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+list(bag_test, 
+     rf_test, 
+     gbm_test, 
+     xgb_test) %>%
+  map(~ confusionMatrix(.x, test$Disease))
+```
+
+
+Based on accuracy, the random forest model performs the best on the test data (0.75),

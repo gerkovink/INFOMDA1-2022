@@ -180,7 +180,7 @@ Look at the lda_mod object. What can you conclude about the characteristics of t
 ```{r }
 lda_mod
 ```
-#By looking at the group means we can see that students have a higher p of defaulting, that people who deafult have a higher balance and income is on average equal between defaulters and faulters.
+#By looking at the group means we can see that students have a higher p of defaulting. People who deafult have a higher balance.  Income is on average equal between defaulters and faulters.
 
 17. Create a confusion matrix and compare it to the previous methods.
 ```{r }
@@ -191,6 +191,11 @@ table(true = default_test$default, predicted = predict_lda$class)
 
 
 18. Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?
+
+
+```{r }
+titanic <- read_csv("data/Titanic.csv")
+```
 
 ```{r }
 lda_tittanic <- lda(Survived ~ Age * Sex * PClass, data = titanic)

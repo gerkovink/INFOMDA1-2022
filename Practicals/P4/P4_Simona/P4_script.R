@@ -229,14 +229,6 @@ sqrt(model2_test_mse)
 
 
 
-Shuffle the dataset randomly.
-Split the dataset into k groups
-For each unique group:
-  Take the group as a hold out or test data set
-Take the remaining groups as a training data set
-Fit a model on the training set and evaluate it on the test set
-Retain the evaluation score and discard the model
-Summarize the skill of the model using the sample of model evaluation scores
 
 
 #28. create a function that performs k-fold cross-validation for linear models.
@@ -264,9 +256,9 @@ k_valid <- function(formula, dataset, k){
   vector_mse = c()
   for (i in 1:k)
   {
-    test_data <- dataset %>% filter(partition == i)
+    test_data <- dataset %>% filter(partition != i)
     
-    valid_data <- dataset %>%  filter(partition != i)
+    valid_data <- dataset %>%  filter(partition == i)
     
     #fitting a model on the training set
     model_train <- lm(formula, data = test_data)

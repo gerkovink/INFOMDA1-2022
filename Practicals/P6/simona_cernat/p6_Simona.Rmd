@@ -1,0 +1,286 @@
+---
+title: "P6_Simona"
+output: html_document
+date: "2022-11-02"
+---
+
+```{r }
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+
+1.
+```{r }
+cardio <- read_csv("data/cardiovascular_treatment.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+model_rm <- glm(response ~ ., "binomial", data = cardio)
+model_rm_pred <- predict(model_rm, type = "response")
+
+pred_ctoff <- ifelse(model_rm_pred > 0.5, 1, 0)
+
+conf_matrix_cardio <- table(actual = cardio$response, predicted = pred_ctoff)
+conf_matrix_cardio
+```
+2. Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the confusion matrix table on wikipedia. What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?
+```{r }
+TP <- conf_matrix_cardio[2, 2]
+TN <- conf_matrix_cardio[1, 1]
+FP <- conf_matrix_cardio[1, 2]
+FN <- conf_matrix_cardio[2, 1]
+
+tibble(
+  Acc = (TP + TN) / sum(conf_matrix_cardio),
+  TPR = TP / (TP + FN),
+  TNR = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+
+```
+#The accuracy is 70%. Most of the patients get correctly classified but there are some errors.
+# TPR = 0.75 - out of the total actual positives, 75% get correctly classified as such
+#TNR = 0.62 - out of the total negatives, 62% will be corectly classifed as such
+# FPR = 0.37 - out of the total actual negatives (do not respond to the treatment), 37% will be miss-classified as positives
+#PPV - out of all the patients classified as positives only 67% are actual positives
+#NPV - out od all the patients classified as negatives, 73% are actual negatives
+
+
+3. Create an LDA model lda_mod for the same prediction problem. Compare its performance to the LR model.
+```{r }
+model_lda <- lda(response ~ ., cardio)
+pred_lda <- predict(model_lda, cardio,  type  = "class")$class
+matrix_lda <- table(true = cardio$response, predicted = pred_lda)
+TP <- matrix_lda[2, 2]
+TN <- matrix_lda[1, 1]
+FP <- matrix_lda[1, 2]
+FN <- matrix_lda[2, 1]
+
+tibble(
+  Acc = (TP + TN) / sum(matrix_lda),
+  TPR = TP / (TP + FN),
+  TNR = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+
+```
+#The output of the two models seems similar.
+4. Compare the classification performance of lr_mod and lda_mod for the new patients in the data/new_patients.csv.
+```{r }
+cardio_validation <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+predi_val_rm <- ifelse(predict(model_rm, newdata =cardio_validation, type = "response") >0.5, 1 , 0)
+predi_val_lda <- predict(model_lda, newdata = cardio_validation, type = "response")$class
+
+matrix_val_rm <- table(true = cardio_validation$response, pred = predi_val_rm)
+matrix_val_lda <- table(true = cardio_validation$response, pred = predi_val_lda)
+
+matrix_val_lda
+matrix_val_rm
+
+Acc_rm = (matrix_val_rm[2,2] + matrix_val_rm[1,1]) / sum(matrix_val_rm)
+Acc_lda = (matrix_val_rm[2,2] + matrix_val_rm[1,1]) / sum(matrix_val_rm)
+
+Acc_rm
+Acc_lda
+```
+Calculate the out-of-sample brier score for the lr_mod and give an interpretation of this number.
+
+```{r }
+mean((predi_val_rm - (as.numeric(cardio_validation$response) - 1)) ^ 2)
+```
+Create two LR models: lr1_mod with severity, age, and bb_score as predictors, and lr2_mod with the formula response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose. Save the predicted probabilities on the training data.
+
+```{r }
+lr1_mod <- glm(response ~ severity + bb_score + age, family = "binomial", data = cardio)
+prob_lr1 <- predict(lr1_mod, type = "response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, 
+               family = "binomial", data = cardio)
+prob_lr2 <- predict(lr2_mod, type = "response")
+```
+
+Use the function roc() from the pROC package to create two ROC objects with the predicted probabilities: roc_lr1 and roc_lr2. Use the ggroc() method on these objects to create an ROC curve plot for each. Which model performs better? Why?
+```{r }
+roc_lr1 <- roc(cardio$response, prob_lr1)
+roc_lr2 <- roc(cardio$response, prob_lr2)
+
+(ggroc(roc_lr1) + theme_minimal() + labs(title = "LR1"))
+ggroc(roc_lr2) + labs(title = "lr2")
+```
+#seems like the second model performs a bit better(bigger AUc)
+
+Print the roc_lr1 and roc_lr2 objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?
+
+
+```{r }
+roc_lr1
+
+```
+
+
+```{r }
+roc_lr2
+```
+The auc is the probability that the model will give a better score to a sample who actually belogs to the positive class. A minimal auc is 0.5 and this indicates an random predictor. An auc of 1 is ideal.
+
+
+```{r }
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+
+
+8. Explore the iris dataset using summaries and plots.
+
+```{r }
+str(iris)
+summary(iris)
+```
+
+
+```{r }
+#Mean petal lenght per specie
+
+iris <- tibble(iris)
+
+iris %>% group_by(Species) %>% 
+  summarise(mean = mean(Petal.Length)) %>% 
+  ggplot(aes(x = Species, y = mean)) +
+  geom_col() +
+  theme_minimal() +
+  ylab("average peral len")
+  
+
+```
+# Verginica iris has the highest petal length
+
+
+
+```{r }
+iris %>% ggplot(aes(x = Petal.Width, y = Petal.Length)) +
+  geom_point(aes(color = Species)) +
+  theme_minimal()
+```
+
+9. Fit an additional LDA model, but this time with only Sepal.Length and Sepal.Width as predictors. Call this model lda_iris_sepal
+
+
+```{r }
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+10. Create a confusion matrix of the lda_iris and lda_iris_sepal models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+
+```{r }
+predi_iris <- predict(lda_iris)$class
+predi_iris_sepal <- predict(lda_iris_sepal)$class
+
+matrix_iris <- table(actual = iris$Species, pred = predi_iris )
+matrix_iris_sepal <- table(actual = iris$Species, pred = predi_iris_sepal)
+
+Acc_iris <- sum(matrix_iris[1, 1], matrix_iris[2,2])/sum(matrix_iris)
+Acc_iris_sepal <- sum(matrix_iris_sepal[1, 1], matrix_iris_sepal[2,2])/sum(matrix_iris_sepal)
+
+print(c(Acc_iris, Acc_iris_sepal))
+```
+#The first model is more accurate.
+
+
+11. Use rpart() to create a classification tree for the Species of iris. Call this model iris_tree_mod. Plot this model using rpart.plot().
+```{r }
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+
+rpart.plot(iris_tree_mod)
+```
+
+12. How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?
+#It would be clasifed as versicolor.
+
+
+13. Create a scatterplot where you map Petal.Length to the x position and Petal.Width to the y position. Then, manually add a vertical and a horizontal line (using geom_segment) at the locations of the splits from the classification tree. Interpret this plot.
+
+```{r }
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, color = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 3, xend = 3, y = -Inf, yend = Inf),
+               colour = "black") +
+  geom_segment(aes(x = -Inf, xend = Inf, y = 1, yend = 1),
+               colour = "black") 
+```
+
+
+14. Create a classification tree model where the splits continue until all the observations have been classified. Call this model iris_tree_full_mod. Plot this model using rpart.plot(). Do you expect this model to perform better or worse on new Irises?
+
+
+
+```{r }
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, control = rpart.control(minbucket = 1, cp = 0))
+
+rpart.plot(iris_tree_full_mod)
+```
+
+
+
+```{r }
+rf_model <- randomForest(Species ~ ., data = iris)
+
+import <- importance(rf_model)
+tibble(
+  importance = c(import), 
+  variable = rownames(import)
+) %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() 
+```
+
+
+
+```{r }
+rf_model
+```
+
+```{r }
+
+```
