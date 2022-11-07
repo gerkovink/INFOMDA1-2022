@@ -108,8 +108,7 @@ or false positives.
 trained_bag
 ```
 
-The accuracy differs (from 1 to 0.678). I am unaware as to why this might be the case.
-Perhaps the accuracy is for the out-of-bag predictions?
+The accuracy differs (from 1 to 0.678). This is because this accuracy is based on the cross-validated accuracy!
 
 ### 8) Fitting a randomforest
 
