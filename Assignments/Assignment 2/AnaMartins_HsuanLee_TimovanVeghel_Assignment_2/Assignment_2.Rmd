@@ -453,6 +453,50 @@ mse(movies_train$imDbRating, predict(lms))
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Predicting whether a movie is likely to be in the top 1000 of IMDB
 
 It is also an interesting topic to predict whether a movie has the potential to be in the top 1000 of IMDB. According to the IMDB website(`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), if a movie wishes to be in the top 1000, it requires an IMDB rating above 7.6. The 7.6 rating will hence be considered as a threshold for us to examine a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
@@ -536,7 +580,7 @@ pred_bag <- predict(bag_cv, type = "raw")
 confusionMatrix(pred_bag, movies_train$top1000)
 ```
 
-The confusion matrix of the bagging model shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
+The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
 
 ```{r}
 # check the results on internal validation dataset
@@ -562,38 +606,24 @@ rf_cv %>%
   plot
 ```
 
+The random forest model reveals different variable importance plot with the bagging model. The reason for this is that bagging has a high correlation issue between the trees. To overcome this problem, the random forest places a restriction on each split of the tree by randomly drawing features at any split with only those features that are drawn being considered.
 
-
-
-
-
-
-
-
-
-
-
-
+Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie's director is a top 250 director (`top_director`), and the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot.
 
 ```{r}
-# create confusion matrix
+# create confusion matrix on the training data
 pred_rf <- predict(rf_cv, type = "raw")
 confusionMatrix(pred_rf, movies_train$top1000)
 ```
+
+Similar to the output of the bagging model, the confusion matrix of the random forest model on the training data displays nearly perfect results with accuracy, sensitivity, specificity, PPV, and NPV equal to 1. Nevertheless, it is still uncertain whether it is a decent model, as we do not know either it is over-fitting or not.
 
 ```{r}
 # check the results on internal validation dataset
 rf_cv
 ```
 
-
-
-
-
-
-
-
-
+Due to the similarity with the bagging method, the random forest has its own internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 21 features are sampled in each split.
 
 *4. Boosting*
 ```{r, warning=FALSE}
@@ -612,20 +642,22 @@ boost_cv %>%
   plot
 ```
 
+The order of importance of the features is similar to that of the random forest model, as can be seen from the variable importance plot of the boosting model. Critics' rating (`metacriticRating`) is the most important feature, next is the total number of votes (`imDbRatingVotes`), followed by whether the director of the movie is a top 250 director (`top_director`), and the running time of the movie (`runtime`). Compared to the random forest model, however, the features listed after the fourth variable in the boosted model contribute little to the model.
+
 ```{r}
-# create confusion matrix
+# create confusion matrix on the training data
 pred_boost <- predict(boost_cv, type = "raw")
 confusionMatrix(pred_boost, movies_train$top1000)
 ```
 
+The confusion matrix of the boosting model on the training data has an accuracy of 0.91, a sensitivity of 0.98, a slightly lower specificity of 0.55, a PPV of 0.92, and an NPV of 0.8.
+
 ```{r}
-# check the results on internal validation dataset
+# check the results on the validation dataset
 boost_cv
 ```
 
-
-
-
+Based on the accuracy of the 5-fold cross-validation boosting model on the validation datasets, the best accuracy of the boosting model is 0.9 for two splits on a tree with 50 trees.
 
 **Third, let's test on the test data and determine which model has the best performance.**
 ```{r}
