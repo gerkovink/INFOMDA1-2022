@@ -1,0 +1,304 @@
+---
+title: "Practical_5"
+author: "Hasbini Laura"
+date: "12 octobre 2022"
+output: html_document
+---
+# Supervised learning: Classification 1 
+
+## Introduction
+
+```{r}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+library(dplyr)
+library(lda)
+```
+
+Always ask the select to be from dplyr and not MASS : 'dplyr::select'
+
+```{r}
+set.seed(45)
+```
+
+## Default dataset
+
+#### Question 1 
+"Create a scatterplot of the Default dataset, where balance is mapped to the x position, income is mapped to the y position, and default is mapped to the colour. Can you see any interesting patterns already?"
+
+```{r}
+Default %>%
+  #arrange(default) %>% order the dataset so that the Yes points are plotted after
+  ggplot(aes(x=balance, y=income, colour=default)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_colour_viridis_d()
+```
+
+We can already see that there are more defaults points mapped to 'No' than to 'Yes'. We can also note that 'Yes' default points are only found for high balance. 
+
+#### Question 2
+"Add facet_grid(cols = vars(student)) to the plot. What do you see?"
+
+```{r}
+Default %>%
+  #arrange(default) %>% order the dataset so that the Yes points are plotted after
+  ggplot(aes(x=balance, y=income, colour=default)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_colour_viridis_d() + 
+  facet_grid(cols=vars(student))
+```
+
+When adding a separation between students and non-students, we can underlines that the group with low income are the students. 
+
+#### Question 3
+"Transform “student” into a dummy variable using ifelse() (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set default_train (80%) and a test set default_test (20%)"
+
+```{r}
+Default <- 
+  Default %>% 
+  mutate(student = ifelse(student =="Yes", 1, 0)) %>%
+  mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
+```
+
+```{r}
+default_train <- Default %>%
+  filter(split=="train") %>%
+  dplyr::select(-split)
+
+default_test <- Default %>%
+  filter(split=="test") %>%
+  dplyr::select(-split)
+```
+
+##K-Nearest neighbours
+
+#### Question 4 
+"Create class predictions for the test set using the knn() function. Use student, balance, and income (but no basis functions of those variables) in the default_train dataset. Set k to 5. Store the predictions in a variable called knn_5_pred."
+
+```{r}
+knn_5_pred <- knn(
+  train = default_train %>% dplyr::select(-default),
+  test  = default_test  %>% dplyr::select(-default),
+  cl    = as_factor(default_train$default),
+  k     = 5
+)
+```
+
+#### Question 5 
+"Create two scatter plots with income and balance as in the first plot you made. One with the true class (default) mapped to the colour aesthetic, and one with the predicted class (knn_5_pred) mapped to the colour aesthetic."
+
+```{r}
+plot_true_class <-
+  default_test %>%
+  ggplot(aes(x=balance, y=income, colour=default)) +
+  geom_point() +
+  theme_minimal() + 
+  labs(title = "True class")
+
+plot_pred_class <-
+  default_test %>%
+  ggplot(aes(x=balance, y=income, colour=knn_5_pred)) +
+  geom_point() +
+  theme_minimal() + 
+  labs(title = "Predicted class")
+
+cowplot::plot_grid(plot_true_class, plot_pred_class, nrow = 2, align='v')
+```
+
+We can note that overall the predicted class is similar to the true class. However, there are still some miss classifications such as No beeing mapped to Yes by the prediction and reversely. 
+
+#### Question 6 
+"Repeat the same steps, but now with a knn_2_pred vector generated from a 2-nearest neighbours algorithm. Are there any differences?"
+
+```{r}
+knn_2_pred <- knn(
+  train = default_train %>% dplyr::select(-default),
+  test  = default_test  %>% dplyr::select(-default),
+  cl    = as_factor(default_train$default),
+  k     = 2
+)
+
+plot_true_class <-
+  default_test %>%
+  ggplot(aes(x=balance, y=income, colour=default)) +
+  geom_point() +
+  theme_minimal() + 
+  labs(title = "True class")
+
+plot_pred_class_2 <-
+  default_test %>%
+  ggplot(aes(x=balance, y=income, colour=knn_2_pred)) +
+  geom_point() +
+  theme_minimal() + 
+  labs(title = "Predicted class with k=2")
+
+cowplot::plot_grid(plot_true_class, plot_pred_class_2, nrow = 2, align='v')
+```
+
+
+When changing k from 5 to 2, the classification seems better. More points are mapped to 'Yes' as they should be. 
+
+## Confusion matrix
+
+```{r}
+table(true = default_test$default, predicted = knn_2_pred)
+```
+
+```{r}
+table(true = default_test$default, predicted = knn_5_pred)
+```
+
+#### Question 7 
+"What would this confusion matrix look like if the classification were perfect?"
+
+If the confusion matrix was perfect, only the diagonal term should have numbers. 
+
+#### Question 8 
+"Make a confusion matrix for the 5-nn model and compare it to that of the 2-nn model. What do you conclude?"
+
+```{r}
+table(true = default_test$default, predicted = knn_5_pred)
+```
+
+## Logistic regression
+
+#### Question 9 
+"Use glm() with argument family = binomial to fit a logistic regression model lr_mod to the default_train data."
+
+```{r}
+lr_mod <- glm(default ~ ., family = binomial, data = default_train)
+```
+
+#### Question 10
+Using ' type="response" ' makes sure that the output is the predicted probability and not the log-odd fct
+
+"Visualise the predicted probabilities versus observed class for the training dataset in lr_mod. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot."
+
+```{r}
+tibble(observed = default_train$default, 
+       predicted = predict(lr_mod, type="response")) %>%
+  ggplot(aes(x=observed, y=predicted, colour=observed)) +
+  geom_point(position = position_jitter(width = 0.3), alpha = .5) + 
+  theme_minimal() +
+  labs(y='Predicted probability to default')
+```
+
+We can see that the predicted probability is not concentrated, however we can underlines that the 'No' category for default has a lower probability that the 'Yes' one. 
+
+#### Question 11
+"Look at the coefficients of the lr_mod model and interpret the coefficient for balance. What would the probability of default be for a person who is not a student, has an income of 40000, and a balance of 3000 dollars at the end of each month? Is this what you expect based on the plots we’ve made before?"
+
+```{r}
+coefs <- coef(lr_mod)
+coefs
+```
+
+```{r}
+logodds <- coefs[1] + 40000*coefs["income"] + 3000*coefs["balance"]
+
+
+p = 1/(1+exp(-logodds))
+p
+```
+
+The probability of having a 'Yes' default for a person who is not a student, which has an income of 40 000 and a balance of 3000 is 0.997. This could have been expected from the previous plots. In fact people with a high balance (bigger that 2000) are usually default. 
+
+## Visualising the effect of the balance variable
+
+#### Question 12
+"Create a data frame called balance_df with 3 columns and 500 rows: student always 0, balance ranging from 0 to 3000, and income always the mean income in the default_train dataset."
+
+```{r}
+balance_df <- tibble(student = rep(0,500), 
+                     balance = seq(0,3000, length.out = 500), 
+                     income = rep(mean(default_train$income), 500))
+```
+
+#### Question 13
+"Use this dataset as the newdata in a predict() call using lr_mod to output the predicted probabilities for different values of balance. Then create a plot with the balance_df$balance variable mapped to x and the predicted probabilities mapped to y. Is this in line with what you expect?"
+
+```{r}
+balance_df$predprob <- predict(lr_mod, newdata = balance_df, type="response")
+
+balance_df %>%
+  ggplot(aes(x=balance, y=predprob)) +
+  geom_line() +
+  theme_minimal()
+```
+
+We can see that the probability of default increases as the balance increase. This could have been expected from the previous investigation. 
+
+#### Question 14
+"Create a confusion matrix just as the one for the KNN models by using a cutoff predicted probability of 0.5. Does logistic regression perform better?"
+
+```{r}
+pred_prob <- predict(lr_mod, newdata = default_test, type="response")
+pred_lr <- factor(pred_prob > .5, labels = c("No", "Yes"))
+
+table(true = default_test$default, predicted = pred_lr)
+```
+
+Compared than knn, this methods performs better in all the ways. In fact less values are on the cross diagonol. 
+
+## Linear discriminant analysis
+
+#### Question 15
+"Train an LDA classifier lda_mod on the training set."
+
+```{r}
+head(default_train)
+```
+
+```{r}
+lda_mod <- lda(default ~ balance+income, data = default_train)
+```
+
+#### Question 16 
+"Look at the lda_mod object. What can you conclude about the characteristics of the people who default on their loans?"
+
+```{r}
+lda_mod
+```
+
+#### Question 17 
+"Create a confusion matrix and compare it to the previous methods.""
+
+```{r}
+pred_lda <- predict(lda_mod, newdata = default_test, type="response")$class
+table(true = default_test$default, pred=pred_lda)
+```
+Compared to the logistic regression prediction, we can here see that we have less false positive but a bit more of false negatives. 
+
+## Final assignment 
+
+#### Question 18
+"Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?"
+
+```{r}
+titanic <- read_csv("data/Titanic.csv")
+titanic <- titanic %>% select(-Name) 
+titanic %>% mutate(PClass <- as.factor(PClass), 
+                   Age <- as.factor(Age),
+                   Sex <- as.factor(Sex), 
+                   Survived <- as.factor(Survived))
+```
+
+```{r}
+summary(titanic)
+```
+
+```{r}
+lda_titanic <- lda(Survived ~ ., data = titanic)
+
+predict(lda_titanic, 
+        newdata = tibble(PClass = c("3rd", "2nd"), 
+                         Age = c( 14, 14), 
+                         Sex = c("male", "female")), type="response")$class
+```
+
+Up to the lda model, if the passager was a 14 year old boy in the 3rd class, he wouldn't have survived, whereas if it was a 14 year old girl in the 2nd class, she would have survived. 
+
