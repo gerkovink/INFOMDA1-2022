@@ -1,0 +1,233 @@
+---
+title: "P6"
+author: "Amalia Tsakali"
+date: "2022-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Libraries and seed
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+##Confusion matrix, continued
+1.Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability.
+```{r 1}
+patients<-read.csv("data/cardiovascular_treatment.csv")
+head(patients)
+patients<-patients %>%   mutate(severity = as.factor(severity), gender   = as.factor(gender), dose     = as.factor(dose), response = as.factor(response))
+lr_mod<-glm(response~., "binomial", patients)
+lr_pred<-predict(lr_mod,type="response")
+lr_pred<-ifelse(lr_pred>0.5,"1","0")
+table(observed=patients$response, pred=lr_pred)
+```
+2.Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the confusion matrix table on wikipedia. What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?
+```{r 2}
+#accuracy
+
+#TP rate
+#FP rate
+#PPV
+#NPV
+TP<-97
+TN<-80
+FP<-47
+FN<-29
+#true positive rate
+print("TP rate")
+TP/(TP+FN)
+#true negative
+print("TN rate")
+TN/(TN+FP)
+#false positive
+print("FP rate")
+FP/(FP+TN)
+#accuracy
+print("accuracy")
+(TP+TN)/(TP+TN+FP+FN)
+#Positive predictive value
+print("PPV")
+TP/(TP+FP)
+#Negative predictive value
+print("NPV")
+TN/(TN+FN)
+
+# the accuracy of the model is a bit below 70%, so we predict correctly 70% of the time
+# our model is better at predicting the positive response to treatment TP>TN
+#The is a 37 % of predicting a positive response when there is not (FP rate)
+#out of all the positive predictions of our model 67% are correct
+#out of all the negative 73% are correct
+# that leads us to believe that our model is slightly more eager to classify something as a positive response
+
+# The last two metrics are very relevant: if a new patient comes in you only know the prediction and not the true value
+```
+3.Create an LDA model lda_mod for the same prediction problem. Compare its performance to the LR model.
+```{r 3}
+lda_mod<-lda(response~., patients)
+lda_pred<-predict(lda_mod)
+table(true = patients$response, pred = lda_pred$class)
+
+#the performance is exactly the same (same confusion matrix)
+```
+
+4.Compare the classification performance of lr_mod and lda_mod for the new patients in the data/new_patients.csv.
+```{r 4}
+new_patients<-read.csv("data/new_patients.csv") %>%   mutate(severity = as.factor(severity), gender = as.factor(gender), dose = as.factor(dose), response = as.factor(response))
+new_log<-predict(lr_mod, "response", newdata = new_patients)
+new_log<-ifelse(new_log > .5, 1, 0)
+new_lda<-predict(lda_mod, newdata=new_patients)
+
+table(observed=new_patients$response,pred=new_log)
+table(observed=new_patients$response,pred=new_lda$class)
+
+#exactly the same confusion matrix
+
+```
+##Brier score
+Calculate the out-of-sample brier score for the lr_mod and give an interpretation of this number.
+```{r}
+#Brier = MSE with 0 and 1
+
+new_log<-predict(lr_mod, "response", newdata = new_patients)
+mean((new_log - (as.numeric(new_patients$response)-1))^2)
+
+#Mean Squared Error between the true class and the predicted
+
+
+```
+##ROC curve
+5.Create two LR models: lr1_mod with severity, age, and bb_score as predictors, and lr2_mod with the formula response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose. Save the predicted probabilities on the training data.
+
+```{r 5}
+lr1_mod<-glm(response~ severity + age +bb_score, "binomial", data=patients)
+lr2_mod<-glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, "binomial", data=patients)
+
+lr1_prob<-predict(lr1_mod,type="response")
+lr2_prob<-predict(lr2_mod, type="response")
+```
+6.Use the function roc() from the pROC package to create two ROC objects with the predicted probabilities: roc_lr1 and roc_lr2. Use the ggroc() method on these objects to create an ROC curve plot for each. Which model performs better? Why?
+```{r 6}
+roc_lr1<-roc(patients$response,lr1_prob)
+roc_lr2<-roc(patients$response,lr2_prob)
+
+ggroc(roc_lr1)
+ggroc(roc_lr2)
+
+#the second model seems to have a larger area under the curve, so it performs better
+
+```
+7.Print the roc_lr1 and roc_lr2 objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?
+```{r 7}
+roc_lr1
+roc_lr2
+
+#the second one has a bigger area under the curve, which means that it has higher values for sensitivity and specificity
+# the minimum and maximum AUC values are 0.5 and 1
+
+#the perfect AUC in a plot would be a straight line shooting up to sensitivity 1 (at 1 specificity) and would continue horizontally. 
+```
+##Iris dataset
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+
+```
+8.Explore the iris dataset using summaries and plots
+```{r 8}
+summary(iris)
+
+iris %>% ggplot(aes(x=Sepal.Length, fill=Species))+ geom_histogram(alpha=0.3)
+iris %>% ggplot(aes(x=Sepal.Width, fill=Species))+ geom_histogram(alpha=0.3)
+iris %>% ggplot(aes(x=Petal.Length, fill=Species))+ geom_histogram(alpha=0.3)
+iris %>% ggplot(aes(x=Petal.Width, fill=Species))+ geom_histogram(alpha=0.3)
+
+```
+9.Fit an additional LDA model, but this time with only Sepal.Length and Sepal.Width as predictors. Call this model lda_iris_sepal
+```{r 9}
+lda_iris_sepal<-lda(Species~ Sepal.Length + Sepal.Width,data=iris)
+```
+10.Create a confusion matrix of the lda_iris and lda_iris_sepal models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+```{r 10}
+lda_iris_pred<-predict(lda_iris)
+lda_iris_sepal_pred<-predict(lda_iris_sepal)
+
+table(observed=iris$Species, pred=lda_iris_pred$class)
+table(observed=iris$Species, pred=lda_iris_sepal_pred$class)
+
+#the first one works better (we only see 3 misclasificaions) 
+```
+##Classification trees
+11.Use rpart() to create a classification tree for the Species of iris. Call this model iris_tree_mod. Plot this model using rpart.plot().
+```{r 11}
+iris_tree_mod<-rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+```
+12.How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?
+```{r 12}
+#versicolor
+```
+13.Create a scatterplot where you map Petal.Length to the x position and Petal.Width to the y position. Then, manually add a vertical and a horizontal line (using geom_segment) at the locations of the splits from the classification tree. Interpret this plot.
+```{r 13}
+iris %>% ggplot(aes(x=Petal.Length,y=Petal.Width, colour=Species))+geom_point() +geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf))+
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.75, yend = 1.75))
+
+#the first split separates setosa from the rest, and the second separates the other 2/
+#some virginica are misclassified (the rest are all in the correct group)
+```
+14.Create a classification tree model where the splits continue until all the observations have been classified. Call this model iris_tree_full_mod. Plot this model using rpart.plot(). Do you expect this model to perform better or worse on new Irises?
+```{r 14}
+iris_tree_full_mod<-rpart(Species~., iris,control = rpart.control(cp=0,minbucket=1))
+rpart.plot(iris_tree_full_mod)
+
+#the second model probably will have too much variance (overfitting ) but we should test in a test dataset to be sure
+```
+15.Use the function randomForest() to create a random forest model on the iris dataset. Use the function importance() on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the lda_iris model?
+```{r 15}
+rforest<-randomForest(Species~.,data=iris)
+imp<-importance(rforest)
+class(imp)
+im<-as.data.frame(imp)
+im$Variables<-rownames(im)
+im %>% ggplot(aes(x= Variables,y=MeanDecreaseGini, fill=Variables))+geom_bar(stat="identity")
+
+#the petal variables have more importance , which is in line with the tree we saw
+
+#performance
+rforest
+table(observed=iris$Species, pred=lda_iris_pred$class)
+
+#the lda model is slightly more accurate
+```
+
