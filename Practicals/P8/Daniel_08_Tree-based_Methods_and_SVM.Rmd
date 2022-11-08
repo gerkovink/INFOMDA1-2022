@@ -1,0 +1,473 @@
+---  
+title: "Supervised Learning and Visualization Practical 8"
+author: "Daniel Anadria"
+date: 05 November 2022
+output:
+  html_document:
+    css: Daniel_08_Tree-based_Methods_and_SVM.css
+--- 
+<p style="text-align: center;">**Practical 8: Tree-based Methods and SVM**</p>
+
+```{r, message=F, warning=F}
+# load libraries
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+First, we specify a seed and load the training data. We will use this data to make inferences and to train a prediction model.
+
+```{r}
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+```
+
+
+1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.
+
+```{r}
+dim(df)
+```
+
+
+```{r}
+summary(df)
+```
+
+
+
+```{r}
+head(df)
+```
+
+
+
+```{r}
+# exclude categorical vars, compute descriptives by outcome
+# fast = T removes skewness, kurtosis
+df %>%
+  select(-c(Gender, Disease)) %>%
+  describeBy(x = ., group = df$Disease, fast = TRUE)
+# this works because df$Disease is from the original dataset
+# gender is removed because it's categorical
+```
+
+
+There are substantial differences between the diseased and non-diseased in the data.
+
+
+2.  To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+
+# A few scatterplots with Age on X
+
+```{r}
+df %>% ggplot(aes(x = Age, y = Alamine_Aminotransferase, color = Disease))+
+  geom_point()+
+  theme_minimal()
+```
+
+```{r}
+df %>% ggplot(aes(x = Age, y = Albumin, color = Disease))+
+  geom_point()+
+  theme_minimal()
+```
+
+
+
+```{r}
+df %>% ggplot(aes(x = Age, y = Alkaline_Phosphotase, color = Disease))+
+  geom_point()+
+  theme_minimal()
+```
+
+
+
+```{r 10}
+df %>% ggplot(aes(x = Age, y = Total_Protiens, color = Disease))+
+  geom_point()+
+  theme_minimal()
+```
+# Density
+
+```{r}
+df %>% ggplot(aes(x = Age))+
+  geom_density(aes(fill = Disease), alpha = 0.2)+
+  geom_rug(aes(color = Disease))+
+  theme_minimal()
+```
+```{r}
+df %>% ggplot(aes(x = Age))+
+  geom_density(aes(fill = Disease), alpha = 0.2)+
+  geom_rug(aes(color = Disease))+
+  facet_wrap(~Disease)+
+  theme_minimal()
+```
+
+
+Gerko's plots:
+
+```{r}
+df %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_boxplot(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+
+
+
+
+
+```{r}
+df %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+
+
+
+
+```{r, warning = F, message = F}
+prop.table(table(df$Gender, df$Disease), margin = 1) %>%
+  as.data.frame %>%
+  select(Gender = Var1, Disease = Var2, "Relative Frequency" = Freq) %>%
+  ggplot(aes(y = "Relative Frequency", x = Gender, col = Disease, fill = Disease)) +
+  geom_histogram(alpha = 0.8, stat = "identity", position = "dodge") +
+  scale_fill_brewer(palette = "Paired") +
+  scale_color_brewer(palette = "Paired") +
+  theme_minimal()
+```
+
+
+
+
+There are some differences between distributions for the two
+Disease categories, but the differences do not seem to be dramatic.
+Additionally, there are relatively more women with the liver 
+disease than men.
+
+
+
+3. Shortly reflect on the difference between bagging, random forests, and boosting.
+
+
+Bagging is an ensemble method where high-variance trees are fitted on a large number of bootstrapped data samples. The final model is the majority vote (or mean in regression) of these trees. Out-of-bag data can serve as an internal validation set, so there is no need for cross-validation. The issue is that the trees are highly correlated because they largely choose the same predictors due to bootstrapped samples being similar.
+
+Random forest is also an ensemble method based on building high-variance trees on a large number of bootstrapped data samples. The difference with bagging is that the trees are decorrelated since they are not allowed to use all the available features at every split, but a randomly sampled subset of features. This makes the trees different from each other, i.e. decorrelated. Hence, random forest has lower variance than bagging. The final outcome is still the majority vote or mean prediction.
+
+Boosting is a method which builds sequential weak (low variance) trees. The first tree (usually a stump) is fitted to the data, then the misclassified cases are transformed in a way to have higher weight, and a new stump is fitted. This is always done to the residuals of each successive model. After a large number of trees are fitted, we combine them to get a single decision for every new observation.
+
+We are going to apply different machine learning models using the caret package.
+
+4. Apply bagging to the training data, to predict the outcome Disease, using the caret library.
+
+Note. We first specify the internal validation settings, like so:
+
+```{r}
+# Control parameters for train
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+# number is either the number of folds or the number of resampling iterations
+# allowParallel = if a parallel backend is loaded and available, should the function use it?
+# we should also specify repeats = 5 or 10, this is how many times we repeat cross-validation, here there is probably a default value
+```
+
+ 
+What is repeated cross-validation?
+
+Repeated cross-validation is just repeating cross-validation multiple times where in each repetition, the folds are split in a different way. After each repetition of the cross-validation, the model assessment metric is computed (e.g. accuracy or RMSE). The scores from all repetitions are finally averaged (you can also take the median), to get a final model assessment score. This gives a more “robust” model assessment score than performing cross-validation only once
+
+A single run of the k-fold cross-validation procedure may result in a noisy estimate of model performance. Different splits of the data may result in very different results.
+
+Repeated k-fold cross-validation provides a way to improve the estimated performance of a machine learning model. This involves simply repeating the cross-validation procedure multiple times and reporting the mean result across all folds from all runs. This mean result is expected to be a more accurate estimate of the true unknown underlying mean performance of the model on the dataset, as calculated using the standard error.
+
+The rationale for doing this, is to allow one to have a more accurate and robust accuracy of the cross-validation testing, i.e. one can report the average CV accuracy.
+
+ 
+
+These settings can be inserted within the train function from the caret package. Make sure to use the treebag method, to specify cvcontrol as the trControl argument and to set importance = TRUE.
+
+
+```{r}
+bag_train <- train(Disease ~ .,
+                   data = df, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+```
+
+
+5.  Interpret the variable importance measure using the varImp function on the trained model object.
+
+```{r}
+bag_train %>%
+  varImp %>%
+  plot
+```
+
+
+
+6.Create training set predictions based on the bagged model, and use the confusionMatrix() function from the caret package to assess it’s performance.
+
+
+Hint: You will have to create predictions based on the trained model for the training data, and evaluate these against the observed values of the training data.
+
+
+```{r}
+confusionMatrix(predict(bag_train, type = "raw"),
+                df$Disease)
+```
+
+
+We have achieved a perfect training set performance. However, this shows nothing more than that we have been able to train the model. We need to evaluate our model on test data.
+
+
+7. Now ask for the output of the bagged model. Explain why the under both approaches differ.
+
+
+```{r 20}
+bag_train
+```
+
+
+The accuracy and kappa are lower here because these are estimates based on $K_{folds} \times n_{repeats}$ test sets - specifically their average accuracy and kappa value. 
+In the confusion matrix we saw the predictions based on the whole train data and there the model is fitted to all data points so the accuracy and kappa are perfect.
+
+ 
+We will now follow the same approach, but rather than bagging, we will train a random forest on the training data.
+ 
+
+8. Fit a random forest to the training data to predict the outcome Disease, using the caret library.
+
+Note. Use the same cvcontrol settings as in the previous model.
+
+```{r}
+rf_train <- train(Disease ~ .,
+                  data = df, 
+                  method = 'rf',
+                  trControl = cvcontrol,
+                  importance = TRUE)
+```
+
+
+
+9. Again, interpret the variable importance measure using the varImp function on the trained model object. Do you draw the same conclusions as under the bagged model?
+
+
+```{r}
+rf_train %>%
+  varImp %>%
+  plot
+```
+
+
+
+
+The random forest model indicates that other variables are more important, as compared to the bagged model.
+
+10. Output the model output from the random forest. Are we doing better than with the bagged model?
+
+```{r}
+rf_train
+```
+
+
+*mtry: Number of variables randomly sampled as candidates at each split.
+
+Yes, the most accurate model indicates that we do just slightly better than with the bagged model. However, this might well be due to chance.
+
+
+11. Now, fit a boosting model using the caret library to predict disease status.
+Hint: Use gradient boosting (the gbm method in caret).
+
+
+```{r}
+gbm_train <- train(Disease ~ .,
+                   data = df,
+                   method = "gbm",
+                   verbose = F,
+                   trControl = cvcontrol)
+```
+
+ 
+The verbose option prevents copious amounts of output from being produced.
+ 
+
+
+12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.
+
+
+```{r}
+# this is how to get variable importance for boosting
+summary(gbm_train)
+```
+
+
+
+13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?
+
+
+```{r}
+gbm_train
+```
+
+ 
+interaction.depth is the number of splits
+
+interaction.depth parameter as a number of splits it has to perform on a tree (starting from a single node). As each split increases the total number of nodes by 3 and number of terminal nodes by 2 (node → {left node, right node, NA node}) the total number of nodes in the tree will be 3∗N+1 and the number of terminal nodes 2∗N+1
+ 
+
+Yes, our best model is doing slightly better then the previous two models.
+However, this might still be random variation.
+
+
+ 
+For now, we will continue with extreme gradient boosting, although we will use a difference procedure.
+
+We will use xgboost to train a binary classification model, and create some visualizations to obtain additional insight in our model. We will create the visualizations using SHAP (SHapley Additive exPlanations) values, which are a measure of importance of the variables in the model. In fact, SHAP values indicate the influence of each input variable on the predicted probability for each person. Essentially, these give an indication of the difference between the predicted probability with and without that variable, for each person’s score.
+
+14. Download the file shap.R from this Github repository.
+
+Note. There are multiple ways to this, of which the simplest is to run the following code.
+
+
+
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+
+Additionally, you could simply go to the file shap.R and copy-and-paste the code into the current repository. However, you could also fork and clone the repository, to make adjustments to the functions that are already created.
+
+
+15. Specify your model as follows, and use it to create predictions on the training data.
+
+
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1] # -1 removes the intercept, which is just 1, the rest is just our data
+train_y <- as.numeric(df$Disease) - 1 # as numeric makes the binary var 1|2, even though it was first 0|1, so we fix that
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10, #same as interaction depth, how deep a tree can be
+                         eta = 1,  # control the learning rate
+                         nthread = 4, # parallelization number of threads
+                         nrounds = 4, # max number of boosting iterations
+                         objective = "binary:logistic", # specify the learning task, this will give us probabilities
+                         verbose = 2) # if 0 no output, if 1 performance info, if 2 extra info
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+
+
+ 
+eta control the learning rate: scale the contribution of each tree by a factor of 0 < eta < 1 when it is added to the current approximation. Used to prevent overfitting by making the boosting process more conservative. Lower value for eta implies larger value for nrounds: low eta value means model more robust to overfitting but slower to compute. Default: 0.3
+ 
+
+There are still some misclassifications on the train data, even though we used all of the train data to fit the model.
+
+
+16. First, calculate the SHAP rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.
+
+
+
+```{r}
+shap_results <- shap.score.rank(xgboost_train,  # the train object (it has pred matrix but shap needs it twice because it's lost)
+                                X_train = train_x, # the predictor matrix
+                                shap_approx = F)
+```
+
+
+```{r 30}
+var_importance(shap_results)
+```
+
+
+
+
+17. Plot the SHAP values for every individual for every feature and interpret them
+
+
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+```
+
+
+
+
+ 
+Feature value is probability of Disease.
+ 
+
+The first plot shows, for example, that those with a high value for 
+Direct_Bilirubin have a lower probability of being diseased. Also,
+Those with a higher age have a lower probability of being diseased,
+while those with a higher Albumin have a higher probability of being diseased.
+
+
+
+```{r}
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+
+
+
+
+
+
+
+The second set of plots displays the marginal relationships of the SHAP values with the predictors. This conveys the same information, but in greater detail. The interpretability may be a bit tricky for the inexperienced data analyst. 
+
+
+
+
+18. Verify which of the models you created in this practical performs best on the test data.
+
+
+```{r 33}
+test <- readRDS("data/test_disease.RDS")
+
+bag_test <- predict(bag_train, newdata = test)
+rf_test  <- predict(rf_train, newdata = test)
+gbm_test <- predict(gbm_train, newdata = test)
+xgb_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+list(bag_test, 
+     rf_test, 
+     gbm_test, 
+     xgb_test) %>%
+  map(~ confusionMatrix(.x, test$Disease))
+```
+ 
+ 
+Looking only at accuracy, random forest has the best accuracy. Boosting with caret is also a good model because it has a close accuracy but better PPV and NPV.
+
+The end.
