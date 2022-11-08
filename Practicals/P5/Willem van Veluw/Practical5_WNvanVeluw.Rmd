@@ -1,0 +1,233 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "19-9-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 5
+---
+For this practical we first load the necessary packages.
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(magrittr)
+library(ISLR)
+library(MASS)
+library(class)
+```
+Next, we set the seed, import the data and classify everything as supposed to. Hence, the variables `PClass`, `Sex` and `Survived` are declared as factors.
+
+```{r}
+set.seed(45)
+```
+
+### Exercise 1
+From the plot we can see that most default persons are the ones with a high balance. For instance, the mean balance of the entire dataset equals 835: there are only 3 default persons with a balance below this mean, as opposed to 5087 non-default persons.
+```{r}
+scatter_default <- Default %>% 
+  ggplot(aes(x = balance, y = income, colour = default)) +
+  geom_point() +
+  theme_minimal()
+
+scatter_default
+```
+
+### Exercise 2
+The plot is quite interesting to see, as it becomes clear that students have a lower income than non-students. However, the pattern that we saw in exercise 1 still appears: default persons are thought to have a higher balance.
+```{r}
+facet_labs <- c(No = "Non Students", Yes = "Students")
+scatter_default + facet_grid(col = vars(student), 
+                             labeller = labeller(student = facet_labs))
+```
+
+### Exercise 3
+Note that the dataset is splitted randomly by the use of the function `sample()`.
+```{r}
+default_df <- 
+  Default %>% 
+  mutate(student = factor(ifelse(student == "Yes", 1, 0))) %>% 
+  mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
+
+default_train <- 
+  default_df %>% 
+  filter(split == "train") %>% 
+  dplyr::select(-split)
+
+default_test <- 
+  default_df %>% 
+  filter(split == "test") %>% 
+  dplyr::select(-split)
+```
+
+### Exercise 4
+```{r}
+knn_5_pred <- knn(train = default_train %>% dplyr::select(-default),
+                  test = default_test %>% dplyr::select(-default),
+                  cl = as_factor(default_train$default),
+                  k = 5)
+```
+
+### Exercise 5
+We see that the knn predicts less observations to be default. This can be derived from the fact that there are less blue dots in the graph with predictions.
+```{r}
+default_test$prediction <- knn_5_pred
+
+default_test %>% ggplot(aes(x = balance, y = income, colour = default)) + geom_point()
+default_test %>% ggplot(aes(x = balance, y = income, colour = prediction)) + geom_point()
+```
+
+### Exercise 6
+Yes, there are differences. The knn with `k=2` predicts more observations to be default. However, there are clearly still some misclassified observations. 
+```{r}
+knn_2_pred <- knn(train = default_train %>% dplyr::select(-default),
+                  test = default_test %>% dplyr::select(-default, -prediction),
+                  cl = as_factor(default_train$default),
+                  k = 2)
+
+default_test$prediction <- knn_2_pred
+
+default_test %>% ggplot(aes(x = balance, y = income, colour = default)) + geom_point()
+default_test %>% ggplot(aes(x = balance, y = income, colour = prediction)) + geom_point()
+```
+
+### Exercise 7
+If the classification were perfect, there would only be values on the diagonal of the confusion matrix. All other cells would be equal to zero.
+
+### Exercise 8
+We see that 5-nn predicts 1928 observations correctly, while the 2-nn correctly classifies 1914 observations. Hence, we conclude that the 5-nn performs (slightly) better than the 2-nn model.  
+```{r}
+table(true = default_test$default, predicted = knn_5_pred)
+```
+
+### Exercise 9
+```{r}
+lr_mod <- glm(default ~ ., 
+              data = default_train,
+              family = binomial)
+```
+
+### Exercise 10
+We see that most of the observations are again correctly classified. However, some observations are not classified correctly. It is interesting to see that all these wrongly classified observations have particular high balance.  
+Regarding the confusion matrix, we see that 1934 observations are classified correctly, while 66 are wrongly classified.
+```{r}
+lr_preds <- predict(lr_mod, newdata = default_test, type = "response")
+default_test <- default_test %>% 
+  mutate(probs = lr_preds, 
+  prediction = ifelse(probs >= 0.5, "Yes", "No"),
+  perform = ifelse(default == prediction, "Correct", "Wrong"))
+
+default_test %>% ggplot(aes(x = balance, y = income, colour = perform)) +
+  geom_point() +
+  scale_color_manual(values = c("darkgreen", "red")) +
+  facet_grid(col = vars(student)) +
+  labs(title = "Predictions on test data.", 
+       subtitle = "0 = non-student, 1 = student",
+       colour = "Classification")
+
+table(true = default_test$default, pred = default_test$prediction)
+```
+
+### Exercise 11
+The estimated coefficients can give an idea of the change in odds as a result of a change in one of the predictor variables. The coefficient of balance is estimated as 0.006013. This implies that the odds of being default are multiplied by $e^{10\cdot 0.006013}=1.061975$ when the balance increases by ten units. Hence, when the balance increases, the probability of being default increases as well.  
+
+For a non-student with an income of 40000 and balance of 3000, the probability of default equals
+\begin{align}
+  P(default | student, income = 40000, balance = 3000) & = logit^{-1}(\beta_0+4000\cdot\beta_2+3000\cdot\beta_4) \\
+  &\approx 0.9982.
+\end{align}
+
+```{r}
+lr_mod
+
+lr_coef <- lr_mod$coefficients
+logodds <- lr_coef[1] + 0*lr_coef[2]+3000*lr_coef[3]+40000*lr_coef[4]
+1/(1+exp(-unname(logodds)))
+```
+
+### Exercise 12
+```{r}
+balance_df <- data.frame(student = factor(rep(0,500)),
+                    balance = seq(0, 3000, length.out = 500),
+                    income = rep(mean(default_train$income), 500))
+```
+
+### Exercise 13
+Yes, this line is what I expect. It is characteristic for a logistic regression model with binary classifying. Also, from the estimated coefficient of `balance` we saw that the probability of being default increases when `balance` increases. We see the same in the plot.
+```{r}
+balance_prob <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df$probability <- balance_prob
+balance_df %>% ggplot(aes(x = balance, y = probability)) + 
+  geom_line() + 
+  theme_minimal()
+```
+
+### Exercise 14
+The 5-nn model had correctly classified 1931 observations in the test set. From the confusion matrix of the logistic regression model, we see that 1948 observations were correctly classified. Hence, we conclude that logistic regression indeed performs better than 5-nn.
+```{r}
+table(true = default_test$default, pred = default_test$prediction)
+```
+
+### Exercise 15
+```{r}
+lda_mod <- lda(default ~ ., data = default_train)
+```
+
+### Exercise 16
+The prior probabilities are estimated by the data proportions. Hence, we see that 3.3% of the people in the data set are default on loan. We can also see that people that are default on loan tend to have a higher balance (since its mean is higher), but do not neccessarily have a higher income (as the mean is close to each other).
+```{r}
+lda_mod
+```
+
+### Exercise 17
+The LDA model classifies 1940 observations correctly. Therefore, it performs better than knn but worse than logistic regression.
+```{r}
+lda_preds <- predict(lda_mod, newdata = default_test)
+table(true = default_test$default, predicted = lda_preds$class)
+```
+
+### Exercise 18
+I have trained both the logistic regression and LDA models. The estimated coefficients are shown below.
+```{r, message = FALSE, warning = FALSE}
+titanic_data <- read_csv("Titanic.csv") %>% 
+  mutate(PClass = factor(PClass),
+         Sex = factor(Sex),
+         Survived = factor(Survived)) %>% 
+  dplyr::select(-Name)
+head(titanic_data)
+
+titanic_lr <- glm(Survived ~ ., data = titanic_data, family = binomial)
+titanic_lr
+titanic_lda <- lda(Survived ~ ., data = titanic_data)
+titanic_lda
+```
+Now we can predict the probability of survival in the case of the boy. We have
+
+- Probability of survival in *logistic Regression* equal to 0.125;  
+- Probability of survival in *Linear Discriminant Analysis* equal to 0.09.
+
+Hence, in both models the boy would probably not have survived.
+```{r}
+test1 <- data.frame(PClass = "3rd", Age = 14, Sex = "male")
+
+predict(titanic_lr, newdata = test1, type = "response")
+predict(titanic_lda, newdata = test1, type = "response")
+```
+
+In the case of the girl, we have
+
+- Probability of survival in *logistic Regression* equal to 0.872;  
+- Probability of survival in *Linear Discriminant Analysis* equal to 0.906.
+
+Hence, in both models the girl would probably have survived.
+```{r}
+test2 <- data.frame(PClass = "2nd", Age = 14, Sex = "female")
+
+predict(titanic_lr, newdata = test2, type = "response")
+predict(titanic_lda, newdata = test2, type = "response")
+```
