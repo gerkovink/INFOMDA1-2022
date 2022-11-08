@@ -1,0 +1,275 @@
+---
+title: "P8_Nonlinear Regression_Kyuri"
+author: "Kyuri Park"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+urlcolor: blue
+output: 
+  html_document:
+    toc: true
+    toc_depth: 1
+    toc_float: true
+    theme: paper
+    highlight: tango
+    df_print: paged
+---
+<style type="text/css">
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap');
+
+body{ /* Normal  */
+  font-size: 13px;
+  font-family: 'Lato', sans-serif;
+  }
+h1.title {
+  font-size: 25px;
+  color: DarkBlue;
+  margin-bottom:5px;
+}
+
+h1 { /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+h2 { /* Header 2 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+h3 { /* Header 3 */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre { /* Code block - determines code spacing between lines */
+  font-size: 13px;
+}
+</style>
+<hr>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE,
+               warning = FALSE,
+               comment = NA)
+
+```
+
+# Introduction
+
+First, load the packages:
+
+```{r packages, warning = FALSE, message = FALSE}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+library(magrittr)
+```
+
+
+First, we specify a seed as usual.
+
+```{r seed}
+set.seed(123)
+```
+
+
+# Prediction plot
+
+```{r}
+data(Boston)
+```
+
+
+## 1. Create a function called `pred_plot()` that takes as input an `lm` object, which outputs the above plot but with a prediction line generated from the model object using the `predict()` method.
+
+```{r}
+pred_plot <- function(lm.obj) {
+  # first create predictions for all values of lstat
+  x_pred <- seq(min(Boston$lstat), max(Boston$lstat), length.out = 500)
+  y_pred <- predict(lm.obj, newdata = data.frame(lstat = x_pred))
+  
+  # then create a ggplot object with a line based on those predictions
+  Boston %>%
+    ggplot(aes(x = lstat, y = medv)) +
+    geom_point() +
+    geom_line(data = tibble(lstat = x_pred, medv = y_pred), size = 1, col = "skyblue") +
+    theme_minimal()
+}
+```
+
+
+## 2. Create a linear regression object called `lin_mod` which models `medv` as a function of `lstat`. Check if your prediction plot works by running `pred_plot(lin_mod)`. Do you see anything out of the ordinary with the predictions?
+
+```{r}
+lin_mod <- lm(medv ~ lstat, data = Boston)
+pred_plot(lin_mod)
+```
+
+# Polynomial regression
+
+## 3. Create another linear model `pn3_mod`, where you add the second and third-degree polynomial terms `I(lstat^2)` and `I(lstat^3)` to the formula. Create a `pred_plot()` with this model.
+
+```{r}
+pn3_mod <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = Boston)
+pred_plot(pn3_mod)
+
+```
+
+
+
+## 4. Play around with the poly() function. What output does it generate with the arguments `degree = 3` and `raw = TRUE`?
+```{r}
+poly(1:10, degree = 3, raw = TRUE)
+poly(1:10, degree = 3, raw = FALSE)
+?poly
+```
+
+## 5. Use the poly() function directly in the model formula to create a 3rd-degree polynomial regression predicting `medv` using `lstat`. Compare the prediction plot to the previous prediction plot you made. What happens if you change the poly() function to `raw = FALSE`?
+
+```{r}
+# raw = TRUE
+pn3_mod2_true <- lm(medv ~ poly(lstat, 3, raw = TRUE), data = Boston)
+pred_plot(pn3_mod2_true)
+
+# raw = FALSE
+pn3_mod2_false <- lm(medv ~ poly(lstat, 3, raw = FALSE), data = Boston)
+pred_plot(pn3_mod2_false)
+```
+
+# Piecewise regression
+
+
+## 6. Create a model called `pw2_mod` with one predictor: `I(lstat <= median(lstat))`. Create a pred_plot with this model. Use the coefficients in `coef(pw2_mod)` to find out what the predicted value for a low-lstat neighbourhood is.
+
+```{r}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+pred_plot(pw2_mod)
+
+coef(pw2_mod)
+```
+
+## 7. Use the `cut()` function in the formula to generate a piecewise regression model called `pw5_mod` that contains 5 equally spaced sections. Again, plot the result using `pred_plot`.
+
+```{r}
+pw5_mod <- lm(medv ~ cut(lstat, 5), data = Boston)
+pred_plot(pw5_mod)
+```
+
+
+## 8. Optional: Create a piecewise regression model `pwq_mod` where the sections are not equally spaced, but have equal amounts of training data. Hint: use the `quantile()` function.
+
+```{r}
+brks <- c(-Inf, quantile(Boston$lstat, probs = c(.2, .4, .6, .8)), Inf)
+pwq_mod <- lm(medv ~ cut(lstat, brks), data = Boston)
+pred_plot(pwq_mod)
+```
+
+# Piecewise polynomial regression
+
+
+
+
+9. This function does not have comments. Copy - paste the function and add comments to each line. To figure out what each line does, you can first create "fake" `vec` and `knots` variables, for example `vec <- 1:20` and `knots <- 2` and try out the lines separately.
+
+```{r}
+piecewise_cubic_basis <- function(vec, knots = 1) {
+  # if knots is 0 then just return the 3rd order polynomial
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+  # cut the vector in the number of knots + 1
+  cut_vec <- cut(vec, breaks = knots + 1)
+  # matrix storage 
+  out <- matrix(nrow = length(vec), ncol = 0)
+  # loop over the levels of the cut vector
+  for (lvl in levels(cut_vec)) {
+    # temporary storage
+    tmp <- vec
+    # set all values to zero except for the current looping value
+    tmp[cut_vec != lvl] <- 0
+    # append the polynomial based on this vector to the matrix
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+  }
+  
+  out
+}
+```
+
+
+## 10. Create piecewise cubic models with 1, 2, and 3 knots (`pc1_mod` - `pc3_mod`) using this piecewise cubic basis function. Compare them using the `pred_plot()` function.
+
+```{r}
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 1), data = Boston)
+pc2_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 2), data = Boston)
+pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 3), data = Boston)
+
+pred_plot(pc1_mod)
+pred_plot(pc1_mod)
+pred_plot(pc1_mod)
+```
+
+
+# Splines
+
+## 11. Create a data frame called `boston_tpb` with the columns `medv` and `lstat` from the `Boston` dataset.
+```{r}
+boston_tpb <- Boston %>% select(medv, lstat)
+```
+
+## 12. Now use `mutate` to add squared and cubed versions of the `lstat` variable to this dataset.
+```{r}
+boston_tpb %<>% 
+  mutate(lstat2 = (lstat)^2, lstat3 = (lstat)^3)
+```
+
+
+## 13. Use `mutate` to add a column `lstat_tpb` to this dataset which is 0 below the median and has value `(lstat - median(lstat))^3` above the median. Tip: you may want to use `ifelse()` within your `mutate()` call.
+
+```{r}
+boston_tpb %<>%
+  mutate(lstat_tpb = ifelse(lstat > median(lstat), (lstat - median(lstat))^3, 0))
+```
+
+## 14. Create a linear model `tpb_mod` using the `lm()` function. How many predictors are in the model? How many degrees of freedom does this model have?
+
+```{r}
+tpb_mod <- lm(medv ~ ., data = boston_tpb)
+summary(tpb_mod)
+nrow(boston_tpb)
+```
+
+
+## 15. Create a cubic spline model `bs1_mod` with a knot at the median using the `bs()` function. Compare its predictions to those of the `tpb_mod` using the `predict()` function on both models.
+
+```{r}
+bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat)), data =Boston)
+
+# Comparing the predictions from the two models: negligible absolute difference
+mean(abs(predict(bs1_mod) - predict(tpb_mod)))
+```
+
+
+## 16. Create a prediction plot from the `bs1_mod` object using the `plot_pred()` function.
+```{r}
+pred_plot(bs1_mod)
+```
+
+## 17. Create a natural cubic spline model (`ns3_mod`) with 3 degrees of freedom using the `ns()` function. Plot it, and compare it to the `bs1_mod`.
+```{r}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston)
+pred_plot(ns3_mod)
+```
+
+
+
+## 18. Plot `lin_mod`, `pn3_mod`, `pw5_mod`, `pc3_mod`, `bs1_mod`, and `ns3_mod` and give them nice titles by adding `+ ggtitle("My title")` to the plot. You may use the function `plot_grid()` from the package `cowplot` to put your plots in a grid.
+```{r}
+library(cowplot)
+
+plot_grid(
+  pred_plot(lin_mod) + ggtitle("Linear regression"),
+  pred_plot(pn3_mod) + ggtitle("Polynomial"),
+  pred_plot(pw5_mod) + ggtitle("Piecewise constant"),
+  pred_plot(pc3_mod) + ggtitle("Piecewise cubic"),
+  pred_plot(bs1_mod) + ggtitle("Cubic spline"),
+  pred_plot(ns3_mod) + ggtitle("Natural spline")
+)
+```
+
+
