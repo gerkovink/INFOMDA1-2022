@@ -1,0 +1,170 @@
+---
+title: "P3_EDA"
+author: "Christoph Völtzke"
+date: "2022-09-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=F, warning=F, echo=F}
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+library(magrittr) # pipes
+library(dplyr)    # data manipulation
+library(lattice)  # plotting - used for conditional plotting
+library(ggplot2)  # plotting
+library(ggthemes) # plotting themes
+library(mice)
+library(DAAG)
+```
+
+## Boys
+```{r}
+boys %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Distribution of age")
+```
+
+```{r}
+boys %>%
+  ggplot(aes(x = gen)) +
+  geom_bar(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Distribution of genital Tanner stage")
+```
+
+## Imputation
+```{r}
+md.pattern(boys)
+```
+
+```{r}
+# Is missigness related to gender?
+boys_mis <- boys %>%
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis  = is.na(tv))
+boys_mis %>%
+  group_by(gen_mis) %>%
+  summarize(age = mean(age))
+boys_mis %>%
+  group_by(phb_mis) %>%
+  summarize(age = mean(age))
+boys_mis %>%
+  group_by(tv_mis) %>%
+  summarize(age = mean(age))
+# And we see that those with a missing value on the variables
+# of interest have a substantial lower age than those with an
+# observed value.
+```
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "dark green") + 
+  facet_wrap(~gen_mis) +
+  theme_minimal()
+# Now we see what we couldn't have seen before. Boys
+# with an observed value on gen all are at least seven
+# years old, while those with a missing value on gen
+# are far more often between 0 and 5 years old.
+```
+## Visualize and explain the data
+```{r}
+boys %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Distribution of age")
+# Most boys are relatively young, while there is
+# also a substantial group of boys between the age
+# of 10 and 20 years.
+```
+
+
+```{r}
+# relationship between reg (region) and age
+boys_mis %>%
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Boxplot of age by region.")
+```
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.7) +
+  theme_minimal() +
+  scale_fill_brewer() +
+  labs(title = "Density of age by genital Tanner stage")
+```
+```{r}
+boys %>%
+  mutate(Age = cut(age, 0:22, labels = paste0(0:21, " years")),
+         Height = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+# We can clearly see that the average height in the 
+# group is reached just before age 7.
+```
+## Regression visualization
+```{r}
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+```
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+```
+
+```{r}
+fit1 <- lm(distance ~ stretch, elastic1) # fit model
+fit2 <- lm(distance ~ stretch, elastic2)
+
+pred <- predict(fit1, newdata = elastic2) # test model with new data
+```
+
+```{r}
+pred_dat <- 
+  data.frame(distance = pred, 
+             stretch  = elastic2$stretch) %>%
+  bind_rows(Predicted = .,
+            Observed  = elastic2, 
+            .id = "Predicted")
+
+pred_dat %>%
+  ggplot(aes(stretch, distance, col = Predicted)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Predicted and observed distances")
+
+# The predicted values are very similar to the observed
+# values. However, they do not strictly follow the straight
+# line because there is some modeling error: we use elastic1's
+# model to predict elastic2's distance [error source 1] and
+# we compare those predictions to elastic2's observed distance
+# [error source 2].
+```

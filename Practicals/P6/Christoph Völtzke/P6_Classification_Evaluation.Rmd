@@ -1,0 +1,270 @@
+---
+title: "P6_Classification_Evaluation"
+author: "Christoph Völtzke"
+date: "2022-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=F, warning=F, echo=F}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+library(class)
+library(pROC)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(glmnet)
+```
+
+# Practical 6 - Classification evaluation
+
+## Confusion Matrix
+### Example Logistic Regression
+```{r}
+treat <- read_csv("data/cardiovascular_treatment.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+lr_mod <- glm(response ~ ., "binomial", treat)
+
+
+prob_lr <- predict(lr_mod, type = "response")
+
+pred_lr <- ifelse(prob_lr > .5, 1, 0)
+
+cmat_lr <- table(true = treat$response, pred = pred_lr)
+
+TN <- cmat_lr[1, 1]
+FN <- cmat_lr[2, 1]
+FP <- cmat_lr[1, 2]
+TP <- cmat_lr[2, 2]
+
+tibble(
+  Acc = (TP + TN) / sum(cmat_lr),
+  TPR = TP / (TP + FN),
+  TNR = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+# Accuracy is .7, meaning that 30% of the patients are misclassified
+
+# [TPR] If the patient will respond to treatment, there is an 77% probability 
+# that the model will detect this
+
+# [TNR] If the patient will not respond to treatment, there is a 63% prob
+# that the model will detect this
+
+# [FPR] If the patient does not respond to treatment, there is a 37% chance
+# he or she will anyway be predicted to respond to the treatment
+
+# [PPV] If the patient is predicted to respond to the treatment, there is a
+# 67% chance they will actually respond to the treatment
+
+# [NPV] If the patient is predicted to not respond to the treatment, there is
+# a 73% probability that they will indeed not respond to the treatment
+
+# The last two metrics are very relevant: if a new patient comes in you will
+# only know the prediction and not the true value
+```
+
+## LDA
+```{r}
+lda_mod <- lda(response ~ ., treat)
+
+
+pred_lda <- predict(lda_mod)$class
+prob_lda <- predict(lda_mod)$posterior[,2]
+
+cmat_lda <- table(true = treat$response, pred = pred_lda)
+
+TN <- cmat_lda[1, 1]
+FN <- cmat_lda[2, 1]
+FP <- cmat_lda[1, 2]
+TP <- cmat_lda[2, 2]
+
+# PPV
+TP / (TP + FP)
+#NPV
+TN / (TN + FN)
+```
+
+## Tree
+```{r}
+# Tree example titanic
+# Make sure the results are reproducible
+set.seed(1027)
+
+treat_tree <-
+rpart(
+response ~ ., treat,
+control = list(cp = 0.02)
+)
+#rpart.plot(treat_tree)
+
+p_pred <- predict(treat_tree)
+
+pred_tree <- ifelse(p_pred[,2] > .5, 1, 0)
+cmat_tre <- table(true = treat$response, pred = pred_tree)
+
+TN <- cmat_tre[1, 1]
+FN <- cmat_tre[2, 1]
+FP <- cmat_tre[1, 2]
+TP <- cmat_tre[2, 2]
+
+# PPV
+TP / (TP + FP)
+#NPV
+TN / (TN + FN)
+```
+### RF
+```{r}
+treat_rf <- randomForest(response ~ ., treat)
+p_pred_rf <- predict(treat_rf)
+cmat_rf <- table(true = treat$response, pred = p_pred_rf)
+```
+
+
+```{r}
+cmat_lda
+cmat_lr
+cmat_tre
+cmat_rf
+```
+
+## Compare Logistic Regression to LDA and Trees
+
+```{r}
+new_patients <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+pred_lda_new <- predict(lda_mod, newdata = new_patients)$class
+prob_lda_new <- predict(lda_mod, newdata = new_patients)$posterior[,2]
+prob_lr_new <- predict(lr_mod, newdata = new_patients, type = "response")
+pred_lr_new <- ifelse(prob_lr_new > .5, 1, 0)
+prob_tree_new <- predict(treat_tree, newdata = new_patients)
+pred_tree_new <- ifelse(prob_tree_new[,2] > .5, 1, 0)
+
+# lda
+cmat_lda_new <- table(true = new_patients$response, pred = pred_lda_new)
+
+# lr
+cmat_lr_new <- table(true = new_patients$response, pred = pred_lr_new)
+
+# tree
+cmat_tree_new <- table(true = new_patients$response, pred = pred_tree_new)
+# COMPARE THE SENS AND SPEC
+cmat_lda_new
+cmat_lr_new
+cmat_tree_new
+```
+
+### BRIER
+```{r}
+# LR
+mean((prob_lr_new - (as.numeric(new_patients$response) - 1)) ^ 2)
+# the mean squared difference between the probability and the true class is .23
+# Tree
+mean((prob_tree_new[,2] - (as.numeric(new_patients$response) - 1)) ^ 2)
+
+```
+### ROC curve
+```{r}
+# compare to LR models
+lr1_mod <- glm(response ~ severity + bb_score + age, 
+               family = "binomial", data = treat)
+prob_lr1 <- predict(lr1_mod, type = "response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, 
+               family = "binomial", data = treat)
+prob_lr2 <- predict(lr2_mod, type = "response")
+roc_lr1 <- roc(treat$response, prob_lr1)
+roc_lr2 <- roc(treat$response, prob_lr2)
+ggroc(roc_lr1) + theme_minimal() + labs(title = "LR1")
+ggroc(roc_lr2) + theme_minimal() + labs(title = "LR2")
+# The LR2 model performs better: at just about every cutoff value, both the
+# sensitivity and the specificity are higher than that of the LR1 model.
+
+# lr2 has a much higher AUC (area under the ROC curve). It represents the area
+# under the curve we drew before. The minimum AUC value is 0.5 and the maximum
+# is 1.
+```
+
+```{r}
+roc(treat$response, pred_tree)
+roc(treat$response, prob_lr)
+roc(treat$response, prob_lda)
+
+roc(new_patients$response, pred_tree_new)
+roc(new_patients$response, prob_lr_new)
+roc(new_patients$response, prob_lda_new)
+
+```
+
+## Classification Trees
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+```
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 1, cp = 0))
+
+iris_tree_full_mod_1 <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 2, cp = 0.01))
+
+rpart.plot(iris_tree_full_mod)
+rpart.plot(iris_tree_full_mod_1)
+# Answer using bias-variance tradeoff, e.g.,  We do not know for sure, but the
+# second model probably has too much variance to perform well on new samples.
+```
+
+```{r}
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf),
+               colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.75, yend = 1.75), 
+               colour = "black") +
+  scale_colour_viridis_d() +
+  theme_minimal()
+# The first split perfectly separates setosa from the other two
+# the second split leads to 5 misclassifications: 
+# virginica classified as versicolor
+```
+
+## Random Forest
+```{r}
+rf_mod <- randomForest(Species ~ ., data = iris)
+
+var_imp <- importance(rf_mod)
+tibble(
+  importance = c(var_imp), 
+  variable = rownames(var_imp)
+) %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
+# This agrees with our expectations as the Petal is more important in the 
+# other methods we used as well.
+
+rf_mod
+```
