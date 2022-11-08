@@ -1,0 +1,266 @@
+---
+title: "P7_Non_linear"
+author: "Christoph Völtzke"
+date: "2022-10-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+```
+
+```{r}
+set.seed(45)
+```
+
+# Prediction plot
+
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+
+```
+### 1. Create a function called pred_plot() that takes as input an lm object, which outputs the above plot but with a prediction line generated from the model object using the predict() method.
+```{r}
+pred_plot <- function(model) {
+  # First create predictions for all values of lstat
+  x_pred <- seq(min(Boston$lstat), max(Boston$lstat), length.out = 500)
+  y_pred <- predict(model, newdata = tibble(lstat = x_pred))
+  
+  # Then create a ggplot object with a line based on those predictions
+  Boston %>%
+    ggplot(aes(x = lstat, y = medv)) +
+    geom_point() +
+    geom_line(data = tibble(lstat = x_pred, medv = y_pred), size = 1, col = "blue") +
+    theme_minimal()
+}
+```
+
+### 2. Create a linear regression object called lin_mod which models medv as a function of lstat. Check if your prediction plot works by running pred_plot(lin_mod). Do you see anything out of the ordinary with the predictions?
+```{r}
+lin_mod <- lm(medv ~ lstat, data = Boston)
+pred_plot(lin_mod)
+```
+
+# Polynomial regression
+
+### 3. Create another linear model pn3_mod, where you add the second and third-degree polynomial terms I(lstat^2) and I(lstat^3) to the formula. Create a pred_plot() with this model.
+```{r}
+pn3_mod <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = Boston)
+pred_plot(pn3_mod)
+```
+### 4. Play around with the poly() function. What output does it generate with the arguments degree = 3 and raw = TRUE?
+```{r}
+poly(5:9, degree = 3, raw = TRUE)
+```
+### 5. Use the poly() function directly in the model formula to create a 3rd-degree polynomial regression predicting medv using lstat. Compare the prediction plot to the previous prediction plot you made. What happens if you change the poly() function to raw = FALSE?
+```{r}
+pn3_mod2 <- lm(medv ~ poly(lstat, 3, raw = TRUE), data = Boston)
+pred_plot(pn3_mod2)
+```
+```{r}
+# The plot is exactly the same as the previous prediction plot
+# By default, with raw = FALSE, poly() computes an orthogonal polynomial. 
+# This does not change the fitted values but you can see whether a certain order in the polynomial significantly improves the regression over the lower orders.
+# You can check the summary(pn3_mod2).
+```
+
+
+# Piecewise regression
+
+### 6. Create a model called pw2_mod with one predictor: I(lstat <= median(lstat)). Create a pred_plot with this model. Use the coefficients in coef(pw2_mod) to find out what the predicted value for a low-lstat neighbourhood is.
+```{r}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+pred_plot(pw2_mod)
+coef(pw2_mod)
+# the predicted value for low-lstat neighbourhoods is 16.68 + 11.71 = 28.39
+```
+### 7. Use the cut() function in the formula to generate a piecewise regression model called pw5_mod that contains 5 equally spaced sections. Again, plot the result using pred_plot.
+```{r}
+pw5_mod <- lm(medv ~ cut(lstat, 5), data = Boston)
+pred_plot(pw5_mod)
+```
+```{r}
+table(cut(Boston$lstat, 5))
+```
+### 8. Optional: Create a piecewise regression model pwq_mod where the sections are not equally spaced, but have equal amounts of training data. Hint: use the quantile() function.
+```{r}
+brks <- c(-Inf, quantile(Boston$lstat, probs = c(.2, .4, .6, .8)), Inf)
+pwq_mod <- lm(medv ~ cut(lstat, brks), data = Boston)
+pred_plot(pwq_mod)
+```
+# Piecewise polynomial regression
+### 9. This function does not have comments. Copy - paste the function and add comments to each line. To figure out what each line does, you can first create “fake” vec and knots variables, for example vec <- 1:20 and knots <- 2 and try out the lines separately.
+```{r}
+piecewise_cubic_basis <- function(vec, knots = 1) {
+  # If there is only one section, just return the 3rd order polynomial
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+  
+  # cut the vector
+  cut_vec <- cut(vec, breaks = knots + 1)
+  
+  # initialise a matrix for the piecewise polynomial
+  out <- matrix(nrow = length(vec), ncol = 0)
+  
+  # loop over the levels of the cut vector
+  for (lvl in levels(cut_vec)) {
+    
+    # temporary vector
+    tmp <- vec
+    
+    # set all values to 0 except the current section
+    tmp[cut_vec != lvl] <- 0
+    
+    # add the polynomial based on this vector to the matrix
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+    
+  }
+  
+  # return the piecewise polynomial matrix
+  out
+}
+```
+
+### 10. Create piecewise cubic models with 1, 2, and 3 knots (pc1_mod - pc3_mod) using this piecewise cubic basis function. Compare them using the pred_plot() function.
+```{r}
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 1), data = Boston)
+pc2_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 2), data = Boston)
+pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 3), data = Boston)
+
+pred_plot(pc1_mod)
+```
+
+```{r}
+pred_plot(pc2_mod)
+pred_plot(pc3_mod)
+```
+# Splines
+### 11. Create a data frame called boston_tpb with the columns medv and lstat from the Boston dataset.
+```{r}
+boston_tpb <- Boston %>% as_tibble %>% select(medv, lstat)
+```
+
+### 12. Now use mutate to add squared and cubed versions of the lstat variable to this dataset.
+```{r}
+boston_tpb <- boston_tpb %>% mutate(lstat2 = lstat^2, lstat3 = lstat^3)
+```
+
+### 13. Use mutate to add a column lstat_tpb to this dataset which is 0 below the median and has value (lstat - median(lstat))^3 above the median. Tip: you may want to use ifelse() within your mutate() call.
+```{r}
+boston_tpb <- boston_tpb %>% 
+  mutate(lstat_tpb = ifelse(lstat >  median(lstat), (lstat - median(lstat))^3, 0))
+```
+
+### 14. Create a linear model tpb_mod using the lm() function. How many predictors are in the model? How many degrees of freedom does this model have?
+```{r}
+tpb_mod <- lm(medv ~ lstat + lstat2 + lstat3 + lstat_tpb, data = boston_tpb)
+summary(tpb_mod)
+```
+### 15. Create a cubic spline model bs1_mod with a knot at the median using the bs() function. Compare its predictions to those of the tpb_mod using the predict() function on both models.
+```{r}
+bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat)), data = Boston)
+summary(bs1_mod)
+```
+```{r}
+# Comparing the predictions from the two models: negligible absolute difference
+mean(abs(predict(bs1_mod) - predict(tpb_mod)))
+```
+
+### 16. Create a prediction plot from the bs1_mod object using the plot_pred() function.
+```{r}
+pred_plot(bs1_mod)
+```
+
+### 17. Create a natural cubic spline model (ns3_mod) with 3 degrees of freedom using the ns() function. Plot it, and compare it to the bs1_mod.
+```{r}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston)
+pred_plot(ns3_mod)
+# Still a good fit but with linear ends.
+```
+### 18. Plot lin_mod, pn3_mod, pw5_mod, pc3_mod, bs1_mod, and ns3_mod and give them nice titles by adding + ggtitle("My title") to the plot. You may use the function plot_grid() from the package cowplot to put your plots in a grid.
+```{r}
+library(cowplot)
+plot_grid(
+  pred_plot(lin_mod) + ggtitle("Linear regression"),
+  pred_plot(pn3_mod) + ggtitle("Polynomial"),
+  pred_plot(pw5_mod) + ggtitle("Piecewise constant"),
+  pred_plot(pc3_mod) + ggtitle("Piecewise cubic"),
+  pred_plot(bs1_mod) + ggtitle("Cubic spline"),
+  pred_plot(ns3_mod) + ggtitle("Natural spline")
+)
+```
+### 19. Use 12-fold cross validation to determine which of the 6 methods (lin, pn3, pw5, pc3, bs1, and ns3) has the lowest out-of-sample MSE.
+
+```{r}
+# first create an mse function
+mse <- function(y_true, y_pred) mean((y_true - y_pred)^2)
+
+# add a 12 split column to the boston dataset so we can cross-validate
+boston_cv <- Boston %>% mutate(split = sample(rep(1:12, length.out = nrow(Boston))))
+
+# prepare an output matrix with 12 slots per method for mse values
+output_matrix <- matrix(nrow = 12, ncol = 6) 
+colnames(output_matrix) <- c("lin", "pn3", "pw5", "pc3", "bs1", "ns3")
+
+# loop over the splits, run each method, and return the mse values
+for (i in 1:12) {
+  train <- boston_cv %>% filter(split != i)
+  test  <- boston_cv %>% filter(split == i)
+  
+  brks <- c(-Inf, 7, 15, 22, Inf)
+  
+  lin_mod <- lm(medv ~ lstat,                            data = train)
+  pn3_mod <- lm(medv ~ poly(lstat, 3),                   data = train)
+  pw5_mod <- lm(medv ~ cut(lstat, brks),                 data = train)
+  pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 3),  data = train)
+  bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat)), data = train)
+  ns3_mod <- lm(medv ~ ns(lstat, df = 3),                data = train)
+  
+  output_matrix[i, ] <- c(
+    mse(test$medv, predict(lin_mod, newdata = test)),
+    mse(test$medv, predict(pn3_mod, newdata = test)),
+    mse(test$medv, predict(pw5_mod, newdata = test)),
+    mse(test$medv, predict(pc3_mod, newdata = test)),
+    mse(test$medv, predict(bs1_mod, newdata = test)),
+    mse(test$medv, predict(ns3_mod, newdata = test))
+  )
+}
+
+# this is the comparison of the methods
+colMeans(output_matrix)
+```
+```{r}
+# we can show it graphically too
+tibble(names = as_factor(colnames(output_matrix)), 
+       mse   = colMeans(output_matrix)) %>% 
+  ggplot(aes(x = names, y = mse, fill = names)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  scale_fill_viridis_d(guide = "none") +
+  labs(
+    x     = "Method", 
+    y     = "Mean squared error", 
+    title = "Comparing regression method prediction performance"
+  )
+```
+
+
+
+
+
+
+
+
+
+
+
