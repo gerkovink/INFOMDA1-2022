@@ -1,0 +1,182 @@
+---
+title: "Practical 3 Amy"
+output: html_document
+date: "2022-09-28"
+---
+```{r data}
+
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+
+?mice::boys
+
+```
+
+```{r dataset}
+
+head(boys)
+tail(boys)
+!is.unsorted(boys$age)
+summary(boys)
+
+```
+
+```{r assi1}
+boys %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "orange") +
+  theme_minimal() +
+  labs(y = "Number of boys")
+```
+```{r assi2}
+boys %>% 
+  ggplot(aes(x = gen)) + 
+  geom_bar(fill = "light blue") + 
+  theme_minimal() +
+  labs(x = "Genital stage", title = "Distribution of genital Tanner stage")
+```
+```{r assi 3}
+md.pattern(boys)
+
+mis_boys <- 
+  boys %>% 
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis = is.na(tv))
+```
+
+```{r assi 4}
+mis_boys %>% 
+  group_by(gen_mis) %>% 
+  summarize(age = mean(age))
+
+mis_boys %>% 
+  group_by(phb_mis) %>% 
+  summarize(age = mean(age))
+
+mis_boys %>% 
+  group_by(tv_mis) %>% 
+  summarize(age = mean(age))
+
+```
+```{r assi 5}
+mis_boys %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "light blue") +
+  facet_wrap(~gen_mis) +
+  theme_minimal() 
+  
+```
+```{r assi6}
+boys %>% 
+  ggplot(aes(x = age, y = bmi)) + 
+  geom_point(colour = "dark blue") + 
+  theme_minimal() +
+  labs(title = "Age VS Bmi")
+```
+```{r assi7}
+mis_boys %>% 
+  ggplot(aes(x = age, y = bmi, col = gen_mis)) + 
+  geom_point() + 
+  theme_minimal() +
+  scale_color_viridis_d()
+  labs(title = "Age VS Bmi")
+```
+
+```{r assi8}
+boys %>% 
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot(fill = "light pink") +
+  theme_minimal()+
+  labs(title = "Boxplot of age by region")
+```
+```{r assi9}
+mis_boys%>% 
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  scale_fill_brewer() 
+```
+
+```{r assi10}
+mis_boys %>% 
+   mutate(Age = cut(age, 0:22, labels = paste0(0:21, " years")),
+         Height = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() 
+
+```
+
+```{r assi11}
+elasticbind <- bind_rows("Elastic1" = elastic1,  "Elastic2" = elastic2,.id = "group")
+```
+
+```{r ass12}
+
+elasticbind %>% 
+  ggplot(aes(x = stretch, y = distance, col = group)) +
+  geom_point() +
+  scale_color_brewer(palette = "group") +
+  theme_minimal()
+```
+```{r ass13}
+
+elasticbind %>% 
+  ggplot(aes(x = stretch, y = distance, col = group)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+```
+
+```{r assi14}
+rm1 <- lm(distance ~ stretch, elastic1)
+rm2 <- lm(distance ~ stretch, elastic2)
+
+rm1 %>%  predict(se.fit = TRUE)
+rm2 %>%  predict(se.fit = TRUE)
+
+rm1 %>% summary()
+rm2 %>% summary()
+
+
+```
+
+```{r assi16}
+rm1 %>% plot(which = 5)
+rm2 %>% plot(which = 5)
+
+rm1$residuals
+rm2$residuals
+```
+Point 2 seems to have the highest leverage on the estimation. Point 7, however, has the highest residual
+
+```{r 17}
+pred2 <- predict(rm1, newdata = elastic2)
+
+```
+
+```{r 18}
+Elastic2pred <-
+  elastic2 %>% 
+  mutate(prediction2 = pred2)
+  
+Elastic2pred %>% 
+  ggplot() +
+  geom_point(aes(x = stretch, y = distance, colour = "Observed")) +
+  geom_point(aes(x = stretch, y = prediction2, colour = "Predicted")) +
+  theme_minimal()+
+  scale_colour_manual(name = 'Legend', 
+                      guide = 'legend',
+                      values = c('Predicted' = 'red',
+                                 'Observed' = 'black'), 
+                      labels = c('Predicted',
+                                 'Observed'))
+  
+```
+  

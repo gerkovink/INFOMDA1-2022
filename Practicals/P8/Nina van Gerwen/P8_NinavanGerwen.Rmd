@@ -1,0 +1,256 @@
+---
+title: 'Practical 8: Supervised Learning'
+author: "Nina van Gerwen (1860852)"
+date: "2022-11-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+## Exploring the data
+
+```{r}
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+
+```
+
+### 1) Impression of the data
+
+```{r}
+str(df)
+summary(df)
+describe(df)
+```
+
+All looks good!
+
+### 2) Data visualisations
+
+```{r}
+df %>%
+  ggplot(., aes(x = Direct_Bilirubin, y = Total_Bilirubin, col = Disease)) +
+  geom_point(alpha = .5)
+
+df %>%
+  ggplot(., aes(x = Age, y = Total_Protiens, col = Disease)) +
+  geom_point()
+
+df %>%
+  ggplot(., aes(x = Gender, col = Disease, fill = Disease)) +
+  geom_bar(position = "dodge")
+```
+
+A very linear relation between direct and total bilirubin, to be expected.
+There does not seem to be a relation between age and total proteins.
+Furthermore, disease also does not seem to affect total proteins.
+Looking at gender, we find that women seem to suffer from the disease
+more often relative to men.
+
+### 3) Bagging, random forests and boosting
+
+The biggest difference between bagging and randomforests vs. boosting is that
+boosting is a sequential method, whereas the other two are parallel methods.
+This means that the first model created in a boosting algorithm will affect
+all models thereafter. In bagging and randomforests, instead, the models
+are not dependent on previous models.
+
+Then, the difference between bagging and randomforests has to do with the 
+correlations. In a bagging algorithm, the parallel models are correlated with
+one another, whereas in a randomforest, they have been de-correlated through
+randomness.
+
+### 4) Applying bagging to the disease data
+
+```{r}
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+trained_bag <- train(Disease ~ ., data = df, method = "treebag",
+                     trControl = cvcontrol, importance = TRUE)
+```
+
+### 5) Interpreting variable importance
+
+```{r}
+varImp(trained_bag) %>% plot()
+```
+
+The bagging method has found that alkaline phosphotase is the most important
+protein in predicting whether someone will suffer from the disease.
+
+### 6) Creating predictions and assessing performance
+
+```{r}
+confusionMatrix(data = predict(trained_bag, type = "raw"), reference = df$Disease)
+```
+
+The model works perfectly with an Accuracy of 1! There were no false negatives
+or false positives.
+
+### 7) Outputting the trained bag model
+
+```{r}
+trained_bag
+```
+
+The accuracy differs (from 1 to 0.678). This is because this accuracy is based on the cross-validated accuracy!
+
+### 8) Fitting a randomforest
+
+```{r}
+trained_forest <- train(Disease ~ ., data = df, method = "rf", trControl = cvcontrol, importance = TRUE)
+```
+
+
+### 9) Assessing variable importance
+
+```{r}
+trained_forest %>%
+  varImp() %>%
+  plot()
+```
+
+We get a different result this time! The random forest states that direct-bilirubin
+is the most important protein in predicting whether someone suffers from the disease.
+Furthermore, the alkaline phosphotase is much less important this time relative
+to the other predictors (6th in importance vs. 1st).
+
+### 10) Outputting the model
+
+```{r}
+trained_forest
+```
+
+When randomly sampling 2 variables as candidates at each split, the accuracy
+goes up from .678 to .704. So yes, we are doing slightly better than bagging.
+
+### 11) Fitting a boosting model
+
+```{r}
+trained_boost <- train(Disease ~ ., data = df, method = "gbm",
+                       trControl = cvcontrol)
+```
+
+
+### 12) Assessing variable importance
+
+```{r}
+summary(trained_boost)
+```
+
+
+This time, aspartate aminotransferase is the most important variable, followed
+by alkaline phosphotase. Direct bilirubin is 4th in importance.
+
+### 13) Outputting the boosting model
+
+```{r}
+trained_boost
+```
+
+It seems to have similar performance as the random forest and bagging methods.
+
+### 14) Downloading shap.R
+
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+### 15) Specifying a model
+
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+
+### 16) Calculating SHAP rank scores and creating a variable importance plot
+
+```{r}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+```
+
+According to the SHAP rank scores, direct bilirubin is again the most important
+variable, followed by alkaline phosphotase.
+
+### 17) Plotting the SHAP values for every individual feature
+
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+The first plot shows that people with very low direct bilirubin have 
+a higher probability to have the Disease (i.e., a negative relationship). As for
+age, it indicates that the higher your age, the less likely to have the disease.
+
+The second plot shows the same, however it is visualised differently. I would
+not know how to interpret these really.
+
+### 18) Validating the different models on the test data
+
+```{r}
+df_val <- readRDS("data/test_disease.RDS")
+
+bag_pred <- predict(trained_bag, newdata = df_val, type = "raw")
+for_pred <- predict(trained_forest, newdata = df_val, type = "raw")
+boost_pred <- predict(trained_boost, newdata = df_val, type = "raw")
+boost_2_pred <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., df_val)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+confusionMatrix(bag_pred, df_val$Disease)
+confusionMatrix(for_pred, df_val$Disease)
+confusionMatrix(boost_pred, df_val$Disease)
+confusionMatrix(boost_2_pred, df_val$Disease)
+```
+
+
+From the confusion matrices, we find that random forest method has the highest
+accuracy on the test set!
+
+
+
+
+
+
+
+

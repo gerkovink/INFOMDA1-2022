@@ -1,0 +1,284 @@
+---
+title: "Non-linear Regression"
+author: "Nina van Gerwen (1860852)"
+date: "2022-10-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prediction plot
+
+```{r}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+
+### 1) Creating a prediction plot function
+
+```{r}
+pred_plot <- function(lm_mod){
+  x1 <- seq(min(Boston$lstat), max(Boston$lstat), length.out = 1000)
+  y1 <- predict(lm_mod, newdata = data.frame(lstat = x1))
+  
+  Boston %>%
+    ggplot(aes(x = lstat, y = medv), data = .) +
+    geom_point() +
+    geom_line(data = data.frame(lstat = x1, medv = y1), col = "red") +
+    theme_minimal()
+}
+```
+
+
+### 2) Testing the function
+
+```{r}
+lin_mod <- lm(medv ~ lstat, data = Boston)
+pred_plot(lin_mod)
+```
+
+The plot works, as for anything out of the ordinary: the predictions for
+medv go negative at lstat values beyond 35, which should not be possible
+(as value is always positive).
+
+## Polynomial regression
+
+### 3) Creating a polynomial regression
+
+```{r}
+pn3_mod <- lm(medv ~ I(lstat) + I(lstat^2) + I(lstat^3), data = Boston)
+
+pred_plot(pn3_mod)
+```
+
+### 4) Poly function
+
+The degree argument states the degree of the polynomial. So if it is 3, then
+you will receive a polynomial to the third order (i.e., $x, x^2, x^3$). If
+raw = TRUE, you will receive the raw polynomials and not the orthogonal 
+polynomials. This means that they will correlate with one another and
+multicollinearity might then be an issue.
+
+### 5) Poly function in lm function
+
+```{r}
+pn3_2_mod <- lm(medv ~ poly(lstat, degree = 3, raw = TRUE), data = Boston)
+
+pred_plot(pn3_2_mod)
+
+pn3_3_mod <- lm(medv ~ poly(lstat, degree = 3, raw = FALSE), data = Boston)
+
+pred_plot(pn3_3_mod)
+```
+
+The prediction plots looks the same to me.
+
+## Piecewise regression
+
+### 6) Creating a piecewise regression
+
+```{r}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+
+pred_plot(pw2_mod)
+
+coef(pw2_mod)
+```
+
+The predicted value for low-lstat neighbourhood is 16.68.
+
+### 7) Adding more cuts to the piecewise regression
+
+```{r}
+pw5_mod <- lm(medv ~ I(cut(lstat, 5)), data = Boston)
+
+pred_plot(pw5_mod)
+```
+
+This is a plot!
+
+### 9) Equal-data piecewise regression
+
+```{r}
+cutvalues <- c(-Inf, quantile(Boston$lstat, probs = c(0.2, 0.4, 0.6, 0.8)), Inf)
+
+pwq_mod <- lm(medv ~ I(cut(lstat, breaks = cutvalues)), data = Boston)
+
+pred_plot(pwq_mod)
+```
+
+## Piecewise polynomial regression
+
+### 9) Adding comments
+
+```{r}
+## Create a function that takes two arguments: a vector of values and 
+## a specified number of knots (by default 1)
+piecewise_cubic_basis <- function(vec, knots = 1) {
+  ## if the number of specified knots is 0, simply
+  ## return the raw cubic polynomial for the whole vector 
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+  
+  ## otherwise: cut the vector into knots + 1 intervals
+  cut_vec <- cut(vec, breaks = knots + 1)
+  
+  ## furthermore, create space for the piecewise cubic based function
+  out <- matrix(nrow = length(vec), ncol = 0)
+  
+  ## then, we do a for loop for 1 to the number of levels the vector was
+  ## cutted into
+  for (lvl in levels(cut_vec)) {
+    ## and in each loop, create a temporary copy of the intial vector
+    tmp <- vec
+    ## for all levels which are not currently specified, set the values to 0
+    tmp[cut_vec != lvl] <- 0
+    ## then the lvl-th column of the earlier created matrix
+    ## becomes the raw cubic polynomial of the temporary vector
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+  }
+  ## return the matrix that now contains all raw piecewise cubic polynomial
+  out
+}
+```
+
+
+### 10) Creating piecewise cubic models
+
+```{r}
+pc1_mod <- lm(medv ~ I(piecewise_cubic_basis(lstat, knots = 1)), data = Boston)
+pc2_mod <- lm(medv ~ I(piecewise_cubic_basis(lstat, knots = 2)), data = Boston)
+pc3_mod <- lm(medv ~ I(piecewise_cubic_basis(lstat, knots = 3)), data = Boston)
+
+pred_plot(pc1_mod)
+pred_plot(pc2_mod)
+pred_plot(pc3_mod)
+```
+
+The higher the degree of the polynomials, the more weird 'kinks' there seem to 
+at the transitions from one piece to the other.
+
+## Splines
+
+### 11 + 12 + 13) Creating the necessary dataframe
+```{r}
+boston_tpb <- select(Boston, medv, lstat) %>%
+  mutate(quad_lstat = lstat^2,
+         cub_lstat = lstat^3,
+         lstat_tpb = ifelse(lstat < median(lstat), 0, (lstat - median(lstat))^3))
+```
+
+
+### 14) Creating a linear model using the above dataframe
+
+```{r}
+tpb_mod <- lm(medv ~ ., data = boston_tpb)
+
+summary(tpb_mod)
+```
+
+This model has 5 predictors and 501 degrees of freedom .
+
+### 15) Using the bs() function
+
+```{r}
+bs1_mod <- lm(medv ~ bs(lstat, degree = 3, knots = median(lstat)), data = Boston)
+summary(bs1_mod)
+```
+
+Although the predictions are similar, they still differ a bit.
+
+### 16) Creating a prediction plot
+
+```{r}
+pred_plot(bs1_mod)
+```
+
+
+### 17) Using natural splines instead
+
+```{r}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston) 
+
+pred_plot(ns3_mod)
+```
+
+This has a much more natural graph near the end!
+
+### 18) Plotting everything in a grid
+
+```{r}
+library(cowplot)
+
+plot_grid(pred_plot(lin_mod) + ggtitle("Linear model"), pred_plot(pn3_mod) +
+            ggtitle("Cubic polynomial model"), 
+          pred_plot(pw5_mod) + ggtitle("5 Piecewise linear regression"),
+          pred_plot(pc3_mod) + ggtitle("Piecewise cubic regression"),
+          pred_plot(bs1_mod) + ggtitle("Splines (1) regression"),
+          pred_plot(ns3_mod) + ggtitle("Natural splines (3) regression"))
+```
+
+## Programming assignment
+
+```{r}
+mse <- function(y_true, y_pred){
+  MSE <- mean((y_true - y_pred)^2, na.rm = TRUE)
+  return(MSE)
+}
+
+cross_valid <- function(formula, dataset, k){
+  require(dplyr)
+  ## First, the data should be shuffled,, done in the following way
+  dataset <- dataset[sample(nrow(dataset)) ,]
+  ## Then, the dataset should have an indicator variable for k subsamples
+  dataset <- dataset %>% 
+    mutate(., fold = cut(1:nrow(dataset), breaks = k,
+                                labels = 1:k))
+  ## Create space for the mse values
+  mse <- rep(NA, k)
+  ## We want the function to calculate the mse k times, so we use a for loop
+  ## In each loop:
+  for(i in 1:k){
+    ## First, we split the dataset in a training and validation set
+    train_data <- dataset %>% filter(fold != i)
+    valid_data <- dataset %>% filter(fold == i)
+    
+    ## Then, we train the model in the training set
+    test_lm <- lm(formula = formula, data = train_data)
+    
+    ## Then, we get the outcome name (this was taken from your code)
+    outcome_name <- as.character(formula)[2]
+    
+    ## Finally, we calculate the mse value using the trained set on our
+    ## validation set and put this in the ith element
+    mse[i] <- mse(valid_data[[outcome_name]], 
+                  predict(test_lm, newdata = valid_data))
+  }
+  ## Finally, we calculate the mean of all mses and return this value
+  M_MSE <- mean(mse)
+  return(M_MSE)
+}
+
+mean_MSE <- cbind(c("lin", "pn3", "pc3", "bs1", "ns3"),
+                  rep(NA, 5))
+
+
+mean_MSE[1,2] <- cross_valid(formula = lin_mod$call[[2]], dataset = Boston, k = 12)
+mean_MSE[2,2] <- cross_valid(formula = pn3_mod$call[[2]], dataset = Boston, k = 12)
+mean_MSE[3,2] <- cross_valid(formula = pc3_mod$call[[2]], dataset = Boston, k = 12)
+mean_MSE[4,2] <- cross_valid(formula = bs1_mod$call[[2]], dataset = Boston, k = 12)
+mean_MSE[5,2] <- cross_valid(formula = ns3_mod$call[[2]], dataset = Boston, k = 12)
+
+mean_MSE
+```
+
+We find that the bs1 model has the lowest out of sample mean squared error! Awesome.
+
+
+
+

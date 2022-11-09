@@ -1,0 +1,409 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Untitled},
+  pdfauthor={Simranjit},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Untitled}
+\author{Simranjit}
+\date{2022-09-26}
+
+\begin{document}
+\maketitle
+
+\begin{verbatim}
+
+```r
+library(ISLR)
+library(tidyverse)
+\end{verbatim}
+
+\begin{verbatim}
+## -- Attaching packages --------------------------------------- tidyverse 1.3.2 --
+## v ggplot2 3.3.6      v purrr   0.3.4 
+## v tibble  3.1.8      v dplyr   1.0.10
+## v tidyr   1.2.1      v stringr 1.4.1 
+## v readr   2.1.2      v forcats 0.5.2 
+## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(knitr)}
+\FunctionTok{head}\NormalTok{(Hitters)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##                   AtBat Hits HmRun Runs RBI Walks Years CAtBat CHits CHmRun
+## -Andy Allanson      293   66     1   30  29    14     1    293    66      1
+## -Alan Ashby         315   81     7   24  38    39    14   3449   835     69
+## -Alvin Davis        479  130    18   66  72    76     3   1624   457     63
+## -Andre Dawson       496  141    20   65  78    37    11   5628  1575    225
+## -Andres Galarraga   321   87    10   39  42    30     2    396   101     12
+## -Alfredo Griffin    594  169     4   74  51    35    11   4408  1133     19
+##                   CRuns CRBI CWalks League Division PutOuts Assists Errors
+## -Andy Allanson       30   29     14      A        E     446      33     20
+## -Alan Ashby         321  414    375      N        W     632      43     10
+## -Alvin Davis        224  266    263      A        W     880      82     14
+## -Andre Dawson       828  838    354      N        E     200      11      3
+## -Andres Galarraga    48   46     33      N        E     805      40      4
+## -Alfredo Griffin    501  336    194      A        W     282     421     25
+##                   Salary NewLeague
+## -Andy Allanson        NA         A
+## -Alan Ashby        475.0         N
+## -Alvin Davis       480.0         A
+## -Andre Dawson      500.0         N
+## -Andres Galarraga   91.5         N
+## -Alfredo Griffin   750.0         A
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{hist}\NormalTok{ (Hitters}\SpecialCharTok{$}\NormalTok{Salary, }\AttributeTok{xlab =} \StringTok{"Salary in thousand of dollars"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{barplot}\NormalTok{(}\FunctionTok{table}\NormalTok{(Hitters}\SpecialCharTok{$}\NormalTok{League))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{plot}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Hitters}\SpecialCharTok{$}\NormalTok{Hits, }\AttributeTok{y=}\NormalTok{Hitters}\SpecialCharTok{$}\NormalTok{HmRun,}
+       \AttributeTok{xlab =} \StringTok{"Hits"}\NormalTok{, }\AttributeTok{ylab =}\StringTok{"Home runs"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-3.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  homeruns\_plot }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(Hitters, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x=}\NormalTok{ Hits, }\AttributeTok{y =}\NormalTok{ HmRun)) }\SpecialCharTok{+} \FunctionTok{geom\_point}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Hits"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Home runs"}\NormalTok{)}
+\NormalTok{  homeruns\_plot}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-4.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  homeruns\_plot }\SpecialCharTok{+} \FunctionTok{geom\_density\_2d}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{title =} \StringTok{"Cool density and scatter plot of baseball data"}\NormalTok{) }\SpecialCharTok{+}\FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-5.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{set.seed}\NormalTok{(}\DecValTok{1234}\NormalTok{)}
+\NormalTok{  student\_grade  }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{32}\NormalTok{, }\DecValTok{7}\NormalTok{)}
+\NormalTok{  student\_number }\OtherTok{\textless{}{-}} \FunctionTok{round}\NormalTok{(}\FunctionTok{runif}\NormalTok{(}\DecValTok{32}\NormalTok{) }\SpecialCharTok{*} \FloatTok{2e6} \SpecialCharTok{+} \FloatTok{5e6}\NormalTok{)}
+\NormalTok{  programme      }\OtherTok{\textless{}{-}} \FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Science"}\NormalTok{, }\StringTok{"Social Science"}\NormalTok{), }\DecValTok{32}\NormalTok{, }\AttributeTok{replace =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  gg\_students }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{ ( }\AttributeTok{number =} \FunctionTok{as.character}\NormalTok{(student\_number), }
+    \AttributeTok{grade  =}\NormalTok{ student\_grade,                }
+    \AttributeTok{prog   =} \FunctionTok{as.factor}\NormalTok{(programme)         }
+\NormalTok{ )}
+  \FunctionTok{head}\NormalTok{(gg\_students)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 3
+##   number  grade prog          
+##   <chr>   <dbl> <fct>         
+## 1 5478051  5.79 Social Science
+## 2 6412989  7.28 Science       
+## 3 5616190  8.08 Social Science
+## 4 6017095  4.65 Social Science
+## 5 5103293  7.43 Social Science
+## 6 6129140  7.51 Science
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{ggplot}\NormalTok{(Hitters, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ HmRun, }\AttributeTok{y =}\NormalTok{ Hits, }\AttributeTok{colour =}\NormalTok{  League, }\AttributeTok{size =}\NormalTok{ Salary)) }\SpecialCharTok{+} \FunctionTok{geom\_point}\NormalTok{()}\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{y =} \StringTok{"Hits"}\NormalTok{, }\AttributeTok{x =} \StringTok{"Home runs"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 59 rows containing missing values (geom_point).
+\end{verbatim}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-6.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{ggplot}\NormalTok{(Hitters, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ HmRun, }\AttributeTok{y =}\NormalTok{ Hits, }\AttributeTok{colour =}\NormalTok{ League, }\AttributeTok{size =}\NormalTok{ Salary), }\AttributeTok{shape =}\NormalTok{ (League)) }\SpecialCharTok{+} \FunctionTok{geom\_point}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{y =} \StringTok{"Hits"}\NormalTok{, }\AttributeTok{x =} \StringTok{"Home runs"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 59 rows containing missing values (geom_point).
+\end{verbatim}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-7.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{    gg\_students }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ grade)) }\SpecialCharTok{+} \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{binwidth =}\NormalTok{ .}\DecValTok{5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-8.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  gg\_students }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ grade)) }\SpecialCharTok{+} \FunctionTok{geom\_density}\NormalTok{(}\AttributeTok{fill =} \StringTok{"light seagreen"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-9.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  gg\_students }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ grade)) }\SpecialCharTok{+} \FunctionTok{geom\_density}\NormalTok{(}\AttributeTok{fill =} \StringTok{"Grey"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{geom\_rug}\NormalTok{(}\AttributeTok{size =} \DecValTok{1}\NormalTok{, }\AttributeTok{colour =} \StringTok{"Red"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-10.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{    gg\_students }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ grade)) }\SpecialCharTok{+} \FunctionTok{geom\_density}\NormalTok{(}\AttributeTok{fill =} \StringTok{"Pink"}\NormalTok{, }\AttributeTok{colour =} \ConstantTok{NA}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{geom\_rug}\NormalTok{(}\AttributeTok{size =} \DecValTok{1}\NormalTok{, }\AttributeTok{colour =} \StringTok{"Black"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{y =}\StringTok{""}\NormalTok{ ) }\SpecialCharTok{+} \FunctionTok{xlim}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{10}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-11.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  gg\_students }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ prog, }\AttributeTok{y =}\NormalTok{ grade, }\AttributeTok{fill =}\NormalTok{ prog)) }\SpecialCharTok{+} \FunctionTok{geom\_boxplot}\NormalTok{() }
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-12.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  gg\_students }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ prog, }\AttributeTok{y =}\NormalTok{ grade, }\AttributeTok{fill =}\NormalTok{ prog)) }\SpecialCharTok{+} \FunctionTok{geom\_boxplot}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-13.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  gg\_students }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ grade, }\AttributeTok{fill =}\NormalTok{ prog)) }\SpecialCharTok{+} \FunctionTok{geom\_density}\NormalTok{(}\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{5}\NormalTok{, }\AttributeTok{colour =} \ConstantTok{NA}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{geom\_rug}\NormalTok{(}\AttributeTok{size =} \DecValTok{1}\NormalTok{, }\AttributeTok{colour =} \StringTok{"light seagreen"}\NormalTok{) }\SpecialCharTok{+}\FunctionTok{theme\_minimal}\NormalTok{() }\SpecialCharTok{+}
+    \FunctionTok{labs}\NormalTok{(}\AttributeTok{y =} \StringTok{""}\NormalTok{, }\AttributeTok{fill =} \StringTok{"Programme"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlim}\NormalTok{(}\DecValTok{2}\NormalTok{, }\DecValTok{10}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-14.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  Hitters }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Years)) }\SpecialCharTok{+} \FunctionTok{geom\_bar}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-15.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{,] }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{mutate}\NormalTok{(}\AttributeTok{Day =} \DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Day, }\AttributeTok{y =}\NormalTok{ Volume)) }\SpecialCharTok{+} \FunctionTok{geom\_line}\NormalTok{() }
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-16.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{,] }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{mutate}\NormalTok{(}\AttributeTok{Day =} \DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Day, }\AttributeTok{y =}\NormalTok{ Volume)) }\SpecialCharTok{+} \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{colour =} \StringTok{"Dark Blue"}\NormalTok{,}\AttributeTok{size =} \FloatTok{0.8}\NormalTok{ ) }\SpecialCharTok{+}
+    \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{colour =} \StringTok{"Red"}\NormalTok{, }\AttributeTok{size =}\FloatTok{2.5}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-17.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{which.max}\NormalTok{(Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{, ]}\SpecialCharTok{$}\NormalTok{Volume)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 170
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{max}\NormalTok{(Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{, ]}\SpecialCharTok{$}\NormalTok{Today)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 4.368
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+  \FunctionTok{max}\NormalTok{(Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{, ]}\SpecialCharTok{$}\NormalTok{Volume)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 2.33083
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  Smarket[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{, ] }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{mutate}\NormalTok{(}\AttributeTok{Day =} \DecValTok{1}\SpecialCharTok{:}\DecValTok{200}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Day, }\AttributeTok{y =}\NormalTok{ Volume)) }\SpecialCharTok{+} \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{colour =} \StringTok{"Blue"}\NormalTok{, }\AttributeTok{size =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+    \FunctionTok{geom\_label}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \DecValTok{175}\NormalTok{, }\AttributeTok{y =} \FloatTok{2.5}\NormalTok{, }\AttributeTok{label =} \StringTok{"Peak volume"}\NormalTok{)) }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-18.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  baseball }\OtherTok{\textless{}{-}}\NormalTok{ Hitters }\SpecialCharTok{\%\textgreater{}\%}  \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(Salary)) }\SpecialCharTok{\%\textgreater{}\%}  \FunctionTok{mutate}\NormalTok{( }\AttributeTok{Salary\_range =} \FunctionTok{cut}\NormalTok{(Salary, }\AttributeTok{breaks =} \DecValTok{3}\NormalTok{,  }\AttributeTok{labels =} \FunctionTok{c}\NormalTok{(}\StringTok{"Low salary"}\NormalTok{, }\StringTok{"Mid salary"}\NormalTok{, }\StringTok{"High salary"}\NormalTok{)), }\AttributeTok{Career\_hmrun\_proportion =}\NormalTok{ CHmRun}\SpecialCharTok{/}\NormalTok{CHits )}
+\NormalTok{  baseball\_plot }\OtherTok{\textless{}{-}}\NormalTok{   baseball }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ CWalks, }\AttributeTok{y =}\NormalTok{ Career\_hmrun\_proportion)) }\SpecialCharTok{+} \FunctionTok{geom\_point}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{ylim}\NormalTok{(}\DecValTok{0}\NormalTok{, }\FloatTok{0.4}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlim}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{1600}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{theme\_minimal}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{labs}\NormalTok{(}\AttributeTok{y =} \StringTok{"Proportion of home runs"}\NormalTok{,}
+         \AttributeTok{x =} \StringTok{"Career number of walks"}\NormalTok{)  }
+\NormalTok{  baseball\_plot}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-19.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  baseball\_plot }\SpecialCharTok{+} \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{Salary\_range)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{week2_files/figure-latex/unnamed-chunk-1-20.pdf}
+
+\end{document}

@@ -1,0 +1,247 @@
+---
+title: "Classification Evaluation"
+author: "Nina van Gerwen (1860852)"
+date: "2022-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r package prep}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+
+## Confusion matrix
+
+### 1) Logistic regression and confusion matrix
+
+```{r}
+disease_data <- read.csv("Data/cardiovascular_treatment.csv") %>%
+  mutate(severity = as.factor(severity),
+         gender = as.factor(gender),
+         dose = as.factor(dose),
+         response = as.factor(response))
+
+lr_mod <- glm(response ~ ., data = disease_data, family = "binomial")
+
+dichot_pred <- ifelse(predict(lr_mod, type = "response") > 0.5, 1, 0)
+
+table(true = disease_data$response, predicted = dichot_pred)
+```
+
+
+### 2) Calculating accuracy, sensitivity and specificity from the matrix
+
+```{r}
+accuracy <- (80+97)/(47+29+80+97)
+specificity <- 97/(97 + 47)
+sensitivity <- 80/(80 + 29)
+FPR <- 47/(80+47)
+FNR <- 29/(29+97)
+```
+
+
+### 3) Linear Discriminant Analysis confusion matrix
+
+```{r}
+lda_mod <- lda(response ~ ., data = disease_data)
+
+table(true = disease_data$response, predict(lda_mod, type = "response")$class)
+```
+
+They seem to have the exact same performance for this dataset, most interesting.
+
+### 4) New data
+
+```{r}
+new_data <- read.csv("Data/new_patients.csv") %>%
+    mutate(severity = as.factor(severity),
+         gender = as.factor(gender),
+         dose = as.factor(dose),
+         response = as.factor(response))
+
+
+table(true = new_data$response, pred = ifelse(predict(lr_mod, newdata = new_data,
+                                               type = "response") > 0.5, 1, 0))
+
+table(true = new_data$response, pred = predict(lda_mod, newdata = new_data,
+                                               type = "response")$class)
+```
+
+Again the two models seem to have the exact same performance (both not very good,
+however).
+
+### Brier score calculation
+
+```{r}
+mean((predict(lr_mod, newdata = new_data, type = "response") - (as.numeric(new_data$response) - 1))^2)
+```
+
+This entails that the mean squared error (MSE) between the probability of the
+model and their 'true' class is 0.23.
+
+## ROC-curve
+
+### 5) Two new LR models
+
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score, data = disease_data,
+               family = "binomial")
+
+lr2_mod <- glm(response ~  age + I(age^2) + gender + bb_score * prior_cvd * dose,
+               data = disease_data, family = "binomial")
+
+lr1_pred <- predict(lr1_mod, type = "response")
+lr2_pred <- predict(lr2_mod, type = "response")
+```
+
+
+### 6) ROC-curves through roc
+
+```{r}
+roc_lr1 <- roc(response = disease_data$response, data = disease_data,
+               predictor = lr1_pred)
+
+roc_lr2 <- roc(response = disease_data$response,
+               predictor = lr2_pred)
+
+ggroc(roc_lr1)
+ggroc(roc_lr2)
+```
+
+Comparing the two models, the second model seems to perform better considering
+that sensitivity and specificity are always higher.
+
+### 7) AUC-values
+
+```{r}
+print(roc_lr1)
+print(roc_lr2)
+```
+
+The Area Under the Curve (AUC) of the first model is 0.6253. The AUC
+for the second model is 0.7405. If the model were perfect, sensitivity
+and specificity would always be 1 and the AUC would also be 1. The minimum
+AUC value is 0.5.
+
+## Iris dataset
+
+### 8) Exploring the data
+
+```{r}
+summary(iris)
+str(iris)
+
+par(mfrow = c(2,2))
+hist(iris$Sepal.Length)
+hist(iris$Sepal.Width)
+hist(iris$Petal.Length)
+hist(iris$Petal.Width)
+
+```
+
+The IVs seem to all be normally distributed except for Petal length and width.
+This means that these might be very useful for classification as perhaps
+one flower-species has a very short petal length and width compared to the other two
+species.
+
+### 9) Fitting a Linear Discriminant Analysis with all or only Sepal
+
+```{r}
+lda_iris <- lda(Species ~ ., data = iris)
+
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+
+### 10) Confusion matrices
+
+```{r}
+table(true = iris$Species, pred = predict(lda_iris, type = "response")$class)
+
+table(true = iris$Species, pred = predict(lda_iris_sepal, type = "response")$class)
+```
+
+
+Comparing the two matrices, we find that lda_iris is much much better in terms
+of accuracy as it only predicted it wrong three times vs. 30 times.
+Accuracy of lda_iris: 0.98. Accuracy of lda_iris_sepal: 0.8.
+
+## Classification trees
+
+### 11) Creating a classification tree
+
+```{r}
+iris_tree_model <- rpart(Species ~ ., data = iris)
+
+rpart.plot(iris_tree_model)
+```
+
+### 12) How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?
+
+From the above plot we can see that if petal length is longer than 2.5 and
+petal width is shorter than 1.8, the plant would be classified as a *Versicolor*.
+
+### 13) Scatterplot
+
+```{r}
+ggplot(data = iris, aes(x = Petal.Length, y = Petal.Width)) +
+  geom_point() +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), 
+               data = data.frame(x1 = 2.5, y1 = 1.8, x2 = 8, y2 = 1.8)) +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2),
+               data = data.frame(x1 = 2.5, x2 = 2.5, y1 = 0, y2 = 2.5))
+```
+
+How you can interpret this plot: everything to the left side of the 
+vertical line is classified as a 'Setose'. Then, on the right side of the 
+vertical line, classification depends on the horizontal line. If observations
+are *above* the horizontal line, they are classified as virginica. If they
+are *below* the horizontal line, they are classified as versicolor.
+
+### 14) Full classificaiton model
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, minbucket = 1,
+                            minsplit = 1)
+
+rpart.plot(iris_tree_full_mod)
+```
+
+## Random forests
+
+### 15) Final assignment
+
+```{r}
+rForest_mod <- randomForest(Species ~ ., data = iris, ntree = 1000,
+                            replace = TRUE)
+
+rForest_mod
+
+importance(rForest_mod)
+
+ggplot(data = data.frame(labels = as.factor(c("Sepal Length", "Sepal Width", 
+                                    "Petal Length", "Petal Width")), 
+                                    importance  = importance(rForest_mod)[, 1]), 
+       aes(x = importance, fill = labels)) +
+  geom_bar() + coord_flip()
+```
+
+Looking at the confusion matrix, we find that the random forest method was
+a bit worse than the lda. However, I would trust a random forest more in
+another dataset due to more cross validation and also it has less
+stringent assumptions. Furthermore, looking at the importance bar graph, 
+we find that as expected, petal length and width are most important in 
+classifying the different types of flowers.

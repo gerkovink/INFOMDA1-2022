@@ -1,0 +1,369 @@
+---
+title: "Assignment 1"
+author: "Carlo Mans, Simona Cernat, Jim Regtien & Amy Liebregts"
+date: "2022-10-03"
+output: html_document
+---
+
+# Assignment 1, group 4
+
+## Introduction & description of data
+
+In recent years, the technology and information industry has remained as one of the most popular and in-demand career fields. In particular, data science and related fields have held top spots on Glassdoor's annual rankings. These top positions are determined by, among others, job satisfaction, job openings and salary. We will use a dataset scraped from the website Glassdoor (a website where employees can provide information on and review companies, i.e. their employers), which contains information on average salary, job titles, rating, location, company size and others, pertaining data science related job positions. The dataset contains mostly categorical variables, with the exception of salary, rating and age of the company (in years), which are continuous. In this exploratory data analysis, we will look to investigate which variables influence the average salary of data science related positions. This report is divided into sections, each relating to one major variable that is investigated, in the following order: Job Title, Education required and Location.
+
+### Import and preparing data
+
+```{r, message = FALSE}
+library(ISLR)
+library(tidyverse)
+library(magrittr)
+library(ggthemes)
+library(scales)
+library(mice)
+library(usmap)
+
+```
+
+```{r data mutation}
+Dataset <- read_csv('data_cleaned_2021.csv')
+
+Dataset2 <- Dataset %>% 
+  mutate(No_tools = aws + spark + scikit + mongo + flink + excel + tensor + 
+           Python + bi + keras +  sql + sas + tableau + google_an + pytorch + 
+           hadoop) %>%
+  transform(aws = aws == 1, spark = spark == 1, scikit = scikit == 1,
+            mongo = mongo == 1, flink = flink == 1, excel = excel == 1,
+            tensor = tensor == 1, Python = Python == 1, bi = bi == 1, 
+            keras = keras == 1, sql = sql == 1, sas = sas == 1, 
+            tableau = tableau == 1, google_an = google_an == 1,
+            pytorch = pytorch == 1, hadoop = hadoop == 1)
+
+# Turn missing values into NA's:
+Dataset2$Age[Dataset2$Age == -1] <- NA 
+Dataset2$Founded[Dataset2$Founded == -1] <- NA 
+Dataset2$Rating[Dataset2$Rating == -1] <- NA 
+Dataset2$Size[Dataset2$Size == "unknown"] <- NA
+
+Dataset2$job_title_sim[90] <- "analyst"
+Dataset2$job_title_sim[192] <- "data scientist"
+Dataset2$job_title_sim[301] <- "Data scientist project manager"
+Dataset2$job_title_sim[317] <- "data scientist"
+Dataset2$job_title_sim[375] <- "other scientist"
+Dataset2$job_title_sim[389] <- "data scientist"
+Dataset2$job_title_sim[442] <- "data scientist"
+Dataset2$job_title_sim[562] <- "other scientist"
+Dataset2$job_title_sim[587] <- "data scientist"
+Dataset2$job_title_sim[644] <- "data engineer" 
+
+a = density(Dataset2$Avg.Salary.K.)
+
+b = a$x
+
+c = which.min(abs(b- mean(Dataset2$Avg.Salary.K.)))
+
+Mean_density_Avg_Sal = a$y[c]
+
+Dataset2$job_title_sim[which(Dataset2$job_title_sim == "data analitics")] <- "analyst"
+Dataset2$job_title_sim[which(Dataset2$job_title_sim == "data modeler")] <- "data engineer"
+
+Dataset2$Type.of.ownership[which(Dataset2$Type.of.ownership == "School / School District")] <- "Other Organization"
+Dataset2$Type.of.ownership[which(Dataset2$Type.of.ownership == "College / University")] <- "Other Organization"
+Dataset2$Type.of.ownership[which(Dataset2$Type.of.ownership == "Government")] <- "Other Organization"
+Dataset2$Type.of.ownership[which(Dataset2$Type.of.ownership == "Subsidiary or Business Segment")] <- "Company - Private"
+Dataset2$Type.of.ownership[which(Dataset2$Type.of.ownership == "Hospital")] <- "Nonprofit Organization"
+
+Dataset2 <- mutate(Dataset2, Seniority = seniority_by_title == "sr")
+
+colnames(Dataset2)[44] <-"Seniority Status"
+Dataset2$`Seniority Status`[which(Dataset2$`Seniority Status` == FALSE)] <- "Non-senior"
+Dataset2$`Seniority Status`[which(Dataset2$`Seniority Status` == TRUE)] <- "Senior"
+
+
+Dataset2 <- Dataset2 %>%
+  mutate(Bachelor = grepl("Bachelor", .$Job.Description, ignore.case=TRUE)) %>%
+  mutate(Master = grepl("Master", .$Job.Description, ignore.case=TRUE)) %>%
+  mutate(PhD = grepl("Phd", .$Job.Description, ignore.case=TRUE))
+
+Dataset2$Min_edu <- Dataset2$Job_Title
+Dataset2$Min_edu[Dataset2$Bachelor] <- "Bachelor"
+Dataset2$Min_edu[!Dataset2$Bachelor & Dataset2$Master] <- "Master"
+Dataset2$Min_edu[!Dataset2$Bachelor & !Dataset2$Master] <- "None"
+Dataset2$Min_edu <- factor(Dataset2$Min_edu, levels = c("None", "Bachelor", "Master"))
+
+cor.test(Dataset2$Avg.Salary.K., as.numeric(Dataset2$Python))
+
+cor.test(Dataset2$Avg.Salary.K., as.numeric(Dataset2$aws))
+
+Dataset2 %>%
+  group_by(Min_edu) %>%
+  summarise(mean_tools = mean(No_tools), mean_sal = mean(Avg.Salary.K.))
+
+```
+
+```{r mutation2}
+Dataset2 = Dataset2 %>% left_join(statepop %>% select(abbr, fips), by = c("Job.Location" = "abbr"))
+
+
+fips_table = data.frame(Dataset2 %>% 
+  group_by(fips) %>%
+  summarise(Avg.Salary.K. = mean(Avg.Salary.K.)) )
+
+
+Dataset2$Job.Location = parse_factor(Dataset2$Job.Location)
+
+class(Dataset2$Job.Location)
+table(Dataset2$Job.Location)
+
+mini_frame = data.frame(table(Dataset2$fips))
+mini_frame["fips"] = mini_frame$Var1 
+
+
+```
+
+## Job Title, Type of ownership and Seniority status
+### Descriptive figures
+
+```{r Table1}
+summary(Dataset2$Avg.Salary.K)
+summarise(Dataset2, mean=mean(Dataset2$Avg.Salary.K), sd=sd(Dataset2$Avg.Salary.K))
+```
+*Table 1 and 2*: Tables with summary statistics on relevant variables
+
+```{r Average Salary}
+Average_salary <-
+  Dataset2 %>% 
+  ggplot() +
+  geom_density(aes(x = Avg.Salary.K.), fill = "#5ab4ac", alpha = 0.8) +
+  geom_segment(aes(x = mean(Avg.Salary.K.), y = 0, xend = mean(Avg.Salary.K.), yend = Mean_density_Avg_Sal)) +
+  theme_minimal() +
+  labs(x = "Average salary [1K USD]", y = "") +
+  ylim(0, 0.011) 
+Average_salary
+```
+
+*Figure 1*: Density plot of the average salary expressed in thousands of US Dollars. The vertical black line represents the mean average salary.
+
+```{r Job Title}
+Job_Title <-
+  Dataset2 %>% 
+  ggplot() +
+  geom_bar(aes(x = job_title_sim), fill = "#5ab4ac", alpha = 0.8, colour = "black") + 
+  theme_minimal() +
+  labs(x = "Job title", y = "Quantity") +
+  coord_flip()
+Job_Title
+```
+
+*Figure 2*: Bar plot of the number of jobs divided by job title category.
+
+```{r Type of ownership}
+Type_ownership <-
+  Dataset2 %>% 
+  ggplot() +
+  geom_bar(aes(x = Type.of.ownership), fill = "#d8b365", alpha = 0.8, colour = "black") +
+  theme_minimal() +
+  labs(x = "Count", y = "Type of ownership") +
+  coord_flip() 
+Type_ownership
+```
+
+*Figure 3*: Bar plot of the number of jobs divided by type of ownership of the company.
+
+### Exploratory figures
+
+```{r }
+Salary_Job <-
+  Dataset2 %>% 
+  ggplot(aes(x = job_title_sim, y=Avg.Salary.K.)) +
+  #geom_bar(stat='identity', fill = "#008A7D") + 
+  geom_boxplot() + 
+  theme_minimal() +
+  labs(x = "Job title", y = "Average Salary") +
+  coord_flip()
+Salary_Job
+```
+
+*Figure 4*: Box-whisker plot of the average salary per category of job title.
+
+```{r }
+Salary_Job_ownership <-
+  aggregate(Avg.Salary.K.~job_title_sim + Type.of.ownership,data=Dataset2,FUN=mean) %>% 
+  ggplot(aes(x = job_title_sim, y=Avg.Salary.K.)) +
+  geom_bar(stat='identity', fill = "#5ab4ac", colour = "black", alpha = 0.8) + 
+  #geom_bar() + 
+  theme_minimal() +
+  labs(x = "Job title", y = "Average Salary") +
+  facet_wrap(~Type.of.ownership) +
+  coord_flip()
+Salary_Job_ownership
+
+```
+
+*Figure 5*: Bar plot of the mean average salary per category of job title, separated by the type of ownership the company has.
+
+```{r }
+Salary_Job_seniority <-
+  aggregate(Avg.Salary.K.~job_title_sim + `Seniority Status`, data=Dataset2,FUN=mean) %>% 
+  ggplot(aes(x = job_title_sim, y=Avg.Salary.K., fill = `Seniority Status`)) +
+  geom_bar(stat='identity', colour = "black", alpha = 0.8, position = "dodge") + 
+  #geom_bar() + 
+  theme_minimal() +
+  labs(x = "Job title", y = "Average Salary") +
+  scale_fill_manual(values = c("#d8b365","#5ab4ac")) +
+  coord_flip()
+Salary_Job_seniority
+
+```
+
+*Figure 6*: Grouped bar plot of the mean average salary per category of job title, separated by seniority status.
+
+### Figure explanation
+Before analyzing the data, we applied mutations and transformation to enhance the usability of the data set. First, we grouped single entries in the Job Title variable to larger categories (such as machine learning engineer). Additionally (in the Job Title variable), categories wih only a few entries were grouped into larger categories. Similarly, we reduced the number of groups in the variable 'Type of ownership' by grouping the small categories: 
+
+* 'School/school district', 'college/university', 'government', under 'other organizations'
+* 'Subsidiary or business segement' under 'company'
+* 'Hospital' under 'Non-profit' (manually checked for non-profit status)
+
+Finally, we have split the variable seniority into 'Seniority' and 'Non-Seniority. Figures 1 to 3 show descriptive plots regarding the variables: Average salary, Job title and Type of ownership. We used this information to create a set of exploratory plots (Figure 4, 5 and 6). By creating a boxplot for the variables Job Title and Average salary, it becomes clear that the level of salary for data scientist has the highest variance, with both the highest as well as lowest salary. On average, analysts have the lowest average salary, while directors have the highest. The data scientists, data engineer and analyst titles all have a noticeable number of outliers. While most have outliers on the higher end of the average salary, potentially influenced by other variables, one outlier in the data scientist category has an exceptionally low average salary. We expect that this may be due to it being a part-time position. Thus, Figure 4 shows that Job Title is an important predictor for the average salary. To further investigate this we will look at Figure 5, where we have included a division based on the type of ownership of the company. This Figure shows that jobs in both non-profit as well as other organizations have markedly lower average salaries than jobs at publicly and privately owned companies. Furthermore, for some job titles (such as machine learning engineer and director), the level of salary highly depends on the type of ownership of the company. Lastly, Figure 6 shows the average salary per job title split in senior and non-senior positions. Evidently, the average salary for senior positions is decidedly higher than those with a non-senior position. Overall, this first part of our analysis shows that job title, type of ownership of the company and seniority position all influence the average salary of jobs in Data Science.
+
+## Education level and skills
+
+Next up, the minimum eductation level for the job positions is extracted from the job description. This is done by looping through the descriprion
+
+```{r F7}
+ ggplot(Dataset2) +
+  geom_boxplot(aes(x = Min_edu, y = Avg.Salary.K.)) +
+  theme_tufte() + labs(title = 'Salary per education level')
+```
+
+*Figure 7*: A boxplot of the average salaries per education level.
+
+
+```{r F8}
+ggplot(Dataset2)+
+  geom_boxplot(aes(x = Min_edu, y = Avg.Salary.K.)) + facet_grid(vars(aws), vars(Python), labeller = labeller(.rows = label_both, .cols = label_both)) +
+theme_tufte() + labs(x = 'Minimum education', y = 'Average salary [thousands of dollars per annum]', title = 'Average salary vs Skills and education level')
+```
+
+*Figure 8*: Boxplot showing the average salaries facetted by different skills. From the figure it becomes clear that degree only matters for some cases, when certain skills are not present.
+
+```{r F9}
+Df <- Dataset2  %>% group_by(Min_edu, No_tools) %>% summarise(mean_sal = mean(Avg.Salary.K.), er = sd(Avg.Salary.K.)) 
+ggplot(Df)+
+  geom_bar(aes(x = No_tools, y = mean_sal, fill = Min_edu), position = 'dodge', stat = 'identity', color = 'Black') +
+  scale_fill_manual(values = c('#d8b365', '#f5f5f5','#5ab4ac'), limits = c("None", "Bachelor", "Master")) +
+theme_minimal() + labs(x = 'Number of tools', y = 'Average salary [thousands of dollars per annum]', title = 'Average salary vs Skills and education level') + #geom_errorbar(aes(x = No_tools, ymin = mean_sal - er, ymax = mean_sal + er, fill = Min_edu), position = 'dodge', color = 'black') +
+  scale_x_continuous(breaks= pretty_breaks())
+```
+
+*Figure 9*: Barplot showing the mean average salary, grouped by minimum education level and number of tools
+
+```{r F10}
+ggplot(Dataset2) +
+  geom_bar(aes(x = No_tools, fill = Min_edu), color = "Black", alpha = 0.8, position = 'Dodge', stat = 'Count')+ 
+  scale_fill_manual(values = c('#d8b365', '#f5f5f5','#5ab4ac'), limits = c("None", "Bachelor", "Master")) + 
+  facet_wrap(~factor(Min_edu, levels = c("None", "Bachelor", "Master"))) +
+  theme_minimal() + labs(x = "Number of tools", title = "Number of tools per education level") +
+  scale_x_continuous(breaks= pretty_breaks())
+```
+
+*Figure 10*: Figure 4: A bar plot showing the number of tools per education level
+
+The job description variable was checked for degree specifications to determine the minimal degree requirements for the position. In fig. 1, the average salary for different education levels is shown. As seen from the plot, the mean average salary for master degrees is higher than the salary for bachelor degrees and positions that don't list a degree. The mean wage for positions that don't explicitly list a degree is however almost as high as for the positions that require a masters, and much higher than the positions that require a bachelor, indicating that educational requirements aren't the factor when determining salary. This is rather surprising, as a higher degree would indicate a stronger knowledge base and therefore potentially a higher salary. It could be that the positions that don't list degree requirements simply place more stringent requirements on skills. When preforming a cor-test, it is quickly seen that when a position requires knowledge of python, the average salary tends to be higher (p-value < 2.2e-16, cor = 0.37). Amazon Web Services (aws) is another tool that is often used for data science and correlates with salary as well (p-value < 2.2e-16, cor = 0.17). In figure 2, a boxplot of the salaries are shown for different minimum educations. The facets are based on the required skills (horizontal direction: python, vertical direction: excel). It illustrates that master degrees mostly lead to higher wages when Python is not listed as a requirement. If Python is a requirement, the mean average salary is lower than the jobs that don't require a degree and if aws is as well required, even the mean average salaries of jobs requiring a bachelor come close. When aws is a requirement and Python, master degrees make significantly more than the other categories, so the plot doesn't necessarily support the hypothesis. Therefore, we will look at plot 3. We see that jobs that don't list education as a requirement just tend to bring in more than bachelor degrees and (almost) as much as master degrees. We can therefore actually reject the previous hypothesis; the gap exists independent of the amount of tools used. The type of tool also seems to be a more important influence than the absolute number of tools. 
+
+
+## Location
+
+```{r F11}
+
+plot_usmap(data = mini_frame, values = "Freq", color = "black", labels = T) + 
+  scale_fill_continuous(
+    low = "white", high = "orange", name = "Number of data science jobs", label = scales::comma
+  ) + theme(legend.position = "right")
+```
+
+*Figure 11*: Number of Data science jobs per state
+
+```{r }
+plot_usmap(data = fips_table,  values = "Avg.Salary.K.", color = "black", labels = TRUE) + 
+scale_fill_continuous(
+    low = "white", high = "seagreen" , name = "Average salary", label = scales::comma
+  ) + theme(legend.position = "right")
+
+Dataset2 %>% 
+  filter(Avg.Salary.K. != -1) %>% 
+  group_by(Job.Location) %>%
+  summarise(Avg.Salary.K. = mean(Avg.Salary.K.)) %>%
+  ggplot(aes(x = reorder(Job.Location, -Avg.Salary.K.), y = Avg.Salary.K.)) +
+  geom_col(fill="#d8b365", alpha=.6, width=.4) +
+  theme_bw() +
+  labs(x = "State", y = "Average salary per year (K$)",
+       title = "Average yearly salary per state")
+```
+
+*Figure 12*: Map and barplot of average salary per state.
+
+```{r F13}
+states = c("CA", "IL", "MA", "IN", "FL", "NE" ) # 3 rich -1 middle - 2poor
+
+Dataset2 %>% 
+  filter(Job.Location %in% states) %>% 
+  filter(Rating != -1, Avg.Salary.K. != -1) %>% 
+  ggplot(mapping = aes(x = Avg.Salary.K., y = Rating)) +
+  geom_point(color = "mediumturquoise") +
+  facet_wrap(~Job.Location) +
+  theme_minimal() +
+  labs(x = "Average yearly salary (K$) ", y = "Rating",
+       title = "Average salary vs rating per state")
+```
+
+*Figure 13*: Scatter plots of average salary vs satisfaction (rating) per state.
+
+We are interested in the question *Is the location of the job correlated with salary?* .We are also interested to see whether there are any major regional clusters of higher salary. We can see in Figure 13 that California and the north-east coast seem to have the most data-science related jobs. There is no visible major regional cluster.Regarding the states poor in jobs, it might be that data from those states is missing from this data set. Then, we plotted the actual average income per state. Again, California is standing out as a great place for data science jobs when it comes to salary. Illinois also hosts a lot of good paying job opportunities. Overall, location seems to be a good predictor of income. As a following question, we were interested in seeing weather there is a relationship between salary, location and satisfaction. For this, we chose 6 states to be compared:
+
+<ul>
+
+<li>CA, IL, MA - high salary states</li>
+
+<li>IN - medium salary state</li>
+
+<li>FL, NE - medium-low and low salary states</li>
+
+</ul>
+
+In none of the states selected seem to be a correlation between salary and satisfaction (company rating). We can observe that even with high salary (\> 150k) rating can stay low (the case of CA and IL).
+
+## Sector
+```{r }
+Dataset2 %>% 
+  filter(Sector != -1) %>% 
+  group_by(Sector) %>% 
+  summarise(Counts = n()) %>% 
+  arrange(desc(Counts)) %>% 
+  slice(1:10) %>% 
+  ggplot(mapping = aes(x = reorder(Sector, -Counts), y = Counts)) +
+  
+  geom_col(fill = "#5ab4ac") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Sector", y = "Number of jobs",
+       title = "Number of jobs per sectors")
+```
+
+*Figure 14*: Top 10 sectors that employ the most data scientists (or related jobs).
+
+```{r }
+Dataset2 %>% 
+  filter(Avg.Salary.K. != -1, Sector != -1) %>% 
+  group_by(Sector) %>% 
+  summarise(mean = mean(Avg.Salary.K.)) %>% 
+  arrange(desc(mean)) 
+
+Dataset2 %>% filter(Avg.Salary.K. != -1, Sector != -1) %>% select(Avg.Salary.K.) %>% summary()
+```
+
+*Table 3* Top 10 best paying sectors and the average salary distribution.
+
+We also looked at which sectors might provide a greater income for data scientists or related. The bar plot provides information regarding which sectors need the most data scientists. Clearly the IT sector has the most data-science jobs. The difference between IT sector and Healthcare or Retail, for example, is quite big, meaning that there are significant differences between sectors when it comes for data scientists requirement. However, difference in salary between different sectors is not too dramatic. Overall, **the sector does not seem to be a good predictor of salary** as most sectors are close to the total average of salary (110K).
+
+

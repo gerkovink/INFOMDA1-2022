@@ -1,0 +1,209 @@
+---
+title: "Practical 1: Data Wrangling"
+author: "Nina van Gerwen"
+date: "13-09-2018"
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+First, load the packages:
+
+```{r load_packages, warning=FALSE}
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+```
+
+### 1. Objects and classes
+
+```{r objects}
+object_1 <- 1:5 ## integers
+object_2 <- 1L:5L ## integers
+object_3 <- "-123.456" ## character
+object_4 <- as.numeric(object_2) ## numeric
+object_5 <- letters[object_1] ## characters
+object_6 <- as.factor(rep(object_5, 2)) ## factors
+object_7 <- c(1, 2, 3, "4", "5", "6") ## characters
+```
+
+### 2. Converting
+
+```{r converting}
+object_7 <- as.numeric(object_7)
+```
+
+### 3. Making a list
+
+```{r listing}
+objects <- list(object_1, object_2, object_3, object_4, object_5,
+                  object_6, object_7)
+```
+
+### 4. Making a data frame
+
+```{r framing}
+object_frame <- data.frame(object_1, object_2, object_5)
+```
+
+### 5. Determining the size of a data frame
+
+```{r}
+ncol(object_frame) ## 3
+nrow(object_frame) ## 5
+```
+
+## Loading, viewing and summarising data
+
+### 6. Importing google data
+
+```{r importing data, warning=FALSE}
+apps <- read_csv("Data/googleplaystore.csv")
+```
+
+### 7. Unexpected results
+
+```{r}
+str(apps)
+```
+The variables 'Category', 'Size', 'Installs', 'Price', 'Content Rating',
+'Genres' and 'Android Ver' should probably be a Factor instead of a Character.
+
+### 8. The head
+
+```{r}
+head(apps)
+```
+
+### 9. Students data
+
+```{r}
+## Loading data
+students <- read_xlsx("Data/students.xlsx")
+
+## Seeing the class of every variable
+str(students)
+
+head(students)
+```
+
+Again, the variable 'Programme' should probably be a factor. 
+
+### 10. Summarising 
+
+```{r}
+summary(students)
+```
+The grades achieved by students ranges from 4.84 to 9.29 with an average
+grade of 7.15.
+
+## Data transformation
+
+### 11. Filtering
+
+```{r}
+students %>% filter(., grade < 5.5)
+```
+
+### 12. More filtering
+
+```{r}
+students %>% filter(., grade > 8 & programme == "A")
+```
+
+### 13. Arranging
+
+```{r}
+students %>% arrange(., programme, desc(grade))
+```
+We use desc(grade) because we want the order to be descending and not
+ascending.
+
+### 14. Selecting
+
+```{r}
+students %>% select(., student_number, programme)
+```
+### 15. Mutating
+
+```{r}
+students_recoded <- students %>% mutate(., programme = recode(programme, 
+                                        A = "Science", B = "Social Science"))
+```
+
+So the above code states: students_recoded will be students, where
+we mutated the column programme such that A = Sciencce, B = Social Science.
+
+## Data processing pipelines
+
+### 16. Pipelining
+
+```{r}
+popular_apps <-
+  read_csv("Data/googleplaystore.csv") %>%
+  mutate(Downloads = parse_number(Installs)) %>%
+  filter(Downloads > 500000000) %>%
+  arrange(desc(Rating)) %>%
+  select(Rating, Category, Price, App) %>%
+  distinct(App, .keep_all = TRUE)
+
+popular_apps
+```
+
+## Grouping and summarisation
+
+### 17 & 18. Summarising
+
+The median of which variable exactly? I'm guessing Rating.
+
+```{r}
+mad <- function(x){
+  median(abs(x - median(x)))
+}
+popular_apps %>%
+  summarise(
+    median = median(Rating),
+    min = min(Rating),
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+```
+
+### 19. Grouped summary
+
+```{r}
+popular_apps %>%
+  group_by(Category) %>%
+  summarise(
+    median = median(Rating),
+    min = min(Rating),
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+```
+
+## Final Exercise
+
+Summary of how many Downloads per category:
+
+```{r}
+own_summary <-
+  read_csv("Data/googleplaystore.csv") %>%
+  mutate(Downloads = parse_number(Installs)) %>%
+  group_by(Category) %>%
+  summarise(
+    mean = mean(Downloads),
+    min = min(Downloads),
+    max = max(Downloads),
+    var = var(Downloads)
+  ) %>%
+  arrange(desc(mean))
+
+own_summary
+```
+From this summary, we can see that on average 'Communication' apps get the most downloads. However, we do not know whether the difference between the other apps categories and Communication is significant (though I would bet good money on it).
+

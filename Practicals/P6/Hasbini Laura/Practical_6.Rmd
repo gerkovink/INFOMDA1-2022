@@ -1,0 +1,359 @@
+---
+title: "Practical_6"
+author: "Hasbini Laura"
+date: "17 octobre 2022"
+output: html_document
+---
+
+# Classification evaluation
+
+## Introduction
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+```{r}
+set.seed(45)
+```
+
+## Confusion matrix, continued
+
+#### Question 1 
+"Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability."
+
+```{r}
+treat <- read_csv("data/cardiovascular_treatment.csv") 
+
+treat %>% mutate(severity <- as.factor(severity), 
+                          gender <- as.factor(gender),
+                          dose <- as.factor(dose),
+                          response <- as.factor(response))
+
+lr_mod <- glm(response ~ ., "binomial", treat)
+
+prob_lr <- predict(lr_mod, type="response")
+pred_lr <- ifelse(prob_lr > .5, 1, 0)
+
+matrix_lr <- table(true = treat$response, pred = pred_lr)
+matrix_lr
+```
+
+
+#### Question 2 
+"Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the confusion matrix table on wikipedia. What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?"
+
+```{r}
+TN <- matrix_lr[1,1]
+FN <- matrix_lr[2,1]
+FP <- matrix_lr[1,2]
+TP <- matrix_lr[2,2]
+
+Acc = (TP+TN)/(TP+FP+TN+FN)
+TPR = TP/(TP+FN)
+TNR = TN/(TN+FP)
+FPR = FP /(TN+FP) 
+PPV = TP/(TP+FP)
+NPV = TN/(TN+FN)
+
+tibble(Acc = Acc, 
+       TPR = TPR, 
+       TNR = TNR, 
+       FPR = FPR, 
+       PPV = PPV, 
+       NPV = NPV)
+```
+
+
+We are here looking at the quality of a model predicting disease. As a disease may have bad consequenses, we are mostly interested in finding all the people infected. In other words, we want to have a high specificity (TNR). This would mean that a patient predicted negative by the model, is in fact negative to the disease. Here this rate is worth 0.614 which is quite low for a disease prediction. 
+
+#### Question 3 
+"Create an LDA model lda_mod for the same prediction problem. Compare its performance to the LR model."
+
+```{r}
+lda_mod <- lda(response ~ ., treat)
+
+pred_lda <- predict(lda_mod)$class
+matrix_lda <- table(true=treat$response, pred = pred_lda)
+
+TN <- matrix_lda[1,1]
+FN <- matrix_lda[2,1]
+FP <- matrix_lda[1,2]
+TP <- matrix_lda[2,2]
+
+Acc = (TP+TN)/(TP+FP+TN+FN)
+TPR = TP/(TP+FN)
+TNR = TN/(TN+FP)
+FPR = FP /(TN+FP) 
+PPV = TP/(TP+FP)
+NPV = TN/(TN+FN)
+
+tibble(Acc = Acc, 
+       TPR = TPR, 
+       TNR = TNR, 
+       FPR = FPR, 
+       PPV = PPV, 
+       NPV = NPV)
+
+```
+
+We can see that the performances we are interested in are the same with this new method. 
+
+#### Question 4 
+"Compare the classification performance of lr_mod and lda_mod for the new patients in the data/new_patients.csv."
+
+```{r}
+new_patients <- read_csv("data/new_patients.csv") 
+
+new_patients %>% mutate(severity <- as.factor(severity), 
+                        gender <- as.factor(gender), 
+                        dose <- as.factor(dose), 
+                        response <- as.factor(response))
+
+pred_lda_new <- predict(lda_mod, newdata = new_patients)$class
+prob_lr_new <- predict(lr_mod, newdata = new_patients)
+pred_lr_new <- ifelse(prob_lr_new > .5, 1, 0)
+
+matrix_lr_new <- table(true=new_patients$response, pred= pred_lr_new)
+matrix_lr_new
+
+matrix_lda_new <- table(true = new_patients$response, pred=pred_lda_new)
+matrix_lda_new
+
+
+```
+
+```{r}
+TNR_lda_new = matrix_lda_new[1, 1] / (matrix_lda_new[1, 1] + matrix_lda_new[1, 2])
+TNR_lr_new = matrix_lr_new[1, 1] / (matrix_lr_new[1, 1] + matrix_lr_new[1, 2])
+
+TNR_lda_new
+TNR_lr_new
+```
+
+We can see that the TNR (specificity) rate is different between the two dataset. 
+I seems that performances of the lr methods are better if our goal is not to miss anyone positive to the disease. 
+
+"Calculate the out-of-sample brier score for the lr_mod and give an interpretation of this number."
+
+```{r}
+mean((prob_lr_new - (as.numeric(new_patients$response)-1))^2)
+```
+
+This score represents the mean squared difference between the probability estimated on the test set and the true class.
+
+## ROC curve
+
+#### Question 5 
+"Create two LR models: lr1_mod with severity, age, and bb_score as predictors, and lr2_mod with the formula response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose. Save the predicted probabilities on the training data."
+
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score, family = "binomial", data = treat)
+prob_lr1 <- predict(lr1_mod, type="response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score*prior_cvd*dose, family = "binomial", data = treat)
+prob_lr2 <- predict(lr2_mod, type="response")
+
+```
+
+#### Question 6 
+"Use the function roc() from the pROC package to create two ROC objects with the predicted probabilities: roc_lr1 and roc_lr2. Use the ggroc() method on these objects to create an ROC curve plot for each. Which model performs better? Why?"
+
+```{r}
+roc_lr1 <- roc(treat$response, prob_lr1)
+roc_lr2 <- roc(treat$response, prob_lr2)
+```
+
+```{r}
+roc_plot_lr1 <- ggroc(roc_lr1) + theme_minimal() + labs(title = 'LR1')
+roc_plot_lr2 <- ggroc(roc_lr2) + theme_minimal() + labs(title = 'LR2')
+
+cowplot::plot_grid(roc_plot_lr1, roc_plot_lr2, nrow = 2, align='v')
+```
+
+We can see that the LR2 curve is getting gloser to the upper left corner, which means this prediction model performs better. 
+
+#### Question 7 
+"Print the roc_lr1 and roc_lr2 objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?"
+
+```{r}
+roc_lr1
+```
+```{r}
+roc_lr2
+```
+Again, we can see that the area under the curve is bigger with lr_2. This suggest that lr_2 performs better. 
+
+A pefect AUC would be worth 1. With this feature, the curve will go in the upper left corner and be connect to (0,0) and (1,1) with straigt lines. 
+
+## Iris dataset 
+
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+pred_iris <- predict(lda_iris, type="response")$class
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+#### Question 8 
+```{r}
+summary(iris)
+```
+
+```{r}
+#Plot of the length of the sepal
+
+plot_sepal <- iris %>%
+  ggplot(aes(x=Sepal.Length, y=Sepal.Width, color = Species)) + 
+  geom_point() +
+  scale_color_viridis_d(guide=) + 
+  theme_minimal() +
+  labs(title='Sepal')
+
+plot_petal <- iris %>%
+  ggplot(aes(x=Petal.Length, y=Petal.Width, color = Species)) + 
+  geom_point() +
+  scale_color_viridis_d(guide=) + 
+  theme_minimal() + 
+  labs(title='Petal')
+
+cowplot::plot_grid(plot_sepal, plot_petal, nrow=2, align='v')
+```
+
+The previous plot show the relation between Width and Lenght for respectively the Sepal and the petal. 
+For the sepal the species are quite mixed and it's not possible to underlines any pattern.
+Regarding the petal, the differenciation between the species is more visibles. The petals of the specie 'Setosa' have small length and width while the "Virginica"" one has big length and width. The specie "Versicolor" has medium petal's length and width which is slighly overlapping the 'Virginica' one. 
+On top of that, we can note that all the species follow a linear line characterizing the proportionnality between the lenght and the width of the petal.
+We can conclude that there is a strong separation between the species, comming from their petals shape. 
+
+#### Question 9 
+"Fit an additional LDA model, but this time with only Sepal.Length and Sepal.Width as predictors. Call this model lda_iris_sepal"
+
+```{r}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, iris)
+pred_iris_sepal = predict(lda_iris_sepal, type="response")$class
+```
+
+#### Question 10 
+"Create a confusion matrix of the lda_iris and lda_iris_sepal models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?"
+
+```{r}
+matrix_iris <- table(true = iris$Species, pred = pred_iris)
+matrix_iris_sepal <- table(true = iris$Species, pred = pred_iris_sepal) 
+
+matrix_iris
+matrix_iris_sepal
+```
+
+We can see that when using only the Sepal Width and Length the model doesn't perform that well. In particular the species 'Versicolor' and 'Virginica' are mixed. 
+
+## Classification trees
+
+#### Question 11
+"Use rpart() to create a classification tree for the Species of iris. Call this model iris_tree_mod. Plot this model using rpart.plot()."
+
+```{r}
+iris_tree_mod <- rpart(Species ~., data=iris)
+rpart.plot(iris_tree_mod)
+```
+
+#### Question 12
+"How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?"
+
+With a petal of 2,7cm long and 1.5cm wide, the iris would be classified as a 'setosa' specie. 
+
+#### Question 13
+"Create a scatterplot where you map Petal.Length to the x position and Petal.Width to the y position. Then, manually add a vertical and a horizontal line (using geom_segment) at the locations of the splits from the classification tree. Interpret this plot."
+
+```{r}
+iris %>%
+  ggplot(aes(x=Petal.Length, y=Petal.Width, colour=Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend=2.5, y=-Inf, yend=Inf), colour="black") +
+  geom_segment(aes(x= 2.5, xend=Inf, y=1.78, yend=1.78), colour="black") +
+  scale_colour_viridis_d() + 
+  theme_minimal()
+```
+
+We can see that the 'Setosa' specie is always well classified as it's clustererd and far from the other species. For 'Virginica' and 'Versicolor' some points overlap over each others, thus creating a miss classification. 
+
+#### Question 14
+"Create a classification tree model where the splits continue until all the observations have been classified. Call this model iris_tree_full_mod. Plot this model using rpart.plot(). Do you expect this model to perform better or worse on new Irises?"
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 1, cp = 0))
+rpart.plot(iris_tree_full_mod)
+```
+
+This model is overfitted. The bias might be low but the variance is likely really high. Consequently, we can expect that this model will not perform well on a new data set
+
+## Final assignment : Random forest for classification
+
+#### Question 15
+"Use the function randomForest() to create a random forest model on the iris dataset. Use the function importance() on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the lda_iris model?"
+
+```{r}
+iris_rf_mod <- randomForest(Species ~ . , data = iris)
+pred_iris_rf <- predict(iris_rf_mod, type="response")
+
+var_imp <- importance(iris_rf_mod)
+tibble(
+  importance = c(var_imp), 
+  variable = rownames(var_imp)
+) %>%
+  ggplot(aes(x=variable, y=importance, fill=variable)) +
+  geom_bar(stat="identity") + 
+  scale_fill_viridis_d() + 
+  theme_minimal() 
+```
+
+As we could as expect, the most important variables are the Petal Length and the Petal Width, that why they have been used as the first division criteria on the previous tree. 
+
+```{r}
+matrix_iris_rf <- table(true = iris$Species, pred = pred_iris_rf)
+matrix_iris
+matrix_iris_rf
+```
+
+It seems that within the sample the lda performs better that the random forest. However to assess a more robust comparition of performances, we would need to compute the respective scores on other test or out of the box samples.
+
+
+
+
+
+
+
+
+
+
+
+
+
+

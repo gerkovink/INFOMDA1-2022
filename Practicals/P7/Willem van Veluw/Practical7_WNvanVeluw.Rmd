@@ -1,0 +1,278 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "24-10-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 7
+---
+For this practical, we need the following packages. We will also set the seed.
+```{r}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+
+### Exercise 1
+```{r}
+pred_plot <- function(lm){
+  x_pred <- data.frame(lstat = seq(min(Boston$lstat), max(Boston$lstat), length.out = 1000))
+  preds <- data.frame(lstat = x_pred,
+                      medv = predict(lm, newdata = x_pred))
+  
+  Boston %>% ggplot(aes(x = lstat, y = medv)) +
+     geom_point() +
+     geom_line(data = preds, color = "red", size = 1) +
+     theme_minimal()
+}
+```
+
+### Exercise 2
+I think there is not so much out of the ordinary with the predictions.
+```{r}
+lin_mod <- lm(medv ~ lstat, Boston)
+pred_plot(lin_mod)
+```
+
+### Exercise 3
+```{r}
+pn3_mod <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3),
+              data = Boston)
+pred_plot(pn3_mod)
+```
+
+### Exercise 4
+The function `poly()` needs (at least) a vector with values. Then it substitutes these values in the basis functions of the defined polynomial. If only the vector is fed into `poly()`, it uses a linear "polynomial".  
+With the argument `degree` one can specify the degree of the polynomial. A cubic polynomial is for instance specified by `degree = 3`.  
+If the argument `raw` is specified as TRUE, `poly()` returns the raw values, i.e. the specified vector. It then works similar to the identity function.
+```{r}
+x <- c(-5:5)
+poly(x)
+poly(x, degree = 3)
+poly(x, raw = TRUE)
+```
+
+### Exercise 5
+There is not much of a difference in the prediction between the model of exercise 3 and this model. Both produce equivalent prediction lines.
+```{r}
+pn3_poly <- lm(medv ~ poly(lstat, degree = 3, raw = TRUE), Boston)
+pred_plot(pn3_poly)
+```
+
+### Exercise 6
+The median value of `lstat` equals 11.36. Hence, the regression formula of `pw2_mod` is $medv = \beta_0 +\beta_1\cdot I_{\{lstat \leq 11.36\}}$, where $I_{\{...\}}$ is an indicator function. The fitted model returns the function 
+$$
+medv = 16.677 + 11.711\cdot I_{\{lstat \leq 11.36\}}.
+$$
+Now, a low-lstat neighbourhood typically has a lstat-value less that 11.36. Therefore, the indicator equals 1 and the prediction will be $medv = 16.677 + 11.711\cdot 1 = 28.388$.
+
+```{r}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), Boston)
+pred_plot(pw2_mod)
+coef(pw2_mod)
+```
+
+### Exercise 7
+```{r}
+pw5_mod <- lm(medv ~ cut(lstat, 5), Boston)
+pred_plot(pw5_mod)
+```
+
+### Exercise 8
+```{r}
+breaks <- c(-Inf, quantile(Boston$lstat), Inf)
+pwq_mod <- lm(medv ~ cut(lstat, breaks = breaks),
+              data = Boston)
+pred_plot(pwq_mod)
+```
+
+### Exercise 9
+```{r}
+piecewise_cubic_basis <- function(vec, knots = 1) {           
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))   # If there are no knots, do not split the domain and return a polynomial of degree 3
+  
+  cut_vec <- cut(vec, breaks = knots + 1)                     # If the number of knots is specified, cut up the domain according to the knots.  
+                                                              # We have now divided the domain into __knots__ parts.
+  out <- matrix(nrow = length(vec), ncol = 0)                 # Initialise the resulting matrix
+  
+  for (lvl in levels(cut_vec)) {                              # For every part of the domain, do
+    tmp <- vec                                                
+    tmp[cut_vec != lvl] <- 0                                  # Collect the datapoints in the part
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))      # Based on these datapoints compute a polynomial of degree 3
+  }
+  
+  out
+}
+```
+
+### Exercise 10
+```{r}
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 1), Boston)
+pred_plot(pc1_mod)
+
+pc2_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 2), Boston)
+pred_plot(pc2_mod)
+
+pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 3), Boston)
+pred_plot(pc3_mod)
+```
+
+### Exercise 11
+```{r}
+boston_tpb <- Boston %>% select(medv, lstat)
+```
+
+### Exercise 12
+```{r}
+boston_tpb <- boston_tpb %>% mutate(lstat2 = lstat^2,
+                                    lstat3 = lstat^3)
+```
+
+### Exercise 13
+```{r}
+val <- (Boston$lstat - median(Boston$lstat))^3
+boston_tpb <- boston_tpb %>% 
+  mutate(lstat_tpb = ifelse(lstat <= median(lstat), val, 0))
+```
+
+### Exercise 14
+There are four predictors in the model and it has 501 degrees of freedom.
+```{r}
+tpb_mod <- lm(medv ~ ., boston_tpb)
+```
+
+### Exercise 15
+The models have equivalent error on the training set. Hence, we can consider the models to be equivalent.
+```{r}
+bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat)), data = Boston)
+mse_tpb <- sum((Boston$medv - predict(tpb_mod))^2)/nrow(Boston)
+mse_bs1 <- sum((Boston$medv - predict(bs1_mod))^2)/nrow(Boston)
+
+mse_tpb
+mse_bs1
+```
+
+### Exercise 16
+```{r}
+pred_plot(bs1_mod)
+```
+
+### Exercise 17
+We see different behaviour at the boundaries of the data. The natural spline behaves linearly, whereas the B-spline does not. Thus, we see the requirement of linearity reflected in the prediction plots.
+```{r}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), Boston)
+pred_plot(ns3_mod)
+```
+
+### Exercise 18
+```{r}
+library(cowplot)
+
+p1 <- pred_plot(lin_mod) + ggtitle("Linear model")
+p2 <- pred_plot(pn3_mod) + ggtitle("Polynomial")
+p3 <- pred_plot(pw5_mod) + ggtitle("Piecewise constant")
+p4 <- pred_plot(pc3_mod) + ggtitle("Piecewise cubic")
+p5 <- pred_plot(bs1_mod) + ggtitle("Cubic spline ")
+p6 <- pred_plot(ns3_mod) + ggtitle("Natural spline")
+
+cowplot::plot_grid(p1,p2,p3,p4,p5,p6)
+```
+
+### Exercise 19
+First we create the dataset and split it into twelve folds.
+```{r}
+fold_break <- floor(nrow(Boston)/12)
+fold <- c()
+for(i in 1:11){
+  fold <- c(fold, rep(i, fold_break))
+}
+fold <- c(fold, rep(12, nrow(Boston) - length(fold)))
+data <- Boston %>% select(medv, lstat) %>% mutate(fold = sample(fold))
+head(data)
+```
+
+We also need a function that computes the MSE.
+```{r}
+mse <- function(trues, preds){
+  return( sum((trues - preds)^2)/length(trues))
+}
+```
+
+Now we can train every model on the folds, compute its MSE and average the MSE over all folds.
+```{r, warning = FALSE}
+lin_mses <- c()
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ lstat, data = train)
+  preds <- predict(model, newdata = test)
+  lin_mses <- c(lin_mses, mse(test$medv, preds))
+}
+
+pn3_mses <- c()
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = train)
+  preds <- predict(model, newdata = test)
+  pn3_mses <- c(pn3_mses, mse(test$medv, preds))
+}
+
+pw5_mses <- c()
+breaks <- c(-Inf, 7, 15, 22, Inf)
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ cut(lstat, breaks), data = train)
+  preds <- predict(model, newdata = test)
+  pw5_mses <- c(pw5_mses, mse(test$medv, preds))
+}
+
+pc3_mses <- c()
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ piecewise_cubic_basis(lstat, knots = 3), data = train)
+  preds <- predict(model, newdata = test)
+  pc3_mses <- c(pc3_mses, mse(test$medv, preds))
+}
+
+bs1_mses <- c()
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ bs(lstat, knots = median(lstat)), data = train)
+  preds <- predict(model, newdata = test)
+  bs1_mses <- c(bs1_mses, mse(test$medv, preds))
+}
+
+ns3_mses <- c()
+for(i in 1:12){
+  train <- data %>% filter(fold != i)
+  test <- data %>% filter(fold == i)
+  model <- lm(medv ~ ns(lstat, df = 3), data = train)
+  preds <- predict(model, newdata = test)
+  ns3_mses <- c(ns3_mses, mse(test$medv, preds))
+}
+```
+
+The results of the cross validation is shown below. Since we want to minimise the MSE, we conclude that the Cubic Spline fits the best.
+```{r}
+cv12 <- data.frame(MSE = c(mean(lin_mses), mean(pn3_mses), mean(pw5_mses),
+                           mean(pc3_mses), mean(bs1_mses), mean(ns3_mses)),
+                   Method = c("Linear", "Cubic", "Piecewise Constant",
+                              "Piecewise Cubic", "Cubic Spline", "Natural Spline"))
+
+cv12 %>% ggplot(aes(x = Method, y = MSE, fill = Method)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme_minimal()
+```

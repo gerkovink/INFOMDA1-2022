@@ -1,0 +1,166 @@
+---
+title: "Practical 1"
+author: "Jim Regtien"
+date: "12-9-2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Exercise 1
+
+```{r}
+library(tidyverse)
+library(readxl)
+object_1 <- 1:5
+object_2 <- 1L:5L
+object_3 <- "-123.456"
+object_4 <- as.numeric(object_2)
+object_5 <- letters[object_1]
+object_6 <- as.factor(rep(object_5, 2))
+object_7 <- c(1, 2, 3, "4", "5", "6")
+```
+
+The first object will be a list of ints, same for the second and fourth objects. The third object will be a string/character. Object 5 will be a vector/list of strings, like the seventh object. The 6th object is a factor.
+
+```{r}
+print(class(object_1))
+print(class(object_2))
+print(class(object_3))
+print(class(object_4))
+print(class(object_5))
+print(class(object_6))
+print(class(object_7))
+```
+### Exercise 2
+```{r}
+as.numeric(object_7 )
+```
+
+### Exercise 3
+
+```{r} 
+obj_list <- list(object_1, object_2, object_3, object_4, object_5, object_6, object_7)
+obj_list
+```
+
+### Exercise 4
+
+```{r}
+obj_df <- data.frame(var_1 = object_1, var_2 = object_2, var_3 = object_5)
+obj_df
+```
+
+### Exercise 5
+
+```{r}
+print(nrow(obj_df)) 
+print(ncol(obj_df))
+```
+
+### Exercise 9
+```{r, message = FALSE}
+apps <- read_csv('googleplaystore.csv')
+print(head(apps))
+```
+
+The number of reviews is a double, while I would find it more natural for it to be an integer. The price is a chr, while it might be better if it was a double. 
+
+### Exercise 9
+```{r, message = FALSE}
+students <- read_xlsx('students.xlsx')
+print(head(students))
+```
+
+The student number should be an integer, as that type of objects requires less memory. 
+
+### Exercise 10
+```{r}
+summarise(students, mean =  round(mean(grade), 2), median = round(median(grade), 2),
+          variance = round(var(grade), 2), min = round(min(grade), 2), 
+          max = round(max(grade), 2))
+```
+The grades range from a 4.8 to a 9.3.
+
+### Exercise 11
+
+```{r}
+students %>%
+  filter(grade <= 5.5)
+```
+
+### Exercise 12
+
+```{r}
+students %>%
+  filter(grade >= 8) %>%
+  filter(programme == "A")
+```
+
+### Exercise 13
+
+```{r}
+students %>%
+  arrange(programme, grade)
+```
+
+### Exercise 14 
+```{r}
+students %>%
+  select(student_number, programme)
+```
+
+### Exercise 15
+
+```{r}
+students_recoded <- mutate(students, prog = recode(as.vector(students$programme), 
+                                                   A = "Science",
+                                                   B = "Social Science"))
+```
+
+### Exercise 16
+
+```{r, message=FALSE}
+popular_apps <- (read_csv('googleplaystore.csv') %>%
+  mutate(downloads = parse_number(Installs)) %>%
+  filter(downloads >= 5e7) %>%
+  arrange(desc(Rating)))
+```
+
+### Exercise 17
+
+```{r}
+popular_apps %>%
+  summarise(median = median(Rating), min = min(Rating), max = max(Rating))
+```
+### Exercise 18
+```{r}
+mad <- function(x) median(abs(x - median(x)))
+
+```
+
+```{r}
+popular_apps %>%
+  summarise(median = median(Rating), min = min(Rating), max = max(Rating), mad = mad(Rating))
+```
+
+### Exercise 19
+
+```{r, message=FALSE}
+popular_apps %>%
+  group_by(Category) %>%
+  summarise(median = median(Rating), min = min(Rating), max = max(Rating),
+            mad = mad(Rating))
+```
+
+### Exercise 20
+For this exercise, I will study if paid apps are rated higher than non-paid apps (i.e. does 'buyers remorse' play a role when rating apps). As we can see, the freely available apps are rated about 0.1 point lower than the paid apps. This is not a very significant difference. 
+
+```{r, message=FALSE}
+apps %>%
+  group_by(Type) %>%
+  na.omit() %>% #Ommiting the NaNs
+  summarise(mean = round(mean(Rating), 1), median = round(median(Rating), 2), sd = round(sd(Rating), 2))
+```

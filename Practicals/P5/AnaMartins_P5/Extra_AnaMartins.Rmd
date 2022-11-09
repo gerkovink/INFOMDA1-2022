@@ -1,0 +1,65 @@
+---
+title: "Regression 2"
+author: "Ana Martins"
+date: "October 2022"
+output: html_document
+---
+
+## Introduction
+
+```{r}
+library(ISLR)
+library(glmnet)
+library(tidyverse)
+```
+
+```{r}
+set.seed(45)
+```
+
+
+## Best subset selection
+
+1. **Prepare a dataframe `baseball` from the `Hitters` dataset where you remove the baseball players for which the `Salary` is missing. How many baseball players are left?**
+
+```{r}
+baseball <-
+  Hitters %>% 
+  filter_at(vars(Salary), all_vars(!is.na(.)))
+
+baseball
+```
+
+263.
+
+2. **Create `baseball_train` (50%), `baseball_valid` (30%), and `baseball_test` (20%) datasets.**
+
+```{r}
+split = sample(rep(c("train", "valid", "test"), times = c(round(0.5 * 263), round(0.3 * 263), round(0.2 * 263) - 1)))
+
+baseball <-
+  baseball %>% 
+  mutate(split = split)
+
+baseball_train <-
+  baseball %>% 
+  filter(split == "train") %>% 
+  select(-split)
+
+baseball_valid <-
+  baseball %>% 
+  filter(split == "valid") %>% 
+  select(-split)
+
+baseball_test <-
+  baseball %>% 
+  filter(split == "test") %>% 
+  select(-split)
+```
+
+
+## Regularisation with glmnet
+
+## Tuning lambda
+
+## Exercise: method comparison

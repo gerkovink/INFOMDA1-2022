@@ -1,0 +1,259 @@
+---
+title: "Supervised Learning and Visualization Practical 3"
+author: "Daniel Anadria"
+date: 04 October 2022
+output:
+  html_document:
+    css: Daniel_03_EDA.css
+    
+---
+<p style="text-align: center;">**Practical 3: Exploratory Data Analysis**</p>
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+```{r}
+boys %>% head() 
+```
+
+```{r}
+boys %>% tail()
+```
+
+```{r}
+!is.unsorted(boys$age)
+```
+
+```{r}
+summary(boys)
+```
+
+1. Create a histogram of the variable age using the function geom_histogram().
+
+```{r}
+ggplot(boys, aes(x = age))+
+  geom_histogram(bins = 100, color = "dark blue")+
+  labs(title = "Histogram of Boys Age", x = "Age", y = "Count")+
+  theme_minimal()
+```
+2. Create a bar chart of the variable gen using the function geom_bar().
+
+```{r}
+ggplot(boys, aes(x = gen))+
+  geom_bar(color = 'dark blue')+
+  labs(title = "Bar Chart of Gen", x = "Gen", y = "Count")+
+  geom_text(stat ='count', aes(label = ..count.., vjust = -0.3))+
+  theme_minimal()
+```
+```{r}
+md.pattern(boys)
+```
+Now we now that there is a substantial amount of missing information in the boys data, we can more closely focus on the missing data patterns. A first step could be to test whether missingness in the variables gen, phb and tv depends on someones age.
+
+3. Create a missingness indicator for the variables gen, phb and tv.
+
+```{r}
+boys_mis <- boys %>%
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis  = is.na(tv))
+```
+
+4. Assess whether missingness in the variables gen, phb and tv is related to someones age.
+
+Is gen missingness related to age? 
+
+```{r}
+boys_mis %>%
+  group_by(gen_mis) %>%
+  summarize(age = mean(age))
+```
+
+Is phb missingness related to age?
+
+```{r}
+boys_mis %>%
+  group_by(phb_mis) %>%
+  summarize(age = mean(age))
+```
+
+Is tv missingness related to age?
+
+```{r}
+boys_mis %>%
+  group_by(tv_mis) %>%
+  summarize(age = mean(age))
+```
+
+For all three variables, we notice that missingness is related to age, with the mean age of boys with missing data being between 6 and 8 years, and the mean age of boys with non-missing data being about 14 years. Therefore, we miss information about younger boys.
+
+5. Create a histogram for the variable age, faceted by whether or not someone has a missing value on gen.
+
+```{r}
+ggplot(boys_mis, aes(x = age))+
+  geom_histogram(bins = 100, color = "dark blue")+
+  facet_grid(~gen_mis)+
+  labs(title = "Missingness in Gen as a Function of Age", x = "Age", y = "Count")+
+  theme_minimal()
+```
+We see that boys with an observed value on gen are all are at least seven years old, while those with a missing value on gen are far more often between 0 and 5 years old.
+
+6. Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function geom_point().
+
+```{r}
+ggplot(boys_mis, aes(x = age, y = bmi))+
+  geom_point()+
+  labs(x = "Age", y = "BMI", title = "Scatterplot of Age vs BMI")+
+  theme_minimal()
+```
+Although we already know how missingness in the variable gen is related to age, we do not know whether gen is also related to bmi.
+
+7. Add a colour aesthetic to the previous plot using the missingness indicator of the variable gen.
+
+```{r}
+ggplot(boys_mis, aes(x = age, y = bmi, color = gen_mis))+
+  geom_point()+
+  labs(x = "Age", y = "BMI", title = "Scatterplot of Age vs BMI with Gen Missingness")+
+  theme_minimal()
+```
+
+We clearly see that younger boys generally have a missing value on gen, while there does not seem to be much of a relation between missingness on gen and bmi
+
+8. Visualize the relationship between reg (region) and age using a boxplot.
+
+```{r}
+ggplot(boys, aes(x = reg, y = age))+
+  geom_boxplot(fill = 'gray')+
+  labs(title = "Boxplot of Age by Region.")+
+  theme_minimal()
+```
+9. Create a density plot of age, splitting the densities by gen using the fill aesthetic.
+
+```{r}
+ggplot(boys, aes(x = age, fill = gen))+
+  geom_density(alpha = 0.7)+
+  labs(title = "Density of age by genital Tanner stage")+
+  theme_minimal()
+```
+We see a clear relation between gen and age, which is not really surprising, because physical development is usually driven by aging.
+
+10. Create a diverging bar chart for hgt in the boys data set, that displays for every age year that year’s mean height in deviations from the overall average hgt. 
+
+```{r}
+boys %>%
+  mutate(Age = cut(age, 0:22, labels = paste0(0:21, " years")),
+         Height = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+```
+11. Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2.
+
+```{r}
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+```
+
+12. Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic.
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+```
+13. Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line.
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+```
+
+The results seem very consistent: elastic2 has more observations over a larger range, but both sets result in roughly the same regression line. Data set elastic1 seems to have an outlier.
+
+14. For each of the data sets elastic1 and elastic2, fit a regression model with y = distance on x = stretch using lm(y ~ x, data).
+
+```{r}
+fit1 <- lm(distance ~ stretch, elastic1)
+fit2 <- lm(distance ~ stretch, elastic2)
+```
+
+15. For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance R2.
+
+```{r}
+fit1 %>% predict(se.fit = TRUE)
+paste0("R-squared: ", round(summary(fit1)$r.squared,3))
+```
+```{r}
+fit2 %>% predict(se.fit = TRUE)
+paste0("R-squared: ", round(summary(fit2)$r.squared,3))
+```
+
+Fit1 (based on elastic1) has a larger residual standard deviation (i.e., $residual.scale).
+The model based on elastic2 has smaller standard errors and a much larger R2. This is due to the larger range of values in elastic2 and the absence of outliers.
+
+16. Study the residual versus leverage plots for both models.
+
+A residuals vs. leverage plot is a type of diagnostic plot that allows us to identify influential observations in a regression model.
+
+```{r}
+fit1 %>% plot(which = 5)
+```
+We see that case 2 has the highest influence on elastic1.
+
+```{r}
+fit1$residuals
+```
+
+However, case 2 does not have the largest residual, case 7 does.
+
+```{r}
+fit2 %>% plot(which = 5)
+```
+Fit2 doesn't have any influential points. 
+```{r}
+fit2$residuals
+```
+The largest residual belongs to case 2.
+
+17. Use the elastic2 variable stretch to obtain predictions on the model fitted on elastic1.
+
+```{r}
+pred <- predict(fit1, newdata = elastic2)
+pred
+```
+
+18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for elastic2.
+
+```{r}
+predicted_vs_observed <- cbind("predicted" = fit2$fitted.values, "observed" = elastic2$distance, stretch = elastic2$stretch) %>% as.data.frame()
+
+ggplot(predicted_vs_observed,aes(x = stretch, y = predicted, color = "blue"))+
+  geom_point(fill = "blue", size = 3)+
+  geom_smooth(method = "lm", color = "blue")+ 
+  labs(x = "Stretch", y = "Distance", title = "Difference Between Predicted and Observed Distance")+
+  #observed values
+  geom_point(aes(x = stretch, y = observed), fill = "orange", color = "dark orange", size = 3)+
+  theme_minimal()+
+  scale_color_manual(name = "Origin", values = c("Predicted" = "blue", "Observed" = "dark orange"))
+```
+
+The end.
