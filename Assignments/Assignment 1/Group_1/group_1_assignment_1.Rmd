@@ -1,0 +1,216 @@
+---
+title: "Exploratory Data Analysis"
+author: 'Group #1: Alex Carriero, Christoph Völtzke, Florian Van Leeuwen, Judith
+  Neve'
+output:
+  html_document:
+    df_print: paged
+fontsize: 11pt
+---
+
+## Introduction 
+
+```{r libraries, warning = F, message = F, echo = F}
+require(tidyverse)   # functions used from dplyr, tidyr, readr and ggplot2
+require(tidytext)    # used for text mining
+require(kableExtra)  # used to generate tables
+require(wesanderson) # plot colors
+```
+
+```{r import data, warning = F, message = F, echo = F}
+data <- read_csv("https://raw.githubusercontent.com/emilynordmann/swearing/master/data.csv")
+```
+
+The focus of this exploratory data analysis is data retrieved from a study on word recall by Dr. Emily Nordmann. The data set contains observations from 31 different participants. Each participant was asked for their age and gender, then to type out as many words as they could think of for each of the following categories: words beginning with the letter "A", animal names, and swear words. We investigate the data focusing on demographic differences in word recall for each category.\
+
+The dataset was downloaded from a public repository on GitHub using the following [link](https://raw.githubusercontent.com/emilynordmann/swearing/master/data.csv). The original data set includes 31 rows (one for each participant) and six columns:\begin{itemize}
+\item Timestamp (the time and data the data were collected),
+\item Age (participants age recorded in years),
+\item Gender (participants gender),
+\item A column representing each writing prompt (words starting with the letter A, animals, swears). 
+\end{itemize} For each prompt, the information provided is a string containing all the words a given participant recalled. In each strings, words are separated by either a space, comma, or `\n`. The data were then tidied and summarized such that the number of words recalled by each participant and for each prompt could be retrieved. Previews of the original data, tidied data and summarized data are displayed below.\
+\
+
+#### Original Data 
+```{r, echo =F}
+head(data, 8)
+```
+
+#### Tidy Data
+```{r tidy data, echo = F}
+data <- data %>%
+  # give each subject an identifier
+  mutate(ID      = row_number(),
+         Gender  = factor(Gender)) %>%
+  # drop time stamp and rename columns
+  select(ID, Age = `Age (in whole years)`, Gender,
+         LetterA = `Please write as many words as you can beginning with the letter "A".`,
+         Animals = `Please write down as many different types of animal as you can.`,
+         Swears  = `Please write down as many swear words as you can.`)
+
+data_tidy <- data %>%
+  # pivot the word lists into long format
+  pivot_longer(LetterA:Swears,
+               names_to  = "Prompt",
+               values_to = "WordList") %>%
+  # split each list so that each word (default) has a row
+  # this strips away punctuation and capitalization
+  unnest_tokens(output = Word,     # the column we're creating
+                input  = WordList) # the column to split up
+
+head(data_tidy, 5)
+```
+
+#### Summmarised Data
+```{r summarise data, warning =F, message =F, echo = F}
+demographics <- data %>%
+  select(ID, Age, Gender)
+
+data_summarised <- data_tidy %>%
+  group_by(ID, Prompt) %>%
+  summarise(NWords = n()) %>%
+  # so that we can make plots on number of words per gender/age
+  inner_join(demographics)
+
+head(data_summarised, 5)
+```
+
+## Descriptive Statistics
+
+The data set is comprised of responses from 31 individuals (24 women, 6  men, and 1 other). Four participants did not report their age. No other missing values are observed; all participants without an age reported are women. The number of words recalled by participants in each prompt is summarised in Table 1. We see that all participants provided words for all prompts (no non-response), and participants tended to recall a larger number of animals, then words beginning with the letter "A", and a smaller number of swear words. We present further participant demographic information in Figure 1. Specifically, Figure 1 illustrates the distribution of age for each gender; since only one participant selected `Other` their age is represented by a single straight line. From this plot we see that there is a slight lack of positivity, in other words, there are not observations in both men and women at every age; in particular, the older participants are mainly men.  This is important to consider if causual inference based on age or gender becomes an interest.
+
+```{r descriptive statistics, echo = F}
+# Descriptive Statistics
+
+# grand mean and standard deviation of age 
+mean_age <- mean (data$Age, na.rm = T)
+sd_age   <- sd   (data$Age, na.rm = T) 
+
+# for each prompt: min, median and max number of words recalled 
+data_summarised%>%
+  group_by(Prompt)%>% 
+  summarise(Minimum  = min   (NWords, na.rm = TRUE), 
+            Median  = median(NWords, na.rm = TRUE), 
+            Maximum  = max   (NWords, na.rm = TRUE), 
+            Nobs = n()) %>%
+  kbl(format="html", caption = "Table 1. Number of words recalled by participants for each prompt.")%>% 
+  kable_styling("striped") 
+```
+\
+\
+We generated a further descriptive plot in Figure 2, focusing on the most commonly recalled words, as well as which prompt they were recalled from. In order to leave the plot readable, we decided to focus only on the 20 most commonly recalled words. The frequency computation was done using the data wrangling functions `group_by()` and `summarise()` as this then allowed us to select the most common words. To improve readability, the words were ordered by their frequency using the `arrange()` function and the axes were flipped. The bars were color-coded according to the prompt in which the word was listed. We see most words appearing in this list are animals, and there is one word ("arse") that appeared often in two different categories.\
+\
+
+```{r plot 1, warning = F, message = F, echo = F, fig.height = 4, fig.width = 10}
+# Density plot: describes distribution of age for each gender
+
+data_summarised %>% 
+    filter(Gender != "Other")%>%
+    ggplot(aes(x= Age, fill = Gender)) + 
+    geom_density(alpha = 0.5) +
+    theme_minimal() +
+    theme(plot.title = element_text(size = rel(1.5))) +
+    labs(title = "Figure 1. Density plot of age for each gender", 
+       x = "Age (in years)", 
+       y = "Density") + 
+   scale_fill_manual(values = wes_palette("BottleRocket2", n = 2))
+```
+\
+\
+
+```{r plot 2, warning = F, message = F, echo = F, fig.height = 4, fig.width = 10}
+# 2.  Descriptive -- Bar Plot of actual words 
+words_counted <- data_tidy %>%
+  group_by(Prompt, Word) %>% # to keep a note of the prompt when we count the words
+  summarise(n = n()) %>%     # to get a count of each word
+  arrange(desc(n)) %>%
+  ungroup()
+
+words_counted %>%
+  head(20) %>% # keeping only the top 20 words to not clutter the plot
+  mutate(Word = reorder(Word, n)) %>%
+  ggplot(aes(x = Word, y = n, fill = Prompt)) +
+  geom_col(position = "dodge", alpha = 0.78) +
+  coord_flip() +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(1.5))) +
+  labs(title = "Figure 2. Frequency of top 20 words", y = "Frequency", x = "Word")+ 
+  scale_fill_brewer(palette = "Accent")
+```
+\
+\
+
+## Exploratory Analysis 
+
+To gain further insights from the data, three exploratory research questions were investigated using visualizations; the plots and corresponding interpretations are included below.\
+\
+
+```{r plot 3, warning = F, message = F, echo = F, fig.height = 4, fig.width = 8}
+# 3. Exploratory -- Word recall by age, one regression line per category 
+data_summarised %>%
+  ggplot(aes(x=Age, y=NWords, col=Prompt, fill=Prompt, shape=Prompt)) +
+  geom_point(size = 2, na.rm = TRUE) +
+  geom_smooth(alpha=0.15, method ="lm", na.rm = TRUE)+
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(1.5))) +
+  annotate("text", x = 55, y = c(46, 43, 40), 
+           label = c("Animals:  italic(p) == .12","LetterA:  italic(p) == .08","Swears:  italic(p) < .01"),  
+           parse = TRUE) +
+  annotate("text", x = 64, y = c(46, 43, 40), 
+           label = c("italic(R) ^ 2 == .09","italic(R) ^ 2 == .12","italic(R) ^ 2 == .26"),  
+           parse = TRUE) +
+  labs(title = "Figure 3. Number of words remembered per category over \nparticipants' ages ",
+       x = "Age (in years)",
+       y = "Words remembered (count)") + 
+  scale_color_brewer(palette = "Accent") + 
+  scale_fill_brewer (palette = "Accent")
+```
+\
+This plot investigates whether there are age differences in the number of words remembered per word category. To answer this research question the participants' age in years is plotted on the x-axis and the number of words remembered per category is plotted on the y-axis. The word categories are depicted by different shapes and colours in the plot. Further, we included linear regression lines to see if there is a linear relationship between the number of words remembered for each word category and the participants' age. The results show that all three regression lines indicate decreasing trends, meaning that participants tend to remember fewer words in each category the older they get. Moreover, it seems that there are differences in the number of words remembered between the word categories, and also the slopes vary. Thus, the word category can be seen as a moderator for the effect of the relation between the number of words remembered and participants' age.
+However, as indicated by the 95% confidence intervals, these results might not be very reliable as the confidence intervals have wide ranges. In particular, the confidence intervals of the two categories "Animals" and "Words that start with the letter A" mostly overlap and also show wide intervals within the categories, indicating that the negative trend, as well as the difference between the words remembered in these two categories, have to be interpreted with caution. This is also backed up by the linear regression results for the three regression lines as they indicate that only the prediction for swear words is significant ($p < 0.01$). Multiple $R^2$ are also rather low for the regression results of the categories animals ($R^2$ = 0.09)  and words that start with the letter A ($R^2$ = 0.12) compared to the results of the swears  ($R^2$ = 0.26) category. One possible reason for this high uncertainty might be the low number of participants with $n$ = 27 (since the participants with unknown age were excluded from this part of the analysis). However, the results give a nice indication of the effect of the relationship between age and the number of words remembered as well as the moderating effect of word categories. These results should be still backed up in follow-up research with a higher number of participants and further word categories.\
+\
+
+
+```{r plot 4, warning = F, message = F, echo = F, fig.height = 4, fig.width = 8}
+# 4. Exploratory -- Box Plot 
+data_summarised %>%
+  filter(Gender != "Other")%>%
+  ggplot(aes(x = Gender, y = NWords)) +
+  geom_violin(trim = FALSE) +
+  geom_boxplot(width = .2, aes(fill = Gender), alpha = 0.5) +
+  facet_wrap(~ Prompt) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(1.5))) +
+  labs(title = "Figure 4. Number of words remembered per category over \nparticipants' genders", 
+       x = "Gender", 
+       y = "Number of words") + 
+  scale_fill_manual(values = wes_palette("BottleRocket2", n = 2))
+```
+\
+The motivation for this plot is to investigate gender differences in word recall. Gender is mapped to the x-axis, so that the two genders can be easily compared, and number of words recalled is mapped to the y-axis. `facet_wrap()` is then used with respect to the prompt, such that we can explore gender differences in recall for each prompt category. As there was only one participant in the "other" category, they were excluded from this part of the analysis. Two geoms were overlayed to create this plot: `geom_violin()`and `geom_boxplot()` in order to carry information regarding the distributions, with an easy way to process their summary. The boxplot was selected so that key features in the data could be highlighted (i.e., 25th percentile, median and 75th percentile) while the violin plot is used to visualize the entire distribution of the data. From the plot we see that the median number of words recalled is very similar between genders. This appears to hold true for each of the prompt categories. It is however worth noting that only 6 men are included in this data set, while there are 24 women, thus, any conclusions from this exploratory analysis must be mindful of fact that there is much less information provided by men. Considering the gender imbalance, there do not appear to be any major differences in the distributions.
+\
+\
+
+```{r plot 5, warning = F, message = F, echo = F, fig.height = 4, fig.width = 8}
+library(stringr)
+library(ggridges)
+# 5. bar plot of word length per cat, color == category 
+data_tidy %>%
+  mutate(LWord = str_count(Word),
+         top20 = ifelse(Word %in% words_counted$Word[1:20], "Yes", "No"))  %>%
+  ggplot(aes(x = LWord, fill = top20)) +
+  geom_histogram(binwidth = 1, scale = 0.95, alpha = 0.6) +
+  facet_wrap(~ Prompt, nrow = 3) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(1.5))) +
+  labs(title = "Figure 5. Distributions of letters per word by prompt",
+       x = "Number of letters",
+       y = "Count",
+       fill = "In top 20?") + 
+  scale_fill_manual(values = c("cornflowerblue", "darkturquoise"))
+```
+\
+Not every word is equal: a way to distinguish words is to look at the number of letters per word. It is possible that participants focused on shorter words for certain categories (e.g., recalled more short words starting with "A" than long words starting with "A"); alternatively, it is possible that most words within a category are short (e.g., swear words may tend to be shorter). Additionally, we may consider whether the count of the words with a given number of letters was inflated by a high usage of a small subset of words. Figure 5 shows the distributions of the number of letters by prompt. The y-axis is the cumulative count of all words with the same number of letters (i.e., if the same 4-letter word appears twice in the data, it is counted as two. That is, the count is not a count of *unique* words). In order to establish whether the word count is inflated, words are colour-coded according to whether they were among the most common 20 words. It is clear that the count of 4-letter swear words was inflated. Using information from Figure 2, we know this is because of words such as "fuck", "shit", and "cunt". Compared to the other two categories, there are fewer long words. In turn, commonly cited animal names were cited regardless of word length. Finally, the only commonly cited words beginning with "A" are the shorter words, and more short words beginning with "A" were cited than long words beginning with "A". This suggests that word recall mechanisms differed across categories: when prompted to recall a category based on meaning (animal), word length does not have much effect. When prompted to recall a word from its appearance (beginning with "A"), shorter words are more easily recalled. Finally, swear words tend to be short words with a smaller range of words.
+\
+\
+We now conclude our exploration. Data was tidied in order to focus on individual words; we looked at sample demographics, which words were most commonly given, whether gender or age affected the number of words recalled for each category, and finally, the length of the words recalled. We hope you enjoyed our exploration.

@@ -1,0 +1,266 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "19-9-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 6
+---
+For this practical we first load the necessary packages.
+```{r, warning = FALSE, message = FALSE}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+library(pROC)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+Then we set the seed and import the data.
+```{r, warning = FALSE, error = FALSE}
+set.seed(45)
+treatment <- read_csv("data/cardiovascular_treatment.csv") %>% 
+  mutate(severity = factor(severity),
+         gender = factor(gender),
+         prior_cvd = factor(prior_cvd),
+         dose = factor(dose),
+         response = factor(response))
+```
+
+### Exercise 1
+```{r}
+lr_mod <- glm(response ~ ., data = treatment, family = binomial)
+lr_pred <- ifelse(predict(lr_mod, type = "response") > 0.5, 1, 0)
+
+lr_confmat <- table(true = treatment$response, predicted = lr_pred)
+lr_confmat
+```
+
+### Exercise 2
+From the metrics we see that the model does not perform quite well. Only 70% of the cases is predicted correctly, which is quite low for a classifier.  
+Since the dataset is used to predict a disease, the worst cases are 
+
+- predicting no disease, but the person has the disease. Hence, we would like the NPV to be high.
+- predicting the disease while the patient does not have the disease. Hence, we would like the PPV to be high.
+```{r}
+lr_acc <- (lr_confmat[1,1] + lr_confmat[2,2])/sum(lr_confmat)
+lr_acc
+
+lr_sens <- lr_confmat[2,2]/(lr_confmat[2,2] + lr_confmat[1,2])
+lr_sens
+
+lr_spec <- lr_confmat[1,1]/(lr_confmat[1,1] + lr_confmat[2,1])
+lr_spec
+
+lr_FPR <- 1 - lr_spec
+lr_FPR
+
+lr_PPV <- lr_confmat[2,2]/(lr_confmat[2,2] + lr_confmat[1,2])
+lr_PPV
+
+lr_NPV <- lr_confmat[1,1]/(lr_confmat[1,1] + lr_confmat[1,2])
+lr_NPV
+```
+
+### Exercise 3
+The table with the metrics for both models is shown below. We see that all the metrics are exactly equal.
+```{r}
+lda_mod <- lda(response ~., data = treatment)
+pred_lda <- predict(lda_mod, type = "response")
+
+lda_confmat <- table(true = treatment$response, predicted = pred_lda$class)
+lda_confmat
+
+lda_acc <- (lda_confmat[1,1] + lda_confmat[2,2])/sum(lda_confmat)
+lda_sens <- lda_confmat[2,2]/(lda_confmat[2,2] + lda_confmat[1,2])
+lda_spec <- lda_confmat[1,1]/(lda_confmat[1,1] + lda_confmat[2,1])
+lda_FPR <- 1 - lda_spec
+lda_PPV <- lda_confmat[2,2]/(lda_confmat[2,2] + lda_confmat[1,2])
+lda_NPV <- lda_confmat[1,1]/(lda_confmat[1,1] + lda_confmat[1,2])
+
+metrics <- c("Accuracy", "Sensitivity", "Specificity", "FPR", "PPV", "NPV")
+models <- c("Linear Regression", "Linear Discriminant Analysis")
+lr_metrics <- c(lr_acc, lr_sens, lr_spec, lr_FPR, lr_PPV, lr_NPV)
+lda_metrics <- c(lda_acc, lda_sens, lda_spec, lda_FPR, lda_PPV, lda_NPV)
+
+lr_lda_comparison <- rbind(lr_metrics, lda_metrics)
+colnames(lr_lda_comparison) <- metrics
+rownames(lr_lda_comparison) <- models
+lr_lda_comparison
+```
+
+### Exercise 4
+From the confusion matrices we see that the performance of LR and LDA are exactly the same.
+```{r, warning = FALSE, error = FALSE}
+treatment_new <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = factor(severity),
+         gender = factor(gender),
+         prior_cvd = factor(prior_cvd),
+         dose = factor(dose),
+         response = factor(response))
+
+lr_pred_new <-  ifelse(predict(lr_mod, newdata = treatment_new, type = "response") > 0.5, 1, 0)
+lda_pred_new <- predict(lda_mod, newdata = treatment_new, type = "response")$class
+
+lr_confmat_new <- table(true = treatment_new$response, predicted = lr_pred_new)
+lr_confmat_new
+
+lda_confmat_new <- table(true = treatment_new$response, predicted = lda_pred_new)
+lda_confmat_new
+```
+The Brier-score equals $$MSE=\frac{1}{n}\sum_i(\hat{p}_i-y_i)^2.$$ Here, $y_i$ is the true label of case $i$, i.e. the `response`. The value $\hat{p}_i$ is the probability of response as computed by the LR model.  
+```{r}
+lr_prob_new <- predict(lr_mod, newdata = treatment_new, type = "response")
+mean( (lr_prob_new - as.numeric(treatment_new$response))^2 )
+```
+
+### Exercise 5
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score,
+               data = treatment,
+               family = "binomial")
+lr1_prob <- predict(lr1_mod, type = "response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score*prior_cvd*dose,
+               data = treatment,
+               family = binomial)
+lr2_prob <- predict(lr2_mod, type = "response")
+```
+
+### Exercise 6
+A model performs worse if its ROC is close to the line $y = x$. From the plots, we see that the ROC of the first LR model is closer to this line. Hence, the first LR model performs worse than the second.
+```{r}
+roc_lr1 <- roc(treatment$response, lr1_prob)
+roc_lr2 <- roc(treatment$response, lr2_prob)
+
+ggroc(roc_lr1) + labs(title = "LR1") + theme_minimal()
+ggroc(roc_lr2) + labs(title = "LR2") + theme_minimal()
+```
+
+### Exercise 7
+The AUC of the first LR model is 0.6253.  
+The AUC of the second LR model is 0.7588.  
+
+The AUC measures the area under the ROC. In the previous exercise we have seen that the ROC of `LR1` is closer to the line $y=x$. Therefore, the AUC is less than the AUC of `LR2`.  
+The minimum AUC value is 0.5, while the "perfect" AUC value equals 1. In that "perfect" case, the ROC will almost look like a square.
+```{r}
+roc_lr1
+roc_lr2
+```
+
+### Exercise 8
+From the density plots, we can see a clear distinction in specie for both petal width and length. Clearly, the setosa has lower length and width.  
+A distinction can also be made by the length of the sepal. The width of the sepal is less discriminative than the other three observations.
+```{r}
+iris %>% ggplot(aes(x = Sepal.Length, fill = Species)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Sepal length.") +
+  theme_minimal()
+
+iris %>% ggplot(aes(x = Sepal.Width, fill = Species)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Sepal width.") +
+  theme_minimal()
+
+iris %>% ggplot(aes(x = Petal.Length, fill = Species)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Petal length.") +
+  theme_minimal()
+
+iris %>% ggplot(aes(x = Petal.Width, fill = Species)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Petal width.") +
+  theme_minimal()
+```
+
+The last statement can be relaxed somewhat when looking at the summary of the variables. Here, we can see that the means of `setosa` differs from the means of the other species. 
+
+```{r}
+iris %>% group_by(Species) %>% summarise_at(vars(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width), list(name = mean))
+```
+Lastly, it may be interesting to see if width and length are correlated. From the plots below, it looks like that width and length are uncorrelated for the sepal, but are correlated for the petal.
+```{r}
+iris %>% ggplot(aes(x =  Sepal.Length, y = Sepal.Width)) +
+  geom_point() +
+  theme_minimal()
+
+iris %>% ggplot(aes(x = Petal.Length, y = Petal.Width)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### Exercise 9
+```{r}
+lda_iris <- lda(Species ~ ., data = iris)
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+### Exercise 10
+From the confusion matrices, we see that the full model (with all variables) performs almost perfectly on the dataset: there are only three misclassifications. The model with only sepal data performs worse than the full model. 
+```{r}
+lda_iris_pred <- predict(lda_iris, type = "response")$class
+lda_iris_sepal_pred <- predict(lda_iris_sepal, type = "response")$class
+
+lda_iris_confmat <- table(true = iris$Species, predicted = lda_iris_pred)
+lda_iris_confmat
+
+lda_iris_sepal_confmat <- table(true = iris$Species, predicted = lda_iris_sepal_pred)
+lda_iris_sepal_confmat
+```
+
+The same conclusion can be drawn from the accuracies: the accuracy of the full model is higher than the only-sepal model.
+```{r}
+lda_iris_acc <- (lda_iris_confmat[1,1] + lda_iris_confmat[2,2] + lda_iris_confmat[3,3])/sum(lda_iris_confmat)
+lda_iris_acc
+
+lda_iris_sepal_acc <- (lda_iris_sepal_confmat[1,1] + lda_iris_sepal_confmat[2,2] + lda_iris_sepal_confmat[3,3])/sum(lda_iris_sepal_confmat)
+lda_iris_sepal_acc
+```
+
+### Exercise 11
+```{r}
+iris_tree_mod <- rpart(Species ~., data = iris)
+rpart.plot(iris_tree_mod)
+```
+
+### Exercise 12
+The tree first splits on petal length. Since our example has `Petal.Length` = 2.7, the tree will direct this example to the right at the first split. Then, the tree splits on petal width. Hence, it will direct the example to the left, since `Petal.Width` = 1.5. The example will therefore be classified as versicolor.
+
+### Exercise 13
+The classification tree first seperates all examples of setosa species. We see that there are no misclassifications here. After this first split, the tree splits at a petal width of 1.8. Here, some of the virginica examples are misclassified.
+```{r}
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf), colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.8, yend = 1.8),colour = "black") +
+  theme_minimal()
+```
+
+### Exercise 14
+The full tree has a low bias (on the training data), but a high variance. Therefore, I think that it will perform worse in new Irises.
+```{r}
+iris_tree_full_mod <- rpart(Species ~., data = iris,
+                            control = rpart.control(minsplit = 1, cp = 0))
+rpart.plot(iris_tree_full_mod)
+```
+
+### Exercise 15
+```{r}
+iris_randomForest <- randomForest(Species ~., data = iris, ntree = 1000)
+imp <- importance(iris_randomForest)
+imp <- data.frame(Variable = rownames(imp),
+                     Importance = unname(imp))
+
+imp %>% ggplot(aes(x = Variable, y = Importance, fill = Variable)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Importance of the iris variables.") +
+  theme_minimal()
+```

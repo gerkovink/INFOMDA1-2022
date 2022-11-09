@@ -1,0 +1,208 @@
+---
+title: "P5"
+author: "Amalia Tsakali"
+date: "2022-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+```
+#Default dataset
+1.Create a scatterplot of the Default dataset, where balance is mapped to the x position, income is mapped to the y position, and default is mapped to the colour. Can you see any interesting patterns already?
+```{r 1}
+Default %>% ggplot(aes(x=balance,y=income,colour = default))+geom_point()+theme_minimal()
+
+#default yes is seen mainly on high balance values 
+```
+2.Add facet_grid(cols = vars(student)) to the plot. What do you see?
+```{r 2}
+Default %>% ggplot(aes(x=balance,y=income,colour = default))+geom_point()+theme_minimal()+facet_grid(cols = vars(student))
+
+#students make up a group with lower income 
+```
+3.Transform “student” into a dummy variable using ifelse() (0 = not a student, 1 = student). Then, randomly split the Default dataset into a training set default_train (80%) and a test set default_test (20%)
+```{r 3}
+default_df<-Default %>% mutate(student= ifelse(student=="Yes",1,0)) %>% mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
+
+default_train<- default_df %>% filter(split=="train") %>% select(-split)
+
+default_test<- default_df %>% filter(split=="test") %>% select(-split)
+```
+##K-Nearest Neighbours
+
+4.Create class predictions for the test set using the knn() function. Use student, balance, and income (but no basis functions of those variables) in the default_train dataset. Set k to 5. Store the predictions in a variable called knn_5_pred.
+```{r 4}
+knn_5_pred<-knn(train = default_train %>% select(-default),
+  test  = default_test  %>% select(-default),cl=as_factor(default_train$default),k=5)
+```
+5.Create two scatter plots with income and balance as in the first plot you made. One with the true class (default) mapped to the colour aesthetic, and one with the predicted class (knn_5_pred) mapped to the colour aesthetic.
+```{r 5}
+
+default_test %>% ggplot(aes(x=balance,y=income,colour = default))+geom_point()+theme_minimal()+labs("True class")
+
+data.frame(default_test,predicted=knn_5_pred) %>% ggplot(aes(x=balance,y=income,colour = predicted))+geom_point()+theme_minimal()+labs("Predicted class")
+```
+6.Repeat the same steps, but now with a knn_2_pred vector generated from a 2-nearest neighbours algorithm. Are there any differences?
+```{r 6}
+knn_2_pred<-knn(train = default_train %>% select(-default),
+  test  = default_test  %>% select(-default),cl=as_factor(default_train$default),k=2)
+
+data.frame(default_test,predicted=knn_2_pred) %>% ggplot(aes(x=balance,y=income,colour = predicted))+geom_point()+theme_minimal()+labs("Predicted class")
+#more cases classified as yes than in the previous model
+```
+##Confusion matrix
+
+7.What would this confusion matrix look like if the classification were perfect?
+```{r 7}
+table(true = default_test$default, predicted = knn_2_pred)
+#if it was the perfect predictive model, the values top right and bottom left would be 0
+```
+8.Make a confusion matrix for the 5-nn model and compare it to that of the 2-nn model. What do you conclude?
+```{r 8}
+table(true=default_test$default, predicted=knn_5_pred)
+# we see more false negatives and less false positives in this one
+#we also see more true negatives but less true positives
+
+```
+##Logistic regression
+9.Use glm() with argument family = binomial to fit a logistic regression model lr_mod to the default_train data.
+```{r 9}
+lr_mod<-glm(default ~ .,family=binomial,data = default_train)
+```
+10.Visualise the predicted probabilities versus observed class for the training dataset in lr_mod. You can choose for yourself which type of visualisation you would like to make. Write down your interpretations along with your plot.
+```{r}
+tibble(observed  = default_train$default, 
+       predicted = predict(lr_mod, type = "response")) %>% 
+  ggplot(aes(x=observed, y=predicted)) +geom_jitter(alpha=0.1)+theme_minimal()
+
+#The true yes values seem to get a uniform distribution of predicted values, 
+#the true no values get mostly very low predicted scores but there are also some high predicted probabilities
+
+tibble(observed  = default_train$default, 
+       predicted = predict(lr_mod, type = "response")) %>% 
+  ggplot(aes(x=predicted, colour=observed)) +geom_density(alpha=0.1)+theme_minimal()+geom_rug()
+
+tibble(observed  = default_train$default, 
+       predicted = predict(lr_mod, type = "response")) %>% 
+  ggplot(aes(x=predicted)) +geom_density()+facet_grid(cols=vars(observed))+theme_minimal()+geom_rug()
+
+#the next plots show the same thing
+```
+11.Look at the coefficients of the lr_mod model and interpret the coefficient for balance. What would the probability of default be for a person who is not a student, has an income of 40000, and a balance of 3000 dollars at the end of each month? Is this what you expect based on the plots we’ve made before?
+```{r 11}
+summary(lr_mod)
+
+coefs <- coef(lr_mod)
+coefs["balance"]
+# every 1 dollar increase in balance increases the log odds of defaulting by 0.005672977
+
+#we first have to calculate teh log odds and then cnvert that to probabilities using teh inverse logit function
+logodds <- coefs[1] + 4e4*coefs[4] + 3e3*coefs[3]
+#the coefficient for student is omited cause its multipled by 0
+
+# To covert this to a probability:
+1 / (1 + exp(-logodds))
+
+#very high probability which is expected since we have a very have balance
+
+```
+##Visualising the effect of the balance variable
+12.Create a data frame called balance_df with 3 columns and 500 rows: student always 0, balance ranging from 0 to 3000, and income always the mean income in the default_train dataset
+```{r 12}
+balance_df <- tibble(
+  student = rep(0, 500),
+  balance = seq(0, 3000, length.out = 500),
+  income  = rep(mean(default_train$income), 500)
+)
+
+```
+13.Use this dataset as the newdata in a predict() call using lr_mod to output the predicted probabilities for different values of balance. Then create a plot with the balance_df$balance variable mapped to x and the predicted probabilities mapped to y. Is this in line with what you expect?
+```{r 13}
+
+balance_df$predicted <-predict(lr_mod,newdata = balance_df,type = "response")
+
+balance_df %>% ggplot(aes(x=balance, y=predicted)) + geom_point()+theme_minimal()
+#at 2000 and after the prbabiity is higher to default as seen in the first plots, so yes
+```
+14.Create a confusion matrix just as the one for the KNN models by using a cutoff predicted probability of 0.5. Does logistic regression perform better?
+```{r}
+pred_prob <- predict(lr_mod, newdata = default_test, type = "response")
+pred_log   <- factor(pred_prob > 0.5, labels = c("No", "Yes")) #
+table(true = default_test$default, predicted = pred_log)
+#yes the logistic regression performs better we see both less false negatives and false positives
+```
+##Linear discriminant analysis
+15.Train an LDA classifier lda_mod on the training set.
+```{r 15}
+lda_mod<-lda(default~., data=default_train)
+```
+16.Look at the lda_mod object. What can you conclude about the characteristics of the people who default on their loans?
+```{r 16}
+lda_mod
+# on average, people who default are students, have a biger balance and slightly lower income than those who don't.
+```
+17.Create a confusion matrix and compare it to the previous methods.
+```{r 17}
+pred_lda<-predict(lda_mod, newdata = default_test)
+table(default_test$default, predicted = pred_lda$class)
+#slighty less false negatives than logistic regression(only1) but slightly more false positives. better than knn. 
+```
+##Final assignment
+18.Create a model (using knn, logistic regression, or LDA) to predict whether a 14 year old boy from the 3rd class would have survived the Titanic disaster. You can find the data in the data/ folder. Would the passenger have survived if they were a girl in 2nd class?
+```{r}
+titanic_data<-read.csv("data/Titanic.csv")
+##
+head(titanic_data)
+#with interactions
+titanic_model<-lda(Survived~PClass * Sex * Age ,data=titanic_data)
+
+
+#prediction for boy
+predict(titanic_model, 
+        newdata = tibble(
+          PClass = "3rd",
+          Age    = 14, 
+          Sex    = "male")
+        )
+#girl
+predict(titanic_model, 
+        newdata = tibble(
+          PClass = "2nd",
+          Age    = 14, 
+          Sex    = "female")
+        )
+#the probability for the boy is only 0.1172149, while for the girl is 0.9561912
+
+
+#without
+titanic_model<-lda(Survived~PClass + Sex + Age ,data=titanic_data)
+
+
+#prediction for boy
+predict(titanic_model, 
+        newdata = tibble(
+          PClass = "3rd",
+          Age    = 14, 
+          Sex    = "male")
+        )
+#girl
+predict(titanic_model, 
+        newdata = tibble(
+          PClass = "2nd",
+          Age    = 14, 
+          Sex    = "female")
+        )
+#the probability for the boy is only 0.08977569, while for the girl is 0.9061279
+```
+
+

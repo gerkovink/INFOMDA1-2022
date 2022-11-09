@@ -1,0 +1,293 @@
+---
+title: "SLV Practical 8"
+author: "Alex Carriero"
+output: html_document
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 20px;
+  color: DarkBlue;
+}
+h1 { /* Header 1 */
+  font-size: 18px;
+}
+h2 { /* Header 2 */
+    font-size: 16px;
+}
+h3 { /* Header 3 */
+  font-size: 14px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 12px;
+}
+</style>
+
+---
+```{r, message = F, warning = F}
+# libraries 
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+```{r}
+set.seed(45)
+df <- readRDS("train_disease.RDS")
+```
+
+## 1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.
+```{r}
+# view data frame
+head(df)
+```
+```{r}
+# summary statistics 
+df %>%
+  dplyr::select(-c(Gender, Disease)) %>%
+  describeBy(df$Disease, fast = TRUE)
+
+```
+```{r}
+library(tableone)
+d  <- df %>%
+      dplyr::select(-Disease)
+
+vars <- colnames(d)
+tbl  <- CreateTableOne(vars = vars, strata = "Disease", data = df)
+
+# print table
+print(tbl, smd = T)
+
+# there appears to be significant differences between groups on many variables
+```
+
+
+
+## 2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+```{r}
+df %>%
+  dplyr::select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_boxplot(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+```{r}
+df %>%
+  dplyr::select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+```{r, warning = F}
+prop.table(table(df$Gender, df$Disease), margin = 1) %>%
+  as.data.frame %>%
+  dplyr::select(Gender = Var1, Disease = Var2, `Relative Frequency` = Freq) %>%
+  ggplot(aes(y = `Relative Frequency`, x = Gender, col = Disease, fill = Disease)) +
+  geom_histogram(alpha = 0.8, stat = "identity", position = "dodge") +
+  scale_fill_brewer(palette = "Paired") +
+  scale_color_brewer(palette = "Paired") +
+  theme_minimal()
+```
+## 3. Shortly reflect on the difference between bagging, random forests, and boosting.
+```{r}
+## Bagging:       fit a regression tree to N bootstrap samples of the training data
+##                take the average of all classification trees to base predictions on
+##                Note: out-of-bag data can serve as internal validation set.
+
+## Random forest: Similarly to bagging, classification trees are trained on 
+##                a bootstrap sample of the data. However, the decision trees
+##                are trained using less than all features in the data. 
+
+## Boosting:      We build a decision tree sequentially. Given the current
+##                we fit a (small) tree on the residuals of the current model, 
+##                rather than on the outcome Y
+```
+
+## 4. Apply bagging to the training data, to predict the outcome Disease, using the caret 
+library. 
+
+These settings can be inserted within the `train` function from the `caret` package. Make sure to use the `treebag` method, to specify `cvcontrol` as the `trControl` argument and to set `importance = TRUE`.
+```{r}
+# internal validation set 
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_train <- train(Disease ~ .,
+                   data = df, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+```
+
+## 5. Interpret the variable importance measure using the varImp function on the trained model object.
+```{r}
+bag_train %>%
+  varImp %>%
+  plot
+```
+
+## 6.  Create training set predictions based on the bagged model, and use the `confusionMatrix()` function from the `caret` package to assess it’s performance.`
+
+Hint: You will have to create predictions based on the trained model for the training data, and evaluate these against the observed values of the training data.
+
+```{r}
+confusionMatrix(predict(bag_train, type = "raw"),
+                df$Disease)
+
+## We have achieved a perfect training set performance. 
+## Trained the model but need to evaluate model 
+```
+
+## 7. Now ask for the output of the bagged model. Explain why the under both approaches differ.
+```{r}
+bag_train
+```
+
+## 8. Fit a random forest to the training data to predict the outcome Disease, using the caret library.
+```{r}
+rf_train <- train(Disease ~ .,
+                  data = df, 
+                  method = 'rf',
+                  trControl = cvcontrol,
+                  importance = TRUE)
+```
+
+## 9. Again, interpret the variable importance measure using the varImp function on the trained model object. Do you draw the same conclusions as under the bagged model?
+```{r}
+rf_train %>%
+  varImp %>%
+  plot
+```
+
+## 10. Output the model output from the random forest. Are we doing better than with the bagged model?
+```{r}
+rf_train
+```
+
+## 11. Now, fit a boosting model using the caret library to predict disease status.
+```{r}
+gbm_train <- train(Disease ~ .,
+                   data = df,
+                   method = "gbm",
+                   verbose = F,
+                   trControl = cvcontrol)
+```
+
+## 12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.
+```{r}
+summary(gbm_train)
+```
+
+## 13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?
+```{r}
+gbm_train
+```
+
+For now, we will continue with extreme gradient boosting, although we will use a difference procedure.
+
+We will use xgboost to train a binary classification model, and create some visualizations to obtain additional insight in our model. We will create the visualizations using SHAP (SHapley Additive exPlanations) values, which are a measure of importance of the variables in the model. In fact, SHAP values indicate the influence of each input variable on the predicted probability for each person. Essentially, these give an indication of the difference between the predicted probability with and without that variable, for each person’s score.
+
+## 14. Download the file shap.R from this Github repository.
+```{r, warning = F, message = F}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+## 15. Specify your model as follows, and use it to create predictions on the training data.
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+
+## 16.  First, calculate the SHAP rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.
+```{r, message = F}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+```
+## 17. Plot the SHAP values for every individual for every feature and interpret them.
+
+```{r}
+## The first plot shows, for example, that those with a high value for 
+## Direct_Bilirubin have a lower probability of being diseased. Also,
+## Those with a higher age have a lower probability of being diseased,
+## while those with a higher Albumin have a higher probability of being diseased.
+
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+```
+
+```{r}
+## The second set of plots displays the marginal relationships of the SHAP values with the predictors. This conveys the same information, but in greater detail. The interpretability may be a bit tricky for the inexperienced data analyst. 
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+## 18.  Verify which of the models you created in this practical performs best on the test data.
+```{r}
+test <- readRDS("test_disease.RDS")
+
+bag_test <- predict(bag_train, newdata = test)
+rf_test  <- predict(rf_train, newdata = test)
+gbm_test <- predict(gbm_train, newdata = test)
+xgb_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+list(bag_test, 
+     rf_test, 
+     gbm_test, 
+     xgb_test) %>%
+  map(~ confusionMatrix(.x, test$Disease))
+```
+
+```{r}
+## Accuracy: based on Accuracy alone rf and gbm preformed similarly 
+## Sensitivity: gbm 100%
+## Specificity: xg boost by far the best
+## PPV: xg boost best
+```
+

@@ -1,0 +1,333 @@
+---
+title: "Practical 6"
+author: "Judith Neve"
+date: '2022-10-12'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Classification evaluation
+
+## Introduction
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+library(magrittr) # for the exposition pipe
+```
+
+```{r}
+set.seed(45)
+```
+
+## Confusion matrix, continued
+
+```{r}
+dat <- read_csv("data/cardiovascular_treatment.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+```
+
+#### 1. Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability.
+
+```{r}
+lr_mod <- glm(response ~ ., family = binomial(), data = dat)
+lr_pred <- predict(lr_mod, type = "response")
+lr_outcome <- ifelse(lr_pred < 0.5, 0, 1)
+CF <- table(true = dat$response,
+      predicted = lr_outcome)
+CF
+```
+
+### Confusion matrix metrics
+
+#### 2. Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the confusion matrix table on wikipedia. What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?
+
+```{r}
+TN <- CF[1,1]
+TP <- CF[2,2]
+FP <- CF[1,2]
+FN <- CF[2,1]
+
+accuracy <- (TN + TP) / sum(CF)
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+FPR <- FP / (FP + TN)
+PPV <- TP / (TP + FP)
+NPV <- TN / (TN + FN)
+
+performance <- data.frame(accuracy, sensitivity, specificity, FPR, PPV, NPV)
+# performance is not great, most relevant metrics are PPV and NPV?
+```
+
+#### 3. Create an LDA model lda_mod for the same prediction problem. Compare its performance to the LR model.
+
+```{r}
+lda_mod <- lda(response ~ ., dat)
+lda_pred <- predict(lda_mod)$class
+CF <- table(true = dat$response,
+      predicted = lda_pred)
+CF
+```
+
+```{r}
+TN <- CF[1,1]
+TP <- CF[2,2]
+FP <- CF[1,2]
+FN <- CF[2,1]
+
+accuracy <- (TN + TP) / sum(CF)
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+FPR <- FP / (FP + TN)
+PPV <- TP / (TP + FP)
+NPV <- TN / (TN + FN)
+
+performance <- rbind(performance, c(accuracy, sensitivity, specificity, FPR, PPV, NPV))
+```
+
+#### 4. Compare the classification performance of lr_mod and lda_mod for the new patients in the data/new_patients.csv.
+
+```{r}
+new <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+```
+
+```{r}
+lda_pred_new <- predict(lda_mod, newdata = new)$class
+CF <- table(true = new$response,
+      predicted = lda_pred_new)
+CF
+```
+
+```{r}
+TN <- CF[1,1]
+TP <- CF[2,2]
+FP <- CF[1,2]
+FN <- CF[2,1]
+
+accuracy <- (TN + TP) / sum(CF)
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+FPR <- FP / (FP + TN)
+PPV <- TP / (TP + FP)
+NPV <- TN / (TN + FN)
+
+performance <- rbind(performance, c(accuracy, sensitivity, specificity, FPR, PPV, NPV))
+performance
+```
+
+```{r}
+lr_pred_new <- predict(lr_mod, newdata = new, type = "response")
+lr_outcome_new <- ifelse(lr_pred_new < 0.5, 0, 1)
+CF <- table(true = new$response,
+      predicted = lr_outcome_new)
+CF
+```
+
+```{r}
+TN <- CF[1,1]
+TP <- CF[2,2]
+FP <- CF[1,2]
+FN <- CF[2,1]
+
+accuracy <- (TN + TP) / sum(CF)
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+FPR <- FP / (FP + TN)
+PPV <- TP / (TP + FP)
+NPV <- TN / (TN + FN)
+
+performance <- rbind(performance, c(accuracy, sensitivity, specificity, FPR, PPV, NPV))
+performance
+```
+
+### Brier score
+
+Calculate the out-of-sample brier score for the lr_mod and give an interpretation of this number.
+
+```{r}
+# i.e., the mean of the square errors
+mean((lr_pred_new - (as.numeric(new$response)-1))^2)
+```
+
+### ROC curve
+
+#### 5. Create two LR models: lr1_mod with severity, age, and bb_score as predictors, and lr2_mod with the formula response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose. Save the predicted probabilities on the training data.
+
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score,
+               data = dat,
+               family = binomial())
+lr1_pred <- predict(lr1_mod, type = "response")
+```
+
+```{r}
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose,
+               data = dat,
+               family = binomial())
+lr2_pred <- predict(lr2_mod, type = "response")
+```
+
+#### 6. Use the function roc() from the pROC package to create two ROC objects with the predicted probabilities: roc_lr1 and roc_lr2. Use the ggroc() method on these objects to create an ROC curve plot for each. Which model performs better? Why?
+
+```{r}
+roc_lr1 <- roc(dat$response, lr1_pred)
+roc_lr2 <- roc(dat$response, lr2_pred)
+```
+
+```{r}
+ggroc(roc_lr1)
+```
+
+```{r}
+ggroc(roc_lr2)
+# model 2 performs better: higher curve than model 1
+```
+
+#### 7. Print the roc_lr1 and roc_lr2 objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a “perfect” AUC value be and how would it look in a plot?
+
+```{r}
+roc_lr1
+```
+
+```{r}
+roc_lr2
+# AUC is higher
+# because the curve is higher on average
+# minimum is 0.5 and perfect is 1, it would be a horizontal line
+```
+
+## Iris dataset
+
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+#### 8. Explore the iris dataset using summaries and plots.
+
+```{r}
+summary(iris)
+```
+
+```{r}
+iris %>%
+  ggplot(aes(Sepal.Length, Sepal.Width, col = Species)) +
+  geom_point()
+```
+
+```{r}
+iris %>%
+  ggplot(aes(Petal.Length, Petal.Width, col = Species)) +
+  geom_point()
+```
+
+#### 9. Fit an additional LDA model, but this time with only Sepal.Length and Sepal.Width as predictors. Call this model lda_iris_sepal
+
+```{r}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width,
+                      data = iris)
+```
+
+#### 10. Create a confusion matrix of the lda_iris and lda_iris_sepal models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?
+
+```{r}
+lda_iris_sepal_pred <- predict(lda_iris_sepal)$class
+lda_iris_pred <- predict(lda_iris)$class
+```
+
+```{r}
+table(True = iris$Species,
+      Predicted = lda_iris_sepal_pred)
+```
+
+```{r}
+table(True = iris$Species,
+      Predicted = lda_iris_pred)
+# this one performs better
+```
+
+## Classification trees
+
+#### 11. Use rpart() to create a classification tree for the Species of iris. Call this model iris_tree_mod. Plot this model using rpart.plot().
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., iris)
+rpart.plot(iris_tree_mod)
+```
+
+#### 12. How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?
+
+versicolor
+
+#### 13. Create a scatterplot where you map Petal.Length to the x position and Petal.Width to the y position. Then, manually add a vertical and a horizontal line (using geom_segment) at the locations of the splits from the classification tree. Interpret this plot.
+
+```{r}
+iris %>% 
+  ggplot(aes(Petal.Length, Petal.Width, col = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf),
+               colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.75, yend = 1.75), 
+               colour = "black")
+```
+
+#### 14. Create a classification tree model where the splits continue until all the observations have been classified. Call this model iris_tree_full_mod. Plot this model using rpart.plot(). Do you expect this model to perform better or worse on new Irises?
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ .,
+                            iris,
+                            control = rpart.control(minbucket = 1,
+                                                    cp = 0))
+rpart.plot(iris_tree_full_mod)
+```
+
+## Final assignment: random forest for classification
+
+#### 15. Use the function randomForest() to create a random forest model on the iris dataset. Use the function importance() on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the lda_iris model?
+
+```{r}
+iris_forest <- randomForest(Species ~ ., iris)
+iris_importance <- importance(iris_forest)
+
+ggplot(mapping = aes(x = rownames(iris_importance),
+           y = c(iris_importance))) +
+  geom_col()
+```
+

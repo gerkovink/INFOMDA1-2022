@@ -1,0 +1,201 @@
+---
+title: "SLV_practical8"
+author: "Amalia Tsakali"
+date: "2022-11-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+```{r}
+set.seed(45)
+df <- readRDS("data/train_disease.RDS")
+```
+1. Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.
+```{r 1}
+head(df)
+summary(df)
+df %>%
+  select(-c(Gender,Disease)) %>%
+  describeBy(df$Disease,fast=TRUE)
+```
+2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+```{r 2}
+head(df)
+df %>% ggplot(aes(x=Gender, fill=Disease))+geom_bar(stat = "count")
+#our dataset has more male patients, but the proportion of women that are patients is higher
+
+df %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  theme_minimal()
+#there seem to be some slight differences in the distributions of th contiuous variables between healthy and diseased individuals 
+```
+3. Shortly reflect on the difference between bagging, random forests, and boosting.
+```{r 3}
+#bagging
+#random forests
+#boosting
+
+# we can first of all divide these in two groups, with boosting being the odd one out. 
+#boosting is done in steps, while bagging and random forests are done on parallel. 
+#Boosting also uses all the data , while bagging and random forests take a bootstrap sample 
+#(the out of bag used for validation)
+
+#The main difference betweeen bagging and random forests is that random forests have a "handicap" on
+#how many features the trees are trained on
+```
+
+4. Apply bagging to the training data, to predict the outcome Disease, using the caret library.
+
+```{r 4}
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_train <- train(Disease ~ .,
+                   data = df, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+```
+5. Interpret the variable importance measure using the varImp function on the trained model object.
+```{r 5}
+plot(varImp(bag_train))
+
+#we see the features that have the biggest importance for the model on the top
+```
+6. Create training set predictions based on the bagged model, and use the confusionMatrix() function from the caret package to assess it’s performance.`
+```{r 6}
+confusionMatrix(predict(bag_train, type = "raw"),
+                df$Disease)
+  
+#the confusion matrix shows that our model predicts perfectly on our training data
+```
+7. Now ask for the output of the bagged model. Explain why the under both approaches differ.
+```{r 7}
+bag_train
+```
+8. Fit a random forest to the training data to predict the outcome Disease, using the caret library.
+```{r 8}
+rf_train <- train(Disease ~ .,
+                   data = df, 
+                   method = 'rf',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+```
+9. Again, interpret the variable importance measure using the varImp function on the trained model object. Do you draw the same conclusions as under the bagged model?
+```{r 9}
+plot(varImp(rf_train))
+
+#this model has different importance for each feature 
+```
+10. Output the model output from the random forest. Are we doing better than with the bagged model?
+```{r 10}
+rf_train
+
+#we see a slightly higher accuracy
+```
+11. Now, fit a boosting model using the caret library to predict disease status.`
+```{r 11}
+boosting_train<-train(Disease ~ .,
+                   data = df, 
+                   method = 'gbm',
+                   trControl = cvcontrol,
+                   verbose=F)
+```
+12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.
+```{r 12}
+plot(varImp(boosting_train))
+summary(boosting_train)
+
+#again different importances
+```
+13. Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?
+```{r 13}
+boosting_train
+#the best model has a slighly bettter accuracy
+```
+14. Download the file shap.R from this Github repository.
+```{r 14}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+15. Specify your model as follows, and use it to create predictions on the training data.
+```{r 15}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+16. First, calculate the SHAP rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.
+```{r 16}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+plot(var_importance(shap_results))
+
+```
+17. Plot the SHAP values for every individual for every feature and interpret them.
+```{r 17}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+
+#1st plot
+#High value for Direct Birubulin decreases the probability of being diseased. 
+#same for age
+
+#2nd plot gives the same information in greater detail for every variable
+```
+18. Verify which of the models you created in this practical performs best on the test data.
+```{r 18}
+test <- readRDS("data/test_disease.RDS")
+
+bag_test <- predict(bag_train, newdata = test)
+rf_test  <- predict(rf_train, newdata = test)
+boosting_test <- predict(boosting_train, newdata = test)
+xgboost_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+confusionMatrix(bag_test, test$Disease)
+confusionMatrix(rf_test, test$Disease)
+confusionMatrix(boosting_test, test$Disease)
+confusionMatrix(xgboost_test, test$Disease)
+
+#the random forest has the best performance
+```
+

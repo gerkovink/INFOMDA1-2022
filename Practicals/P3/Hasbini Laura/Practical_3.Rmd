@@ -1,0 +1,293 @@
+---
+title: "Pratical_3"
+author: "Hasbini Laura"
+output: html_document
+---
+
+#Exploratory Data Analysis
+## Introduction 
+
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+## The boys data
+
+We can first look at the data
+```{r}
+head(boys)
+```
+
+```{r}
+tail(boys)
+```
+
+```{r}
+!is.unsorted(boys$age)
+```
+This means that the data is sorted by age. 
+
+```{r}
+summary(boys)
+```
+
+#### QUESTION 1
+"Create a histogram of the variable age using the function geom_histogram()"
+```{r}
+boys %>%
+  ggplot(aes(x=age)) +
+  geom_histogram() +
+  theme_minimal() +
+  labs(title = 'Age distribution')
+```
+
+#### QUESTION 2
+"Create a bar chart of the variable gen using the function geom_bar()"
+
+```{r}
+boys %>%
+  ggplot(aes(x=gen)) +
+  geom_bar() +
+  theme_minimal() +
+  labs(title = 'Genital Tanner stage distribution')
+```
+
+## Assessing missing data
+
+```{r}
+md.pattern(boys)
+```
+
+### QUESTION 3
+"Create a missingness indicator for the variables gen, phb and tv"
+
+```{r}
+boys_mis <- boys %>%
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis  = is.na(tv))
+```
+
+
+#### QUESTION 4
+"Assess whether missingness in the variables gen, phb and tv is related to someones age."
+
+```{r}
+boys_mis %>%
+  group_by(gen_mis) %>%
+  summarize(age=mean(age))
+```
+
+```{r}
+boys_mis %>%
+  group_by(phb_mis) %>%
+  summarize(age=mean(age))
+```
+
+```{r}
+boys_mis %>%
+  group_by(tv_mis) %>%
+  summarize(age=mean(age))
+```
+
+
+#### QUESTION 5 
+"Create a histogram for the variable age, faceted by whether or not someone has a missing value on gen."
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x=age, fill = gen_mis)) +
+  geom_histogram(bins = 75, alpha = 0.5) +
+  #facet_wrap(~gen_mis) + 
+  theme_minimal()
+```
+
+From the previous histogram we can see that most of the missing values are for boys younger than 5 years old. 
+
+#### QUESTION 6
+"Create a scatterplot with age on the x-axis and bmi on the y-axis, using the function geom_point()."
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x=age, y=bmi)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title='Scatter plot of the bmi as the function of age')
+```
+
+#### QUESTION 7 
+"Add a colour aesthetic to the previous plot using the missingness indicator of the variable gen"
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x=age, y=bmi, colour = gen_mis)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title='Scatter plot of the bmi as the function of age')
+```
+
+One more time we can see that the missing gen values are for young boys but no clear link with bmi can be identified. 
+
+## Visualizing the boys data 
+
+#### QUESTION 8 
+"Visualize the relationship between reg (region) and age using a boxplot."
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x=reg, y=age)) +
+  geom_boxplot(fill = 'dark green') +
+  theme_minimal() + 
+  labs('Box plot of the age by region')
+```
+
+It seems that boys in the northern region are older then in all the other regions which have similar repartition. 
+
+#### QUESTION 9 
+"Create a density plot of age, splitting the densities by gen using the fill aesthetic."
+
+```{r}
+boys_mis %>%
+  ggplot(aes(x=age, fill=gen)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal() +
+  scale_fill_brewer() +
+  labs(title = 'Age distribution for several Tanner stage')
+```
+
+We can see that higher genital Tanner stage are observed for older boys. This result could have been expected are Tanner stages are a sign of development. 
+
+### QUESTION 10
+"Create a diverging bar chart for hgt in the boys data set, that displays for every age year that year’s mean height in deviations from the overall average hgt."
+
+```{r}
+boys %>%
+  mutate(Age=cut(age,0:22,labels=paste0(0:21, "years")),
+         Height = hgt - mean(hgt,na.rm=TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height>0, "Above average", "Below average")) %>%
+  ggplot(aes(y=Height, x=Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette="Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank()) +
+  coord_flip()
+```
+
+We can see the the height of boys is indeed increasing with age as the all the boys smaller than the averaged height are also younger than 7 years old. 
+
+##Regressino visualization 
+
+#### QUESTION 11
+"Load the data elastic1 and elastic2 and bind the data frames together using the function bind_rows() and add a grouping variable indicating whether an observation comes from elastic1 or from elastic2."
+
+```{r}
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+```
+
+#### QUESTION 12
+"Create a scatterplot mapping stretch on the x-axis and distance on the y-axis, and map the just created group indicator as the color aesthetic."
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+```
+
+#### QUESTION 13
+"Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line."
+
+```{r}
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+```
+
+I seems that the both elastic bands have a similar link between the distance and the stretch even if they don't exibit the same range of observations. 
+
+#### QUESTION 14
+"For each of the data sets elastic1 and elastic2, fit a regression model with y = distance on x = stretch using lm(y ~ x, data)."
+
+```{r}
+fit1 <- lm(distance ~ stretch, elastic1)
+fit2 <- lm(distance ~ stretch, elastic2)
+```
+
+
+#### QUESTION 15 
+" For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance R2."
+
+```{r}
+fit1 %>% predict(se.fit = TRUE)
+```
+
+```{r}
+fit1 %>% summary() %$% r.squared
+```
+
+```{r}
+fit2 %>% predict(se.fit = TRUE)
+```
+
+```{r}
+fit2 %>% summary() %$% r.squared
+```
+
+We can see that the data set elastic 2 has a larger R2 and a smaller standard deviation. This can be linked to the fact that this dataset is bigger than the one of elastic 1
+
+#### QUESTION 16
+"Study the residual versus leverage plots for both models"
+
+```{r}
+fit1 %>% plot(which = 5)
+```
+
+```{r}
+fit2 %>% plot(which = 5)
+```
+
+#### QUESTION 17
+" Use the elastic2 variable stretch to obtain predictions on the model fitted on elastic1."
+
+```{r}
+pred <- predict(fit1, newdata = elastic2)
+```
+
+#### QUESTION 18
+"Now make a scatterplot to investigate similarity between the predicted values and the observed values for elastic2."
+
+```{r}
+pred_dat <- 
+  data.frame(distance = pred, 
+             stretch  = elastic2$stretch) %>%
+  bind_rows(Predicted = .,
+            Observed  = elastic2, 
+            .id = "Predicted")
+
+pred_dat %>%
+  ggplot(aes(stretch, distance, col = Predicted)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Predicted and observed distances")
+```
+
+The two regression lines are really similar but not identical. This might be due to the fact that we used the elastic1 data to fit the model before predicting elastic2 data. 
+
+
+

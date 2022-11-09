@@ -1,0 +1,265 @@
+---
+title: "Timo_van_Veghel_Practical_4"
+author: "Timo"
+date: "2022-10-05"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+```
+
+##Question 1:
+
+```{r}
+lm_ses <- lm(medv ~ lstat, Boston)
+lm_ses
+```
+
+##Question 2:
+
+```{r}
+coef(lm_ses)
+```
+##Question 3:
+
+```{r}
+summary(lm_ses)
+```
+
+##Question 4:
+
+```{r}
+y_pred <- predict(lm_ses)
+```
+
+##Question 5:
+
+```{r}
+tibble(pred = y_pred, obs = Boston$medv) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point() +
+  theme_minimal()
+```
+
+##Question 6:
+
+```{r}
+pred_dat <-
+  tibble(lstat = seq(from = 0, to = 40, length.out = 1000))
+```
+
+##Question 7:
+
+```{r}
+y_pred_new <- predict(lm_ses, newdata = pred_dat)
+
+y_pred_new
+
+```
+
+##Question 8:
+
+```{r}
+p_scatter <-
+  Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+
+p_scatter
+```
+
+##Question 9:
+
+```{r}
+pred_dat <- pred_dat %>% mutate(medv = y_pred_new)
+```
+
+##Question 10:
+
+```{r}
+p_scatter + geom_line(data = pred_dat)
+```
+
+##Question 11:
+
+```{r}
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "confidence")
+
+```
+
+##Question 12:
+
+```{r}
+gg_pred <- tibble(
+  lstat = pred_dat$lstat,
+  medv  = y_pred_95[, 1],
+  lower = y_pred_95[, 2],
+  upper = y_pred_95[, 3]
+)
+```
+
+##Question 13:
+
+```{r}
+p_scatter <-
+  Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point(colour = "dark gray") +
+  geom_line(data = pred_dat, colour = "maroon") +
+  geom_ribbon(data = gg_pred, aes(x = lstat, ymin = lower, ymax = upper), colour = "red", fill = "orange", alpha = 0.5) +
+  theme_minimal()
+
+p_scatter
+```
+
+##Question 14:
+
+The ribbon represents which datapoints fall within the confidence interval of our prediction line
+
+##Question 15:
+
+```{r}
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "prediction")
+
+gg_pred <- tibble(
+  lstat = pred_dat$lstat,
+  medv = y_pred_95[, 1],
+  l95 = y_pred_95[, 2],
+  u95 = y_pred_95[, 3]
+)
+
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_ribbon(aes(ymin = l95, ymax =u95), data = gg_pred, fill = "#00008b44") +
+  geom_point(colour = "#883321") +
+  geom_line(data = pred_dat, colour = "#00008b", size = 1) +
+  theme_minimal() +
+  labs(x = "Proportion of low SES households", y = "Median house value", title = "Boston house prices")
+```
+
+##Question 16:
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+```
+
+##Question 17:
+
+```{r}
+mse(1:10, 10:1)
+```
+
+##Question 18:
+
+```{r}
+mse(Boston$medv, predict(lm_ses))
+```
+
+##Question 19:
+
+```{r}
+splits <- c(rep("train", 253), rep("validation", 152), rep("tes", 101))
+```
+
+##Question 20:
+
+```{r}
+boston_master <- Boston %>% mutate(splits = sample(splits))
+```
+
+##Question 21:
+
+```{r}
+boston_train <- boston_master %>% filter(splits == "train")
+
+boston_valid <- boston_master %>% filter(splits == "validation")
+
+boston_test <- boston_master %>% filter(splits == "test")
+```
+
+##Question 22:
+
+```{r}
+model_1 <- lm(medv ~ lstat, data = boston_train)
+
+summary(model_1)
+```
+
+##Question 23:
+
+```{r}
+model_1_mse_train <- mse(boston_train$medv, predict(model_1))
+```
+
+##Question 24:
+
+```{r}
+model_1_mse_valid <- mse(boston_valid$medv, predict(model_1, newdata = boston_valid))
+```
+
+##Question 25:
+
+```{r}
+model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+model_2_mse_train <- mse(boston_train$medv, predict(model_2))
+model_2_mse_valid <- mse(boston_valid$medv, predict(model_2, newdata = boston_valid))
+```
+
+##Question 26:
+
+Probably model 2
+
+##Question 27:
+
+```{r}
+model_2_mse_test <- mse(boston_test$medv, predict(model_2, newdata = boston_test))
+
+sqrt(model_2_mse_test)
+```
+
+##Question 28:
+
+```{r}
+mse <- function(y_true, y_pred) mean((y_true - y_pred)^2)
+
+cv_lm <- function(formula, dataset, k) {
+  stopifnot(is_formula(formula))
+  stopifnot(is.data.frame(dataset))
+  stopifnot(is.integer(as.integer(k)))
+  
+  n_samples  <- nrow(dataset)
+  select_vec <- rep(1:k, length.out = n_samples)
+  data_split <- dataset %>% mutate(folds = sample(select_vec))
+  
+  mses <- rep(0, k)
+  
+  for (i in 1:k) {
+    # split the data in train and validation set
+    data_train <- data_split %>% filter(folds != i)
+    data_valid <- data_split %>% filter(folds == i)
+    
+    model_i <- lm(formula = formula, data = data_train)
+    
+    y_column_name <- as.character(formula)[2]
+    
+    mses[i] <- mse(y_true = data_valid[[y_column_name]],
+                   y_pred = predict(model_i, newdata = data_valid))
+  }
+  mean(mses)
+}
+```
+
+##Question 29:
+
+```{r}
+cv_lm(formula = medv ~ lstat + age + tax, dataset = Boston, k = 9)
+
+cv_lm(formula = medv ~ lstat + I(lstat^2) + age + tax, dataset = Boston, k = 9)
+```
+

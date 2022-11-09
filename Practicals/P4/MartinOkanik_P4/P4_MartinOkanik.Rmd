@@ -1,0 +1,352 @@
+---
+title: "P4_MartinOkanik"
+author: "Martin Okanik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+library(magrittr)
+```
+
+```{r}
+head(Boston)
+```
+
+1.  **Create a linear model object called `lm_ses` using the formula `medv ~ lstat` and the `Boston` dataset.**
+
+```{r}
+lm_ses <- lm(medv ~ lstat, Boston)
+```
+
+2.  **Use the function `coef()` to extract the intercept and slope from the `lm_ses` object. Interpret the slope coefficient.**
+
+```{r}
+coef(lm_ses)
+```
+
+According to the dataset description, lstat describes the "lower status of the population (percent)". Hard to say what this means, but it suggests that the higher this is the poorer the people are. This is reasonable also when looking at the negative slope.
+
+3.  **Use `summary()` to get a summary of the `lm_ses` object. What do you see? You can use the help file `?summary.lm`.**
+
+```{r}
+summary(lm_ses)
+```
+
+We see the distributions of residuals, and the error estimates of the model coefficients, along with their significance level (I assume that the null hypothesis is an uncorrelated dataset...)
+
+4.  **Save the predicted y values to a variable called `y_pred`**
+
+```{r}
+y_pred <- lm_ses %>% predict()
+```
+
+5.  **Create a scatter plot with `y_pred` mapped to the x position and the true y value (`Boston$medv`) mapped to the y value. What do you see? What would this plot look like if the fit were perfect?**
+
+```{r}
+ggplot(mapping = aes(x = y_pred, y = Boston$medv)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, colour = "red")
+```
+
+If the model was perfect, all black dots would fall on the red line.
+
+6.  **Use the `seq()` function to generate a sequence of 1000 equally spaced values from 0 to 40. Store this vector in a data frame with (`data.frame()` or `tibble()`) as its column name `lstat`. Name the data frame `pred_dat`.**
+
+```{r}
+pred_dat <- tibble(lstat = seq(from = 0, to = 40, length.out = 1001))
+head(pred_dat)
+```
+
+7.  **Use the newly created data frame as the `newdata` argument to a `predict()` call for `lm_ses`. Store it in a variable named `y_pred_new`.**
+
+```{r}
+y_pred_new <- lm_ses %>% predict(newdata = pred_dat)
+```
+
+8.  **Create a scatter plot from the `Boston` dataset with `lstat` mapped to the x position and `medv` mapped to the y position. Store the plot in an object called `p_scatter`.**
+
+```{r}
+p_scatter <- Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point()
+p_scatter
+```
+
+9.  **Add the vector `y_pred_new` to the `pred_dat` data frame with the name `medv`.**
+
+```{r}
+pred_dat <- pred_dat %>% mutate(medv = y_pred_new)
+head(pred_dat)
+```
+
+10. **Add a geom_line() to `p_scatter`, with `pred_dat` as the `data` argument. What does this line represent?**
+
+```{r}
+p_scatter + geom_line(data = pred_dat)
+```
+
+The line represents the predictions of the linear model based on lstat
+
+11. **The `interval` argument can be used to generate confidence or prediction intervals. Create a new object called `y_pred_95` using `predict()` (again with the `pred_dat` data) with the `interval` argument set to "confidence". What is in this object?**
+
+```{r}
+y_pred_95 <- lm_ses %>% predict(pred_dat, interval = "confidence")
+tail(y_pred_95)
+```
+
+12. **Create a data frame with 4 columns: `medv`, `lstat`, `lower`, and `upper`.**
+
+```{r}
+preds <- tibble(lstat = pred_dat$lstat, medv = y_pred_95[,1] , lower = y_pred_95[,2], upper = y_pred_95[,3])
+
+preds
+```
+
+13. **Add a `geom_ribbon()` to the plot with the data frame you just made. The ribbon geom requires three aesthetics: `x` (`lstat`, already mapped), `ymin` (`lower`), and `ymax` (`upper`). Add the ribbon below the `geom_line()` and the `geom_points()` of before to make sure those remain visible. Give it a nice colour and clean up the plot, too!**
+
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  geom_line(data = preds) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), data = preds, fill = "blue", alpha = 0.2) +
+  labs(title = "Linear modelling of Boston house prices",
+       x = "low income people percentage",
+       y = "property prices",
+       subtitle = "with confidence interval") +
+  theme_minimal()
+```
+
+14. **Explain in your own words what the ribbon represents.**
+
+the ribbon represents the 95% confidence interval of the fitted line. Error estimates of the fit can be obtained by e.g. bootstrapping. Exact error (we really mean variance) estimate can be obtained if one could make arbitrary many samples from the underlying distribution and see the distribution of model parameters resulting from these various samples.
+
+15. **Do the same thing, but now with the prediction interval instead of the confidence interval**
+
+```{r}
+y95 <- lm_ses %>% predict(pred_dat, interval = "prediction")
+tail(y95)
+```
+
+```{r}
+tail(y95[,3])
+```
+
+```{r}
+preds_pred <- tibble(lstat = pred_dat$lstat, medv = y95[,1] , lower = y95[,2], upper = y95[,3])
+
+preds_pred
+```
+
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  geom_line(data = preds) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), data = preds_pred, fill = "blue", alpha = 0.2) +
+  labs(title = "Linear modelling of Boston house prices",
+       x = "low income people percentage",
+       y = "property prices",
+       subtitle = "with prediction interval") +
+  theme_minimal()
+```
+
+Prediction interval is far wider than confidence interval. This is understandable, since there are many points, hence the best fit model is quite constrained and its confidence interval is narrow. But at the same time the data is noisy, so a single new individual prediction can vary a lot (epsilon term - irreducible error in the model equation).
+
+16. **Write a function called `mse()` that takes in two vectors: true y values and predicted y values, and which outputs the mean square error.**
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mean( (y_true - y_pred) ^ 2)
+}
+```
+
+17. **Make sure your `mse()` function works correctly by running the following code.**
+
+```{r}
+mse(1:10, 10:1)
+```
+
+18. **Calculate the mean square error of the `lm_ses` model. Use the `medv` column as `y_true` and use the `predict()` method to generate `y_pred`.**
+
+```{r}
+mse(Boston$medv, predict(lm_ses))
+```
+
+19. **The `Boston` dataset has 506 observations. Use `c()` and `rep()` to create a vector with 253 times the word "train", 152 times the word "validation", and 101 times the word "test". Call this vector `splits`.**
+
+```{r}
+splits <- c(rep.int("train", 253), rep.int("validation", 152), rep.int("test", 101))
+```
+
+20. **Use the function `sample()` to randomly order this vector and add it to the `Boston` dataset using `mutate()`. Assign the newly created dataset to a variable called `boston_master`.**
+
+```{r}
+boston_master <- Boston %>% 
+  mutate(split = sample(splits))
+head(boston_master)
+```
+
+21. **Now use `filter()` to create a training, validation, and test set from the `boston_master` data. Call these datasets `boston_train`, `boston_valid`, and `boston_test`.**
+
+```{r}
+boston_train <- 
+  boston_master %>% 
+  filter(split == "train")
+
+boston_valid <- 
+  boston_master %>% 
+  filter(split == "validation")
+
+boston_test <- 
+  boston_master %>% 
+  filter(split == "test")
+```
+
+22. **Train a linear regression model called `model_1` using the training dataset. Use the formula `medv ~ lstat` like in the first `lm()` exercise. Use `summary()` to check that this object is as you expect.**
+
+```{r}
+model_1 <- boston_train %$% lm(medv ~ lstat)
+summary(model_1)
+```
+
+23. **Calculate the MSE with this object. Save this value as `model_1_mse_train`.**
+
+```{r}
+model_1_mse_train <-
+  mse(boston_train$medv, predict(model_1))
+model_1_mse_train
+```
+
+24. **Now calculate the MSE on the validation set and assign it to variable `model_1_mse_valid`. Hint: use the `newdata` argument in `predict()`.**
+
+```{r}
+model_1_mse_valid <-
+  mse(y_true = boston_valid$medv, y_pred = predict(model_1, newdata = boston_valid))
+model_1_mse_valid
+```
+
+25. **Create a second model `model_2` for the train data which includes `age` and `tax` as predictors. Calculate the train and validation MSE.**
+
+```{r}
+model_2 <- boston_train %$% lm(medv ~ lstat + age + tax)
+#summary(model_2)
+```
+
+```{r}
+model_2_mse_train <- 
+  mse(boston_train$medv, y_pred = predict(model_2))
+
+model_2_mse_valid <- 
+  mse(boston_valid$medv, y_pred = predict(model_2, newdata = boston_valid))
+```
+
+26. **Compare model 1 and model 2 in terms of their training and validation MSE. Which would you choose and why?**
+
+```{r}
+print(c(model_1_mse_train, model_1_mse_valid))
+print(c(model_2_mse_train, model_2_mse_valid))
+```
+
+Validation errors are surprisingly smaller than train set errors. I would expect this to be opposite. More complex model 2 did very slightly better, but it does not seem that adding this complexity was worth it. I would opt for the simpler model which does almost equally good job.
+
+27. **Calculate the test MSE for the model of your choice in the previous question. What does this number tell you?**
+
+```{r}
+model_1_mse_test <-
+  mse(y_true = boston_test$medv, y_pred = predict(model_1, newdata = boston_test))
+model_1_mse_test
+```
+
+This is totally bizarre, I would expect something similar to the validation error. This number should give us the square of an expected error made when predicting property prices in yet unseen towns in Boston (and also towns which were not used to choose this model).
+
+28. **Create a function that performs k-fold cross-validation for linear models.**
+
+    ------------------------------------------------------------------------
+
+    Inputs:
+
+    -   `formula`: a formula just as in the `lm()` function
+
+    -   `dataset`: a data frame
+
+    -   `k`: the number of folds for cross validation
+
+    -   any other arguments you need necessary
+
+    Outputs:
+
+    -   Mean square error averaged over folds
+
+```{r}
+# just testing something
+formul <- y~x
+as.character(formul)
+```
+
+```{r}
+ k_fold_cv <- function(formula, dataset, k) {
+  
+  # reshuffle the dataset, just in case...
+  dataset <- sample(dataset)
+  
+  n = nrow(dataset)
+  mses = rep(1:k)                             # mean square errors for each fold
+  fold = rep(1:k, length.out = n)             # fold label for each row of dataset
+  dataset <- dataset %>% mutate(fold = fold)
+  
+  for (i in 1:k) {
+    
+    # split s.t. i-th fold is used for validation, all the rest for training
+    data_train <- dataset %>% filter(fold != i)
+    data_valid <- dataset %>% filter(fold == i)
+    
+    # build model on remaining k-1, and predict on i-th fold
+    lm_this <- lm(formula, data_train)
+    y_pred <- predict(lm_this, newdata = data_valid)
+    
+    # access the y-variable name from formula to extract it from the validation set
+    name_of_y_var <- as.character(formula)[2]
+    y_true <- data_valid[[name_of_y_var]]
+    
+    # calculate MSE corresponding to i-th fold
+    mses[i] <- mse(y_true, y_pred)
+  }
+  
+  # this function returns the MEAN of MSE values acroos all k folds:
+  mean(mses)
+}
+```
+
+29. **Use your function to perform 9-fold cross validation with a linear model with as its formula `medv ~ lstat + age + tax`. Compare it to a model with as formulat `medv ~ lstat + I(lstat^2) + age + tax`.**
+
+```{r}
+k_fold_cv(formula = medv ~ lstat + age + tax, dataset = Boston, k = 9 )
+```
+
+```{r}
+k_fold_cv(formula = medv ~ lstat + I(lstat^2) + age + tax, dataset = Boston, k = 9 )
+```
+
+A more complex model yields lower MSE because it can fit the data better.
+
+```{r}
+head(Boston$medv)
+```
+
+```{r}
+# this will fail
+#head(Boston[medv])
+```
+
+```{r}
+head(Boston["medv"])
+```
+
+```{r}
+head(Boston[["medv"]])
+```

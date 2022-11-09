@@ -1,0 +1,197 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "19-9-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 3
+---
+For this practical we first load the necessary packages.
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+### Exercise 1
+```{r}
+boys %>% ggplot(aes(x = age)) + geom_histogram() + theme_minimal()
+```
+
+### Exercise 2
+```{r}
+boys %>% ggplot(aes(x = gen)) + 
+  geom_bar() + 
+  labs(x = "Genital Tanner Stage") +
+  theme_minimal()
+```
+
+### Exercise 3
+```{r}
+boysMiss <-
+  boys %>% 
+  mutate(genMiss = is.na(gen), phbMiss = is.na(phb), tvMiss = is.na(tv))
+```
+
+### Exercise 4
+We see that the boys with missing data for either `gen`, `phb` or `tv` have a higher age than the boys with no missing data.
+```{r}
+boysMiss %>% 
+  group_by(genMiss) %>% 
+  summarize(age = mean(age))
+
+boysMiss %>% 
+  group_by(phbMiss) %>% 
+  summarize(age = mean(age))
+
+boysMiss %>% 
+  group_by(tvMiss) %>% 
+  summarize(age = mean(age))
+```
+
+### Exercise 5
+```{r}
+boysMiss %>% 
+  ggplot(aes(x = age, fill = genMiss)) +
+  geom_histogram() +
+  guides(fill = "none") +
+  facet_wrap(vars(genMiss)) +
+  labs(title = "Histogram of age, splitted on wether or not gen is missing.",
+       subtitle = "gen = Genital Tanner Stage") +
+  theme_minimal()
+```
+
+### Exercise 6
+```{r}
+boysMiss %>% 
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### Exercise 7
+```{r}
+boysMiss %>% 
+  ggplot(aes(x = age, y = bmi, colour = genMiss)) +
+  geom_point() +
+  labs(colour = "gen is missing") +
+  theme_minimal()
+```
+
+### Exercise 8
+```{r}
+boys %>% 
+  ggplot(aes(x = reg,y = age, fill = reg)) +
+  geom_boxplot() +
+  labs(x = "Region") +
+  theme(legend.position = "none")
+```
+
+### Exercise 9
+```{r}
+boys %>% 
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal()
+```
+
+### Exercise 10
+```{r}
+boysAge <- boys %>% 
+  mutate(Age = cut(age, breaks = c(0:22), labels = paste0(0:21))) %>% 
+  mutate(Height = hgt - mean(hgt, na.rm = TRUE)) %>% 
+  group_by(Age) %>% 
+  summarise(Height = mean(Height, na.rm = TRUE)) %>% 
+  mutate(hgtAvg = ifelse(Height > 0, "Above average", "Below average"))
+
+boysAge %>% ggplot(aes(x = Age, y = Height, fill = hgtAvg)) +
+  geom_bar(stat = "identity") +
+  labs(fill = "") +
+  scale_fill_manual(values = c("darkgreen", "darkred")) +
+  theme_minimal()
+```
+
+### Exercise 11
+```{r}
+elastic1$id <- rep("1", nrow(elastic1))
+elastic2$id <- rep("2", nrow(elastic2))
+elastic <- bind_rows(elastic1, elastic2) %>% 
+  mutate(id = as.factor(id))
+```
+
+### Exercise 12
+```{r}
+elastic %>% ggplot(aes(x = stretch, y = distance, colour = id)) +
+  geom_point() +
+  labs(colour = "From dataset") +
+  theme_minimal()
+```
+
+### Exercise 13
+
+```{r}
+elastic %>% ggplot(aes(x = stretch, y = distance, colour = id)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(colour = "From dataset") +
+  theme_minimal()
+```
+
+### Exercise 14
+```{r}
+model1 <- elastic1 %>% lm(distance ~ stretch, .)
+model2 <- elastic2 %>% lm(distance ~ stretch, .)
+```
+
+### Exercise 15
+The $R^2$ can be read off from the output of `summary()`.  
+The $R^2$ for the model on `elastic1` is 0.7992.  
+The $R^2$ for the model on `elastic2` is 0.9808.
+```{r}
+#Predictions for elastic1
+preds1 <- predict(model1, se.fit = TRUE)
+preds1
+
+#Predictions for elastic2
+preds2 <- predict(model2, se.fit = TRUE)
+preds2
+```
+
+### Exercise 16
+In the model for `elastic1`, we see that observation 2 has the largest effect on estimation. In the model for `elastic2` the observation with largest effect is observation 1.
+```{r}
+plot(model1, which = 5)
+plot(model2, which = 5)
+```
+
+### Exercise 17
+```{r}
+preds <- predict(model1, newdata = elastic2)
+preds
+```
+
+### Exercise 18
+```{r}
+elastic2$State <- rep("Observed", nrow(elastic2))
+elastic2 %>% select(stretch, distance, State)
+predic2 <- data.frame(
+  stretch = elastic2$stretch,
+  distance = preds,
+  State = rep("Predicted", length(preds))
+)
+
+data <- bind_rows(elastic2, predic2)
+data %>% ggplot(aes(x = stretch, y = distance, colour = State)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(colour = "") +
+  theme_minimal()
+```
+

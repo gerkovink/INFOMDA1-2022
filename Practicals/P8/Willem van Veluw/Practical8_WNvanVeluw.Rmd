@@ -1,0 +1,209 @@
+---
+title: "Supervised Learning and Visualisation"
+author: "Willem van Veluw"
+date: "31-10-2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Arial
+fontsize: 12pt
+urlcolor: blue
+subtitle: Practical 8
+---
+For this practical, we need the following packages. We will also set the seed and read in the data.
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+
+set.seed(45)
+df <- readRDS("train_disease.RDS")
+```
+
+### Exercise 1
+From the output of `str()` we learn that the dataset consists of 500 observations of 11 variables (one of which is the disease indicator). We have 9 numerical variables and one factor (gender).  
+From the summary statistics we see for example that the youngest person is 4 years and the oldest is 90 years. Also, 75% of the persons is male and 72% has the disease. 
+```{r}
+str(df)
+summary(df)
+```
+
+### Exercise 2
+Let's first investigate `age` and `Gender`. From the density plots below it looks like age does not matter that much. The peaks of the density plots are all in the range 35 - 55. Gender seems to play a role, since the the peak of healthy females is higher than the peak of healthy males.
+```{r}
+df %>% ggplot(aes(x = Age, color = Disease)) + 
+  geom_density(size = 1) +
+  facet_wrap(vars(Gender)) +
+  theme_minimal()
+```
+Next, let's investigate the other variables in the dataset. From the boxplots below, it looks like most variables do not clearly distinguish between disease or no disease. Only `Alkaline_Phosphotase`, `Direct_Bilirubin` and `Total_Biliburin` seem to have different boxes. 
+```{r}
+df %>% 
+  select(-Age, -Gender) %>% 
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(y = value, color = Disease)) +
+  geom_boxplot() +
+  facet_wrap(~ name, scales = "free") +
+  theme_minimal()
+```
+
+### Exercise 3
+Bagging, Random Forests and Boosting are all ensemble methods. That means that all methods will grow a large number of trees and use averaging or majority vote to form an output.  
+Bagging and Random Forests work on bootstrap samples: creating several datasets by resampling with replacement from the original dataset. On each bootstrap sample, Bagging and Random Forests grow a decision tree. The difference is that in Bagging all variables are consider when a split has to be made, while in Random Forests a (random) subset of the variables is considered. The latter results in classification trees that are uncorrelated.  
+Boosting does not work with bootstrap samples. Instead, Boosting uses several weak learners (stumps) in an iterative way. The wrongly classified observations by the first stump are given more weight in the second learner. This way, the Boosting method works iteratively through a sequence of weak learners.
+
+### Exercise 4
+```{r}
+cvcontrol <- trainControl(method = "repeatedcv",
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_mod <- train(Disease ~.,
+                 data = df,
+                 method = "treebag",
+                 trControl = cvcontrol,
+                 importance = TRUE)
+```
+
+### Exercise 5
+The output of the function `varImp` is stated below. We see that `Alkaline_Phosphotase` is considered as most important. We did already get that idea from the figure with box plots. In contrast to what we concluded from the density plots, `Age` is more important than `Gender`. 
+```{r}
+varImp(bag_mod)
+```
+
+### Exercise 6
+From the confusion matrix we see that only one case is predicted wrong. For the rest the bagging method seems to perform pretty good on the training set, exactly what could have been expected.
+```{r}
+confusionMatrix(predict(bag_mod), df$Disease)
+```
+
+### Exercise 7
+I do not understand the question. What does "the under both approaches" mean?
+```{r}
+bag_mod
+```
+
+### Exercise 8
+```{r}
+rf_mod <- train(Disease ~.,
+                data = df,
+                method = "rf",
+                trControl = cvcontrol,
+                importance = TRUE)
+```
+
+### Exercise 9
+We see that the variable importance is different compared to the bagged model. For example, the variable `Direct_Bilirubin` is most important in the random forest, whereas is was only the sixth important in the bagged model. It is also interesting to see that gender is assigned some importance, whereas in the bagged model gender was not important. 
+```{r}
+varImp(rf_mod)
+```
+
+### Exercise 10
+The accuracy of the bagged model was equal to 0.678. Hence, the random forest does not perform much better as its accuracy equals 0.688 or 0.692.
+```{r}
+rf_mod
+```
+
+### Exercise 11
+```{r, include = FALSE}
+boo_mod <- train(Disease ~.,
+                 data = df,
+                 method = "gbm",
+                 trControl = cvcontrol)
+```
+
+### Exercise 12
+From the relative influence table, we see that the boosted model classifies `Alkaline_Phosphotase` as the most important variable and gender as least important. This is equivalent to the bagged model. When comparing the boosted model to the random forest, we see different variables pop-up as being important. The most important variable in the random forest was `Direct_Bilirubin`, while that variable is the one-to-least important in the boosted model.
+```{r}
+summary(boo_mod)
+```
+
+### Exercise 13
+The accuracy of the bagged model was equal to 0.678 and the maximal accuracy of the random forest was 0.692. Again we see a slight improvement on the accuracy, as the boosted model with 150 trees of depth one has an accuracy of 0.724. We conclude that the boosted model performs best.
+```{r}
+boo_mod
+```
+
+### Exercise 14
+I have copy-pasted the file and stored in a R script called "shap.R". 
+```{r}
+source("shap.R")
+```
+
+### Exercise 15
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(Prediction = pred$Disease, True = df$Disease)
+```
+
+### Exercise 16
+We see that the model considers `Direct_Bilirubin` as the most important variable, just like the random forest. However, unlike the random forest, it considers `Gender` as the least important variable.
+```{r}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+var_importance(shap_results)
+```
+
+### Exercise 17
+From the first plot it can be read that, for instance, people with high `Direct_Bilirubin` have a lower probability of disease. Also, females have a lower probability of disease. For all the other variables the effect is not so clear from the first plot, as the points are all inducating low variable values and are on the decreasing and increasing side of the probability of disease.  
+Equivalent statements can be read from the second figure.  
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+### Exercise 18
+From the confusion matrices we read the prediction performance of the models on the test data. We see that the models predict respectively 57, 58, 57 and 55 examples correctly. Hence, there is not much to distuinguish between the models: all perform approximately equal on the test data. 
+```{r}
+test <- readRDS("test_disease.RDS")
+
+bag_pred <- predict(bag_mod, newdata = test)
+bag_confmat <- table(true = test$Disease, predicted = bag_pred)
+
+rf_pred <- predict(rf_mod, newdata = test)
+rf_confmat <- table(true = test$Disease, predicted = rf_pred)
+
+boo_pred <- predict(boo_mod, newdata = test)
+boo_confmat <- table(true = test$Disease, predicted = boo_pred)
+
+xgb_pred <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+xgb_confmat <- table(true = test$Disease, predicted = xgb_pred)
+
+print("The bagged model")
+bag_confmat
+print("The random forest")
+rf_confmat
+print("The boosted model")
+boo_confmat
+print("The xgboosted model")
+xgb_confmat
+
+
+```

@@ -1,0 +1,693 @@
+---
+title: "Can we predict IMDb movie ratings?"
+author: "Ana Martins, Hsuan Lee, Timo van Veghel"
+date: "October/November 2022"
+output: html_document
+---
+
+## Goals 
+
+In this project, we aim to find out if there is a way to predict IMDb movie ratings based on a dataset we retrieve from the [IMDb API](https://imdb-api.com). We aim to find which variables are relevant to the rating so we can create a prediction model which, hopefully, will let us know before anyone else which movies we should be going to the cinema for. 
+However, there is no guarantee that we can actually predict the score based on such superficial values, as most of the stuff that actually makes up a movie is in the movie itself, and not in metrics like the runtime. So we will also try to predict the gross of a movie, based on the parameters available, as that seems on a first thought more predictable based on the genre (e.g. more people watch romcoms than history documentaries) and on the popularity of the actors (e.g. a movie is much more likely to make more money if you spend the money to go and hire Jennifer Aniston).
+
+## About the Dataset
+
+The dataset we will be using is taken from the [IMDb API](https://imdb-api.com) on the 4th of November of 2022, as we did not find any dataset online that satisfied what we wanted (they were either too big, too small, or had wrong data). The maximum amount of data we can get at once is 250 movies, so what we do to try to generate (mostly) random data is searching for movies with each of the genres available and getting them by ascending and descending alphabetical order (see [data/movie_data_generating.py](data/movie_data_generating.py) for more details). The starting dataset contains 11649 random (see below why we can call them random) movies that are on IMDB.
+
+The dataset has 14 variables: `id`, `image`, `title`, `description`, `runtimeStr`, `genres`, `genresList`, `contentRating`, `imDbRating`, `imDbRatingVotes`, `metacriticRating`, `plot`, `stars` and `starList`.
+
+We will be taking away variables that do not interest us, like `image`, `genresList` (we have the genres in `genres` already), `plot` and `starList` (again, we have the starts in `stars` already), as those are not useful to analyse or to look back on. Variables like the `stars` are also not useful to analyse, as if we tried to fit a model to so many actors we would definitely be overfitting, but they are good to keep if we want to look back at them later or to use them for constructing dummy variables. And the variables we will try to predict are `imDbRating`. Another particularity of the dataset is that this data was already taken only for Feature Films, for runtime longer than 60 minutes and for more IMDb votes than 25000 (what IMDb considers to make the rating official) to eliminate titles we do not want to analyse.
+
+## Getting the Data
+
+We start by getting our initial dataset:
+
+```{r}
+library(tidyverse)
+library(caret) # for fitting the trees and LR with CV
+library(gbm) # for boosting
+library(psych) # for making a pretty summary
+options(scipen = 999) # remove e
+```
+
+```{r}
+movies <- read_csv("data/movie_data.csv")
+```
+
+Let us clean this up a bit so we do not have to carry around more than we need to:
+
+```{r}
+movies <-
+  movies %>%
+  select(-image,-genreList,-plot,-starList)
+```
+
+```{r}
+movies <-
+  movies %>%
+  mutate(runtime = as.numeric(gsub(' min', '', runtimeStr))) %>%
+  select(-runtimeStr)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(contentRating = as.factor(contentRating))
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(year = as.numeric(gsub('[()]', '', description))) %>% 
+  select(-description)
+```
+
+
+Actually, looking at the `stars`, we can see that the first name listed is the Director of that film, so let us take them out.
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(director = sub(", .*", "", movies$stars)) %>% 
+  mutate(stars = substring(stars, first = nchar(director) + 3)) %>% 
+  mutate(actors = stars)
+```
+
+
+Also, because of the way the data was retrieved, we have multiples in there (e.g. on movie can be on the action and drama genres and get retrieved both times), so let's get rid of them.
+
+```{r}
+movies <-
+  movies %>% 
+  filter(!duplicated(id))
+```
+
+## Creating New Useful Variables
+
+Seeing as our dataset right now is mostly made up of character variables, this will not be very useful. So, we will start by transforming the `genres` into dummy variables for each one of them.
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(action = ifelse(grepl("Action", genres, fixed = TRUE), 1, 0),
+         adventure = ifelse(grepl("Adventure", genres, fixed = TRUE), 1, 0),
+         animation = ifelse(grepl("Animation", genres, fixed = TRUE), 1, 0),
+         biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
+         comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
+         crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
+         documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
+         drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
+         family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
+         fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
+         filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
+         gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
+         history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
+         horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
+         music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
+         musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
+         mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
+         news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
+         realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
+         romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
+         scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
+         sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
+         talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
+         thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
+         war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
+         western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),) %>% 
+  select(-genres)
+```
+
+These are all of the Genres available in the IMDb API. However, when retrieving the values, the search couldn't find any movies with certain genres within our search criteria (runtime > 60 and num of votes > 25000), so we can take those out to not carry variables we don't need.
+
+```{r}
+movies = movies[ , colSums(movies != 0, na.rm = TRUE) > 0]
+```
+
+Additionally, we filter out missing values for content ratings and create dummy variables for content ratings. 
+```{r}
+movies <- movies %>%
+  filter(contentRating != c("Not Rated", "Unrated")) %>%
+  mutate(PG13 = ifelse(contentRating == "PG-13", 1,0),
+         R = ifelse(contentRating == "R", 1,0),
+         PG = ifelse(contentRating == "PG", 1,0),
+         Passed = ifelse(contentRating == "Passed", 1,0),
+         G = ifelse(contentRating == "G", 1,0),
+         TVMA = ifelse(contentRating == "TV-MA", 1,0),
+         TV14 = ifelse(contentRating == "TV-14", 1,0),
+         Approved = ifelse(contentRating == "Approved", 1,0),
+         TVPG = ifelse(contentRating == "TV-PG", 1,0),
+         GP = ifelse(contentRating == "GP", 1,0),
+         NC17 = ifelse(contentRating == "NC-17", 1,0),
+         twelve = ifelse(contentRating == "12", 1,0),
+         M_PG = ifelse(contentRating == "M/PG", 1,0),
+         M = ifelse(contentRating == "M", 1,0)) %>%
+  select(-contentRating)
+```
+
+Now, to use the `director` variable in some way, we need to create another dummy value. For this, we are going to create `director_top250`. Let us load our second dataset:
+
+```{r}
+top250 <- read_csv("data/top250_data.csv")
+```
+
+Again, let us arrange it in a similar way as the last one:
+
+```{r}
+top250 <-
+  top250 %>%
+  select(-fullTitle, -image)
+```
+
+From here, we only need the Directors' names:
+
+```{r}
+top250 <-
+  top250 %>% 
+  mutate(director = sub(", .*", "", top250$crew))
+top250 <-
+  top250 %>% 
+  mutate(director = sub("dir.", "", top250$director))
+top250 <-
+  top250 %>% 
+  mutate(director = gsub("[()]", "", top250$director))
+top250 <-
+  top250 %>% 
+  mutate(director = str_sub(director, end = -2))
+```
+
+```{r}
+directors <- top250$director 
+directors <- unique(directors)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(top_director = ifelse(director %in% directors, 1, 0))
+```
+
+It would be useful to have a similar thing for the actors:
+
+```{r}
+top250 <-
+  top250 %>% 
+  mutate(director = sub(", .*", "", top250$crew)) %>% 
+  mutate(crew = substring(crew, first = nchar(director) + 3))
+```
+
+```{r}
+actors <- unlist(strsplit(top250$crew, ", "))
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(actors = stars)
+movies <-
+  movies %>%
+  mutate(actor1 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor1) + 3))
+movies <-
+  movies %>%
+  mutate(actor2 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor2) + 3))
+movies <- movies %>%
+  mutate(actor3 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor3) + 3))
+movies <- movies %>%
+  mutate(actor4 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor4) + 3))
+movies <- movies %>%
+  mutate(actor5 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor5) + 3))
+movies <- movies %>%
+  mutate(actor6 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor6) + 3))
+movies <- movies %>%
+  mutate(actor7 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor7) + 3))
+movies <- movies %>%
+  mutate(actor8 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor8) + 3))
+movies <- movies %>%
+  mutate(actor9 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor9) + 3))
+movies <- movies %>%
+  mutate(actor10 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor10) + 3))
+movies <- movies %>%
+  mutate(actor11 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor11) + 3))
+movies <- movies %>%
+  mutate(actor12 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor12) + 3))
+movies <- movies %>%
+  mutate(actor13 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor13) + 3))
+movies <- movies %>%
+  mutate(actor14 = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(actor14) + 3))
+movies <-
+  movies %>% 
+  mutate(actor15 = stars) %>% 
+  select(-stars)
+```
+
+```{r}
+movies <-
+  movies %>% 
+  mutate(top_actor = ifelse(actor1 %in% actors | actor2 %in% actors | actor3 %in% actors | actor4 %in% actors | actor5 %in% actors | actor6 %in% actors | actor7 %in% actors | actor8 %in% actors | actor9 %in% actors | actor10 %in% actors | actor11 %in% actors | actor12 %in% actors | actor13 %in% actors | actor14 %in% actors | actor15 %in% actors, 1, 0))
+```
+
+```{r}
+movies <-
+  movies %>% 
+  select(-actor1, -actor2, -actor3, -actor4, -actor5, -actor6, -actor7, -actor8, -actor9, -actor10, -actor11, -actor12, -actor13, -actor14, -actor15)
+```
+
+## Exploratory Data Analysis
+
+Let us now start by seeing what we are working with, by seeing some of the variables compared to each other, so we can start understanding what variables correlate to the IMDb Rating.
+
+```{r}
+summary(movies)
+```
+
+We can take a quick look to what these statistics tell us, just for fun (and also to make sure our sample is actually random).
+The minimum rating film we have from IMDb users has 1.0 out of 10 and the maximum has 9.2, with the mean of the score being 6.74. The minimum rating film we have from critics has 6.0 out of 100 and the maximum has the max score of 100, with a mean at 59.61, which is close-ich to the IMDb ratings. It is expected that the critics scores are lower than the IMDb ratings in general though, so this seems about right.
+The lowest runtime we have has 46 minutes, which means somehow a movie got to escape the API filter, and the longest is longer than 5 hours (I had to look that up... it's an italian movie, of course).
+The first movie we have is from 1920 and the latest is from 2022 (which makes sense as this was taken directly from the IMDb database, which is always up to date with the movies coming out). The mean for the year is at 2001, which means we have more recent movies than older movies, which makes sense since there are more movies being produced now.
+Looking at the genres, we can see the genre that we have more of is drama, with about half of the movies earning that title, and the one we have least of is Reality-TV, only having one movie from that category.
+We have almost 20% of movies having a top director, while only 0.4% have a top actor.
+
+```{r}
+movies %>% 
+  ggplot(aes(x = imDbRating)) +
+  geom_histogram(binwidth = 0.5) +
+  theme_minimal() +
+  xlim(0, 10)
+```
+
+Referring back to the "random" movies remark, here we can clearly see that the IMDb scores follow a gaussian trend, which let's us treat the data as a random sample.
+
+## Specify the appropriate level of measurement for each feature.
+
+```{r}
+movies <- movies %>%
+  mutate(action = as.factor(action),
+         adventure = as.factor(adventure),
+         animation = as.factor(animation),
+         biography = as.factor(biography),
+         comedy = as.factor(comedy),
+         crime = as.factor(crime),
+         drama = as.factor(drama),
+         family = as.factor(family),
+         fantasy = as.factor(fantasy),
+         filmnoir = as.factor(filmnoir),
+         history = as.factor(history),
+         horror = as.factor(horror),
+         music = as.factor(music),
+         musical = as.factor(musical),
+         mystery = as.factor(mystery),
+         realitytv = as.factor(realitytv),
+         romance = as.factor(romance),
+         scifi = as.factor(scifi),
+         sport = as.factor(sport),
+         thriller = as.factor(thriller),
+         war = as.factor(war),
+         western = as.factor(western), 
+         top_director = as.factor(top_director),
+         top_actor = as.factor(top_actor),
+         
+         PG13 = as.factor(PG13),
+         R = as.factor(R),
+         PG = as.factor(PG),
+         Passed = as.factor(Passed),
+         G = as.factor(G),
+         TVMA = as.factor(TVMA),
+         TV14 = as.factor(TV14),
+         Approved = as.factor(Approved),
+         TVPG = as.factor(TVPG),
+         GP = as.factor(GP),
+         NC17 = as.factor(NC17), 
+         twelve = as.factor(twelve),
+         M_PG = as.factor(M_PG),
+         M = as.factor(M))
+```
+
+## Split the data into training data and test data.
+
+```{r}
+# remove the missing values
+movies <- movies %>%
+  drop_na()
+# split data
+movies <- movies[sample(nrow(movies)), ]
+train <- seq(1, nrow(movies)*0.8)
+test <- seq(max(train) + 1, nrow(movies))
+
+movies_train <- movies[train, ]
+movies_test <- movies[test, ]
+```
+
+
+##Very simple linear model
+
+```{r}
+lms <- lm(imDbRating ~ imDbRatingVotes + metacriticRating + runtime + year + top_director, data = movies_train)
+```
+
+Extract intercept and slope:
+
+```{r}
+coef(lms)
+```
+Let's summarize:
+
+```{r}
+summary(lms)
+```
+
+Predicted y values to a variable:
+
+```{r}
+y_pred <- predict(lms)
+```
+
+Let's plot this son of a bitch (be sure to take this text out! :T)
+
+```{r}
+tibble(pred = y_pred, obs = movies_train$imDbRating) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point(size = 1, col = "dark blue") +
+  geom_abline(slope = 1, size = 1, col = "dark red") +
+  theme_minimal()
+```
+
+Now let's predict:
+
+```{r}
+y_pred_new <- predict(lms, newdata = movies_test)
+```
+
+Plotting again:
+
+```{r}
+tibble(pred = y_pred_new, obs = movies_test$imDbRating) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point(col = "dark blue") +
+  geom_abline(slope = 1, size = 1, col = "dark red") +
+  theme_minimal()
+```
+
+Let's try to get an MSE:
+
+```{r}
+mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+
+mse(1:10, 10:1)
+```
+
+Our MSE:
+
+```{r}
+mse(movies_train$imDbRating, predict(lms))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Predicting whether a movie is likely to be in the top 1000 of IMDB
+
+It is also an interesting topic to predict whether a movie has the potential to be in the top 1000 of IMDB. According to the IMDB website(`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), if a movie wishes to be in the top 1000, it requires an IMDB rating above 7.6. The 7.6 rating will hence be considered as a threshold for us to examine a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
+
+**First, we create a feature providing us with information about whether the movie has a rating higher than 7.6.**
+```{r}
+movies_train <- movies_train %>%
+  mutate(top1000 = as.factor(ifelse(imDbRating > 7.6, 1, 0)))
+
+movies_test <- movies_test %>%
+  mutate(top1000 = as.factor(ifelse(imDbRating > 7.6, 1, 0)))
+```
+
+**Second, the analysis can begin.**
+
+In the statistical analysis section, four models will be fitted, they are the simplest model, the logistic regression model with 5-fold cross validation; classifiers such as: bagging, random forest, and boosting with 5-fold cross validation. Finally, the performance of all the mentioned models will be examined on a test dataset to identify the best predictive model.
+
+*1. 5-fold cross-validation Logistic Regression*
+```{r}
+# specify the cross-validation method, and number of k-fold
+set.seed(2022)
+train_control <- trainControl(method = "cv", number = 5)
+```
+
+```{r}
+movies_train <- movies_train %>%
+  select(-id, -title, -imDbRating, -director, -actors, -realitytv, -year)
+```
+
+```{r, warning=FALSE}
+# fit the LR model on training dataset
+lr_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+summary(lr_cv)
+```
+
+As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`),and the running time of a movie (`runtime`) are the critical elements affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
+
+In terms of the genre of the movie, six genres influence a movie's ability to enter the IMDB Top 1000: `adventure`, `animation`, `comedy`, `horror`, `science fiction`, and `sports`. Among them, except for animation, the other five genres relate negatively to entering the IMDB Top 1000. In other words, if a movie belongs to the adventure category, the log-odds of entering the IMDB top 1000 drops by 1.1; if a movie belongs to the comedy category, the log-odds of entering the IMDB top 1000 declines by 0. 7; if a movie is a horror movie, the log-odds of entering the IMDB top 1000 decreases by 1.5; if a movie is a science fiction movie, the log-odds of entering the IMDB top 1000 falls by 1.5. On the contrary, if a movie is an animated movie, the log-odds of entering the IMDB top 1000 increases by 1.1.
+ 
+Regarding content ratings, there are four content ratings that affect a movie's chances of making the IMDB Top 1000: `PG-13`, `R`, `PG`, `G`. They all have a negative association with entry into the IMDB Top 1000, i.e., if a movie is listed as one of the above content ratings, the log-odds of entering the IMDB Top 1000 will decrease.
+
+Notably, the `director` of the movie also serves as an influencing element. If a movie is directed by a top 250 director, the log-odds of entering the IMDB top 1000 will increase by 0.5.
+
+```{r}
+# create the confusion matrix on the training data
+pred_lr <- predict(lr_cv, method = "response")
+
+confusionMatrix(pred_lr, movies_train$top1000)
+```
+
+We built a confusion matrix for the 5-fold cross-validated logistic regression model on the training data. It can be seen that the accuracy of this model is 0.91, which is not bad. 
+
+In our case, we are most concerned about the positive predictive value (PPV) and negative predictive value (NPV) as we would like to know if a movie is identified as likely to be in the top 1000 of IMDB, what is the probability of it really being in the top 1000 of IMDB, PPV can give us the information; conversely, if a movie is determined as not likely to be in the top 1000, what is the probability that it really does not make it to the top 1000 of IMDB, NPV can provide information. Here, the logistic regression model with 5-fold cross-validation has a PPV of 0.93 and an NPV of 0.76 on the training dataset.
+
+```{r}
+# check the results on validation dataset
+lr_cv
+```
+
+Furthermore, Itcan be seen that the accuracy of the 5-fold cross-validation logistic regression model on the validation datasets is 0.9.
+
+*2. Bagging*
+```{r}
+# fit the bagging model on training dataset
+bag_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "treebag",
+               importance = T)
+```
+
+```{r, fig.height=7.5, fig.width=9}
+# Check the feature importance plot
+bag_cv %>%
+  varImp %>%
+  plot
+```
+
+The variable importance plot indicates that the four features with the highest importance in the bagging model are the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`), the running time of the movie (`runtime`), and a movie's director being a top 250 director(`top_director`) or not. The remaining features are relatively less important than the above four.
+
+```{r}
+# create confusion matrix on training data
+pred_bag <- predict(bag_cv, type = "raw")
+confusionMatrix(pred_bag, movies_train$top1000)
+```
+
+The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
+
+```{r}
+# check the results on internal validation dataset
+bag_cv
+```
+
+The most characteristic of the bagging method is that it uses bootstrap aggregation to obtain many training datasets by sampling multiple times from the sample, fitting a tree to each training dataset, and using majority vote for classification or simple average for regression. The out of bag data can be served as the internal validation datasets. Hence, we can observe that the accuracy of the internal validation dataset shown here is 0.9.
+
+*3. Random Forest*
+```{r}
+# fit the bagging model on training dataset
+rf_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "rf",
+               importance = T)
+```
+
+```{r, fig.height=7.5, fig.width=9}
+# Check the feature importance plot
+rf_cv %>%
+  varImp %>%
+  plot
+```
+
+The random forest model reveals different variable importance plot with the bagging model. The reason for this is that bagging has a high correlation issue between the trees. To overcome this problem, the random forest places a restriction on each split of the tree by randomly drawing features at any split with only those features that are drawn being considered.
+
+Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie's director is a top 250 director (`top_director`), and the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot.
+
+```{r}
+# create confusion matrix on the training data
+pred_rf <- predict(rf_cv, type = "raw")
+confusionMatrix(pred_rf, movies_train$top1000)
+```
+
+Similar to the output of the bagging model, the confusion matrix of the random forest model on the training data displays nearly perfect results with accuracy, sensitivity, specificity, PPV, and NPV equal to 1. Nevertheless, it is still uncertain whether it is a decent model, as we do not know either it is over-fitting or not.
+
+```{r}
+# check the results on internal validation dataset
+rf_cv
+```
+
+Due to the similarity with the bagging method, the random forest has the internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 21 features are sampled in each split.
+
+*4. 5-fold cross-validation Boosting*
+```{r, warning=FALSE}
+# fit the bagging model on training dataset
+boost_cv <- train(top1000 ~ .,
+               data = movies_train,
+               trControl = train_control,
+               method = "gbm",
+               verbose = F,)
+```
+
+```{r, fig.height=7.5, fig.width=10}
+# Check the feature importance plot
+boost_cv %>%
+  varImp %>%
+  plot
+```
+
+The order of importance of the features is similar to that of the random forest model, as can be seen from the variable importance plot of the boosting model. Critics' rating (`metacriticRating`) is the most important feature, next is the total number of votes (`imDbRatingVotes`), followed by whether the director of the movie is a top 250 director (`top_director`), and the running time of the movie (`runtime`). Compared to the random forest model, however, the features listed after the fourth variable in the boosted model contribute little to the model.
+
+```{r}
+# create confusion matrix on the training data
+pred_boost <- predict(boost_cv, type = "raw")
+confusionMatrix(pred_boost, movies_train$top1000)
+```
+
+The confusion matrix of the boosting model on the training data has an accuracy of 0.91, a sensitivity of 0.98, a slightly lower specificity of 0.55, a PPV of 0.92, and an NPV of 0.8.
+
+```{r}
+# check the results on the validation dataset
+boost_cv
+```
+
+Based on the accuracy of the 5-fold cross-validation boosting model on the validation datasets, the best accuracy of the boosting model is 0.9 for two splits on a tree with 50 trees.
+
+**Third, let's test on the test data and determine which model has the best performance.**
+```{r}
+# fit all the models on the test data
+lr_test <- predict(lr_cv, newdata = movies_test)
+bag_test <- predict(bag_cv, newdata = movies_test)
+rf_test  <- predict(rf_cv, newdata = movies_test)
+boost_test <- predict(boost_cv, newdata = movies_test)
+```
+
+```{r}
+# show the confusion matrix and related info of each model
+list(Five_fold_CV_LR = lr_test,
+     Bagging = bag_test, 
+     Random_Forest = rf_test, 
+     Five_fold_CV_Boosting = boost_test) %>%
+  map(~ confusionMatrix(.x, movies_test$top1000))
+```
+
+All four models (i.e., the 5-fold cross-validation logistic regression model, the bagging model, the random forest model, and the 5-fold cross-validation boosting model) were fitted to the test dataset we partitioned at the beginning to test and compare the performance of each model.
+
+First, we evaluated the accuracy of each model - the boosting model had the highest accuracy at 0.92, followed by the random forest model and logistic regression model at 0.91, and the bagging model had the lowest accuracy at 0.908.
+
+Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.93 and an NPV of 0.78.
+
+To conclude, among the four models we compared, the boosting model is the idealist model so that it is served as our final model.

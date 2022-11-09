@@ -1,0 +1,392 @@
+---
+title: "P6_MartinOkanik"
+author: "Martin Okanik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+library(magrittr)
+```
+
+```{r}
+set.seed(45)
+```
+
+# Confusion matrix, continued
+
+In the `data/` folder there is a cardiovascular disease dataset of 253 patients. The goal is to predict whether a patient will respond to treatment based on variables in this dataset:
+
+-   severity of the disease (low/high)
+
+-   age of the patient
+
+-   gender of the patient
+
+-   bad behaviour score (e.g. smoking/drinking)
+
+-   prior occurrence of the cardiovascular disease (family history)
+
+-   dose of the treatment administered: 1 (lowest), 2 (medium), or 3 (highest)
+
+------------------------------------------------------------------------
+
+1.  **Create a logistic regression model `lr_mod` for this data using the formula `response ~ .` and create a confusion matrix based on a .5 cutoff probability.**
+
+------------------------------------------------------------------------
+
+```{r}
+patients <- read.csv("data/cardiovascular_treatment.csv")
+new_patients <- read.csv("data/new_patients.csv")
+head(new_patients)
+```
+
+```{r}
+class(new_patients$response)
+```
+
+```{r}
+lr_mod <- glm(response ~ ., family = "binomial", data = patients)
+lr_prob <- predict(lr_mod, type = "response")
+lr_pred <- ifelse(lr_prob > 0.5, 1, 0)
+
+conf_mat <- table(true = patients$response, 
+      predicted = lr_pred)
+conf_mat
+```
+
+#### Confusion matrix metrics
+
+------------------------------------------------------------------------
+
+2.  **Calculate the accuracy, true positive rate (sensitivity), the true negative rate (specificity), the false positive rate, the positive predictive value, and the negative predictive value. You can use the [confusion matrix table on wikipedia](https://en.wikipedia.org/w/index.php?title=Sensitivity_and_specificity&oldid=862159646#Confusion_matrix). What can you say about the model performance? Which metrics are most relevant if this model were to be used in the real world?**
+
+------------------------------------------------------------------------
+
+```{r}
+model_metrics <- function(conf_mat) {
+  
+  tn = conf_mat[1,1]
+  tp = conf_mat[1,2]
+  fn = conf_mat[2,1]
+  fp = conf_mat[2,2]
+  p = tp + fn
+  n = tn + fp
+  t = tp + tn
+  f = fp + fn
+  total = tn + tp + fn + fp
+  
+  tibble(
+    accuracy = t / total,
+    sensitivity = tp / p, # recall, true positive rate...
+    specificity = tn / n, # selectivity, true negative rate...
+    fp_rate = fp / n, # fallout...
+    fn_rate = fn / p, # miss rate...
+    p_pred_val = tp / (tp + fp), # precision...
+    n_pred_val = tn / (tn + fn), #...
+  )
+
+}
+
+model_metrics(conf_mat)
+```
+
+accuracy: fraction of predictions that are true
+
+sensitivity: if the patient (in reality) responds to the treatment, sensitivity quantifies how likely is the model to find this
+
+specificity: if the patient (in reality)does not respond to the treatment, specificity quantifies how likely is the model to find this
+
+fp-rate: if the patient (in reality)does not respond to the treatment, fp-rate quantifies how likely is the model to predict he does
+
+fn-rate: if the patient (in reality) responds to the treatment, fn-rate quantifies how likely is the model to predict he does not
+
+ppv: if the patient is predicted to respond to the treatment, ppv quantifies how likely this prediction is true
+
+npv: if the patient is predicted to not respond to the treatment, npv quantifies how likely this prediction is true
+
+------------------------------------------------------------------------
+
+3.  **Create an LDA model `lda_mod` for the same prediction problem. Compare its performance to the LR model.**
+
+------------------------------------------------------------------------
+
+```{r}
+lda_mod <- lda(response ~ ., data = patients)
+lda_pred <- predict(lda_mod)$class
+table(true = patients$response, predicted = lda_pred)
+```
+
+The performance seems to be the same.
+
+------------------------------------------------------------------------
+
+4.  **Compare the classification performance of `lr_mod` and `lda_mod` for the new patients in the `data/new_patients.csv`.**
+
+------------------------------------------------------------------------
+
+```{r}
+lr_prob_new <- predict(lr_mod, type = "response", newdata = new_patients)
+lr_pred_new <- ifelse(lr_prob_new > 0.5, 1, 0)
+conf_mat_lr <- table(true = new_patients$response, predicted = lr_pred_new)
+conf_mat_lr
+```
+
+```{r}
+lda_pred_new <- predict(lda_mod, newdata = new_patients)$class
+conf_mat_lda <- table(true = new_patients$response, predicted = lda_pred_new)
+conf_mat_lda
+```
+
+LDA is slightly better...
+
+#### Brier score
+
+------------------------------------------------------------------------
+
+**Calculate the out-of-sample brier score for the `lr_mod` and give an interpretation of this number.**
+
+------------------------------------------------------------------------
+
+```{r}
+brier <- function(lr_mod, newdata, column_name) {
+  pred_prob <- predict(lr_mod, type = "response", newdata = newdata)
+  dev_sq <- (pred_prob - newdata[column_name]) ^ 2
+  1 / length(pred_prob) * sum( dev_sq)
+}
+
+brier(lr_mod, new_patients, "response")
+```
+
+Brier score expresses the mean square deviation of the predicted and "true" probabilities ("true" are 0 or 1).
+
+#### ROC curve
+
+------------------------------------------------------------------------
+
+5.  **Create two LR models: `lr1_mod` with `severity`, `age`, and `bb_score` as predictors, and `lr2_mod` with the formula `response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose`. Save the predicted probabilities on the training data.**
+
+------------------------------------------------------------------------
+
+```{r}
+lr1_mod <- glm(response ~ severity + age + bb_score, data = patients, family = "binomial")
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, data = patients, family = "binomial")
+
+lr1_prob <- predict(lr1_mod, type = "response")#, newdata = new_patients)
+lr2_prob <- predict(lr2_mod, type = "response")#, newdata = new_patients)
+```
+
+------------------------------------------------------------------------
+
+6.  **Use the function `roc()` from the `pROC` package to create two ROC objects with the predicted probabilities: `roc_lr1` and `roc_lr2`. Use the `ggroc()` method on these objects to create an ROC curve plot for each. Which model performs better? Why?**
+
+------------------------------------------------------------------------
+
+```{r}
+roc_lr1 <- roc(patients$response, lr1_prob)
+ggroc(roc_lr1)
+```
+
+```{r}
+roc_lr2 <- roc(patients$response, lr2_prob)
+ggroc(roc_lr2)
+```
+
+------------------------------------------------------------------------
+
+7.  **Print the `roc_lr1` and `roc_lr2` objects. Which AUC value is higher? How does this relate to the plots you made before? What is the minimum AUC value and what would a "perfect" AUC value be and how would it look in a plot?**
+
+```{r}
+print(roc_lr1)
+```
+
+```{r}
+print(roc_lr2)
+```
+
+Any useless AUC \> 0.5 (otherwise worse than or equal than coin-toss). An ideal ROC would limitely approach a step function at specificity = 1, (in shape of capital greek \Gamma). This AUC would approach 1.
+
+# Iris dataset
+
+One of the most famous classification datasets is a dataset used in [R.A. Fisher's 1936 paper on linear discriminant analysis](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1469-1809.1936.tb02137.x): the `iris` dataset. Fisher's goal was to classify the three subspecies of iris according to the attributes of the plants: `Sepal.Length`, `Sepal.Width`, `Petal.Length`, and `Petal.Width`
+
+We can reproduce this graph using the first linear discriminant from the lda() function:
+
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+
+------------------------------------------------------------------------
+
+8.  **Explore the iris dataset using summaries and plots.**
+
+------------------------------------------------------------------------
+
+```{r}
+summary(iris)
+```
+
+```{r}
+str(iris)
+```
+
+```{r}
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
+  geom_point()
+```
+
+```{r}
+ggplot(data=iris, aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point()
+```
+
+------------------------------------------------------------------------
+
+9.  **Fit an additional LDA model, but this time with only `Sepal.Length` and `Sepal.Width` as predictors. Call this model `lda_iris_sepal`**
+
+------------------------------------------------------------------------
+
+```{r}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+```
+
+------------------------------------------------------------------------
+
+10. **Create a confusion matrix of the `lda_iris` and `lda_iris_sepal` models. (NB: we did not split the dataset into training and test set, so use the training dataset to generate the predictions.). Which performs better in terms of accuracy?**
+
+------------------------------------------------------------------------
+
+```{r}
+#for (lda_model in [lda_iris, lda_iris_sepal]) {
+#  table(true = iris$Species, predicted = predict(lda_model)$class)
+#}
+```
+
+```{r}
+table_iris <- table(true = iris$Species, predicted = predict(lda_iris)$class)
+table_iris
+```
+
+```{r}
+table_iris_sepal <- table(true = iris$Species, predicted = predict(lda_iris_sepal)$class)
+table_iris_sepal
+```
+
+Of course, the more complete model has higher accuracy, as is apparent from the tables.
+
+# Classification trees
+
+Classification trees in `R` can be fit using the `rpart()` function.
+
+------------------------------------------------------------------------
+
+11. **Use `rpart()` to create a classification tree for the `Species` of `iris`. Call this model `iris_tree_mod`. Plot this model using `rpart.plot()`.**
+
+------------------------------------------------------------------------
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+```
+
+------------------------------------------------------------------------
+
+12. **How would an iris with 2.7 cm long and 1.5 cm wide petals be classified?**
+
+------------------------------------------------------------------------
+
+as versicolor, we can verify it in code (I give nonsensical sepal properties, since they are neither provided nor required):
+
+```{r}
+predict(iris_tree_mod, newdata = tibble(Sepal.Length = -100, Sepal.Width = -100, Petal.Length = 2.7, Petal.Width = 1.5))
+```
+
+Because the classification tree only uses two variables, we can create another insightful plot using the splits on these variables.
+
+------------------------------------------------------------------------
+
+13. **Create a scatterplot where you map `Petal.Length` to the x position and `Petal.Width` to the y position. Then, manually add a vertical and a horizontal line (using `geom_segment`) at the locations of the splits from the classification tree. Interpret this plot.**
+
+------------------------------------------------------------------------
+
+```{r}
+ggplot(data = iris, aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, y = min(Petal.Width), xend = 2.5, yend = max(Petal.Width)), colour = "purple") +
+  geom_segment(aes(x = 2.5, y = 1.8, xend = max(Petal.Length), yend = 1.8), colour = "purple")
+```
+
+First split at Petal.Length = 2.5 clearly divudes setosa from the rest. Second, a bit less perfect, split then divides versicolor and virginica at Petal.Width = 1.8. There are quite a few virginica samples inside the versicolor region, but this is the best split of this complexity.
+
+There are several control parameters (tuning parameters) to the `rpart()` algorithm. You can find the available control parameters using `?rpart.control`.
+
+------------------------------------------------------------------------
+
+14. **Create a classification tree model where the splits continue until all the observations have been classified. Call this model `iris_tree_full_mod`. Plot this model using `rpart.plot()`. Do you expect this model to perform better or worse on new Irises?**
+
+------------------------------------------------------------------------
+
+```{r}
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, minsplit = 1, minbucket = 1, cp = 0)
+rpart.plot(iris_tree_full_mod)
+```
+
+This tree massively overfits the data, it would almost certainly not generalize well to new observations.
+
+# Final assignment: Random forest for classification
+
+------------------------------------------------------------------------
+
+15. **Use the function `randomForest()` to create a random forest model on the iris dataset. Use the function `importance()` on this model and create a bar plot of variable importance. Does this agree with your expectations? How well does the random forest model perform compared to the `lda_iris` model?**
+
+```{r}
+iris_rf_mod <- randomForest(Species ~ ., data = iris, )
+iris_rf_imp <- importance(iris_rf_mod)
+iris_rf_imp
+```
+
+```{r}
+varImpPlot(iris_rf_mod)
+```
+
+```{r}
+tibble(variable = rownames(iris_rf_imp),
+       importance = c(iris_rf_imp)) %>% 
+ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  labs(title = "Comparision of importance (reduction of Gini impurity) of iris variables") +
+  theme_minimal()
+```
+
+\

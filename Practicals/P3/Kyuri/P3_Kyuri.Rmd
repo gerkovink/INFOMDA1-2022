@@ -1,0 +1,234 @@
+---
+title: "P3_Kyuri"
+author: "Kyuri Park"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#mainfont: Courier New
+#fontsize: 11pt
+urlcolor: blue
+#geometry: margin = 1 in
+output: 
+  # pdf_document:
+  #   latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_depth: 1
+    toc_float: true
+    theme: paper
+    highlight: tango
+    df_print: paged
+---
+
+<style type="text/css">
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap');
+
+body{ /* Normal  */
+  font-size: 13px;
+  font-family: 'Lato', sans-serif;
+  }
+h1.title {
+  font-size: 25px;
+  color: DarkBlue;
+  margin-bottom:5px;
+}
+
+h1 { /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+h2 { /* Header 2 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+h3 { /* Header 3 */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre { /* Code block - determines code spacing between lines */
+  font-size: 13px;
+}
+
+</style>
+<hr>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE,
+               warning = FALSE,
+               comment = NA,
+               out.width = "70%")
+```
+
+```{r load_packages}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+## 1. Create a histogram of the variable `age` using the function `geom_histogram()`.
+
+```{r}
+boys %>%  ggplot(aes(x=age)) +
+  geom_histogram() 
+```
+
+
+## 2. Create a bar chart of the variable `gen` using the function `geom_bar()`.
+
+```{r}
+boys %>% ggplot(aes(x=gen)) +
+  geom_bar()
+```
+
+
+## 3. Create a missingness indicator for the variables `gen`, `phb` and `tv`.
+
+```{r}
+boys <- boys %>% 
+  mutate(gen_ind = is.na(gen),
+         phb_ind = is.na(phb),
+         tv_ind = is.na(tv))
+```
+
+
+## 4. Assess whether missingness in the variables `gen`, `phb` and `tv` is related to someones age.
+As seen below, it is observed that the average age is largely different for those who have missing values on `gen`, `phb` and `tv`.
+
+```{r}
+vars <- c("gen_ind", "phb_ind", "tv_ind")
+
+summaries <- list()
+for (i in vars){
+  summaries[[i]] <- boys %>%
+    group_by(value = .data[[i]]) %>%
+    summarize(avg.age = mean(age))}
+
+pander::pander(summaries)
+```
+
+
+## 5. Create a histogram for the variable `age`, faceted by whether or not someone has a missing value on `gen`.
+```{r}
+boys %>% ggplot(aes(x=age)) +
+  geom_histogram()+
+  facet_wrap(~gen_ind)
+```
+
+## 6. Create a scatterplot with `age` on the x-axis and `bmi` on the y-axis, using the function `geom_point()`.
+```{r}
+boys %>% ggplot(aes(x=age, y=bmi)) +
+  geom_point()
+```
+
+
+## 7. Add a colour aesthetic to the previous plot using the missingness indicator of the variable `gen`.
+```{r}
+boys %>% ggplot(aes(x=age, y=bmi, color=gen_ind)) +
+  geom_point()
+```
+
+
+## 8. Visualize the relationship between `reg` (region) and `age` using a boxplot.
+```{r}
+boys %>% ggplot(aes(x = reg, y = age)) +
+  geom_boxplot() 
+```
+
+
+## 9. Create a density plot of age, splitting the densities by `gen` using the `fill` aesthetic.
+```{r}
+boys %>% ggplot(aes(x=age, fill = gen)) +
+  geom_density(alpha= 0.5) +
+  scale_fill_brewer(palette = "Pastel1")
+```
+
+
+## 10. Create a diverging bar chart for `hgt` in the `boys` data set, that displays for every `age` year that year’s mean height in deviations from the overall average `hgt`.
+```{r}
+boys %>% 
+  mutate(age_cat = as.factor(round(age)),
+         hgt_cent = scale(hgt, scale=FALSE)) %>%
+  filter(!is.na(hgt_cent)) %>% 
+  group_by(age_cat) %>% 
+  summarize(hgt_cent = mean(hgt_cent)) %>% 
+  ggplot(aes(x = age_cat, y = hgt_cent)) +
+  geom_col()
+
+# what does this plot represent? And how the summarzie works here? Felt like mutate() should've been used
+boys %>% 
+  mutate(age_cat = as.factor(round(age)),
+         hgt_cent = scale(hgt, scale=FALSE)) %>%
+  filter(!is.na(hgt_cent)) %>% 
+  ## these two lines...
+  # group_by(age_cat) %>% 
+  # summarize(hgt_cent = mean(hgt_cent)) %>% 
+  ggplot(aes(x = age_cat, y = hgt_cent)) +
+  geom_col()
+
+```
+
+
+## 11. Load the data `elastic1` and `elastic2` and bind the data frames together using the function `bind_rows()` and add a grouping variable indicating whether an observation comes from `elastic1` or from `elastic2`.
+```{r}
+elastic <- bind_rows(list("elastic1" = elastic1, "elastic2" = elastic2), .id = "group") %>% remove_rownames()
+elastic
+
+```
+
+
+## 12. Create a scatterplot mapping `stretch` on the x-axis and `distance` on the y-axis, and map the just created group indicator as the color aesthetic.
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, color = group)) +
+  geom_point()
+```
+
+
+## 13. Recreate the previous plot, but now assess whether the results of the two data sets appear consistent by adding a linear regression line.
+```{r}
+elastic %>% 
+  ggplot(aes(x = stretch, y = distance, color = group)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+## 14. For each of the data sets `elastic1` and `elastic2`, fit a regression model with `y = distance` on `x = stretch` using `lm(y ~ x, data)`.
+```{r}
+elastic %>% 
+  split(.$group) %>%
+  map(~ lm(distance ~ stretch, data = .x)) %>%
+  map(summary) 
+```
+
+## 15. For both of the previously created fitted models, determine the fitted values and the standard errors of the fitted values, and the proportion explained variance $R^2$.
+```{r}
+res <- elastic %>%
+  split(.$group) %>%
+  map(~ lm(distance ~ stretch, data = .x)) %>%
+  map(~ list(fitted_values = predict(., se.fit=T)$fit, 
+             se_fitted = predict(., se.fit=T)$se.fit, 
+             R2 = summary(.)$r.squared)) 
+
+pander::pander(res)
+```
+
+## 16. Study the residual versus leverage plots for both models.
+```{r, results='hide', fig.keep='all'}
+elastic %>%
+  split(.$group) %>%
+  map(~ lm(distance ~ stretch, data = .x)) %>%
+  map(~plot(., which=5))
+```
+
+## 17. Use the `elastic2` variable `stretch` to obtain predictions on the model fitted on `elastic1`.
+```{r}
+fit <- lm(distance ~ stretch, data = elastic1)
+pred <- predict(fit, newdata = elastic2)
+```
+
+
+## 18. Now make a scatterplot to investigate similarity between the predicted values and the observed values for `elastic2`.
+```{r}
+plot(pred, elastic2$distance)
+```
+
