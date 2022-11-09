@@ -1,0 +1,305 @@
+---
+title: 'Practical 4: Regression'
+author: "Nina van Gerwen (1860852)"
+date: "6th of October, 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Loading packages}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+```
+
+## Regression
+
+### 1) Creating a linear model
+
+```{r Q1}
+lm_ses <- lm(medv ~ lstat, data = Boston)
+```
+
+### 2) Extracting coefficients
+
+```{r Q2}
+coef(lm_ses)
+```
+
+The coefficient of the slope is -0.95. This means that the median value
+of owner-occupied homes in 1000 dollars decreases by -0.95 for every 1 value
+increase in the percentage of lower status of the population. 
+
+### 3) Summarizing a linear model
+
+```{r Q3}
+summary(lm_ses)
+```
+
+The summary command shows the intercepts, their standardd error and whether
+they are significant. Furthermore, it also shows how much variance is explained
+in medv by lstat and whether the whole model is significant through an F-test.
+
+### 4) Getting predicted values
+
+```{r Q4}
+y_pred <- predict(lm_ses)
+```
+
+### 5) Scatterplot of the data
+
+```{r Q5}
+Boston %>%
+  mutate(y_pred = y_pred) %>%
+  ggplot(data = ., aes(x = y_pred, y = medv)) +
+  geom_point()
+```
+
+If the fit were perfect, the y_pred values would be identical to the medv values.
+In other words, the scatterplot would be a straight line with formula: medv = 1 *y_pred
+
+### 6) Creating a vector of spaced values
+
+```{r Q6}
+pred_dat <- seq(from = 0, to = 40, by = (40/999)) %>%
+  data.frame(lstat = .)
+```
+
+### 7) Creating newly predicted data
+
+```{r Q7}
+y_pred_new <- predict(lm_ses, newdata = pred_dat)
+```
+
+### 8) Another scatter plot
+
+```{r Q8}
+p_scatter <- Boston %>%
+  ggplot(data = ., aes(x = lstat, y = medv)) +
+  geom_point()
+
+p_scatter
+```
+
+### 9 + 10) Adding a prediction line
+
+```{r Q9}
+## Q9
+pred_dat$medv <- y_pred_new
+
+## Q10
+p_scatter <- p_scatter +
+  geom_line(data = pred_dat, col = "red")
+
+p_scatter
+```
+
+The line represents the regression formula.
+
+### 11) Gaining confidence intervals
+
+```{r Q11}
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "confidence")
+```
+
+In this object you have: the predicted values, the lower and the upper bound
+of their 95% confidence interval (i.e., a form of their uncertainty).
+
+### 12) New data frame
+
+```{r Q12}
+pred_dat <- data.frame(medv = pred_dat$medv, lstat = pred_dat$lstat,
+                       lower = y_pred_95[, 2], upper = y_pred_95[, 3])
+```
+
+### 13) Adding a ribbon
+
+```{r Q13}
+p_scatter <- p_scatter +
+  geom_ribbon(data = pred_dat, aes(x = lstat, ymin = lower, ymax = upper),
+              alpha = .5, fill = "lightblue", col = "blue") +
+  theme_minimal()
+
+p_scatter
+```
+
+### 14) The ribbon
+
+The geom_ribbon() argument shows the 95% confidence interval for the 
+regression line. In other words, if you were to
+repeat the sampling 100 times, 95% of the time the confidence interval will contain
+the true value (i.e., medv).
+
+### 15) Repeating but with prediction
+
+```{r Q15}
+pred_repeat <- predict(lm_ses, newdata = pred_dat, interval = "prediction")
+
+repeat_data <- data.frame(medv = pred_dat$medv, lstat = pred_dat$lstat,
+           lower = pred_repeat[, 2], upper = pred_repeat[, 3]) 
+
+Boston %>%
+  ggplot(data = ., aes(x = lstat, y = medv)) +
+  geom_point(size = .1) +
+  geom_line(data = repeat_data, col = "red") +
+  geom_ribbon(data = repeat_data, aes(x = lstat, ymin = lower, 
+                                      ymax = upper),
+              alpha = .5, fill = "lightblue", col = "blue")
+
+```
+
+This new plot shows the 95% prediction interval for the regression line.
+This means that if u were to get  100 new observation, 95 of them would fall 
+within the blue lines.
+
+## Mean Squared Error 
+
+### 16) Mean Squared Error function
+
+```{r Q16}
+mse <- function(y_true, y_pred){
+  MSE <- mean((y_true - y_pred)^2, na.rm = TRUE)
+  return(MSE)
+}
+```
+
+
+### 17) Testing the function
+
+```{r Q17}
+mse(1:10, 10:1)
+```
+
+Eureka! It works.
+
+### 18) Calculating MSE
+
+```{r Q18}
+mse(Boston$medv, predict(lm_ses))
+```
+
+The mean squared error of the regression model is 38.48.
+
+## Train-validation-test split
+
+### 19) New vector
+
+```{r Q19}
+splits <- c(rep("train", 253), rep("validation", 152), rep("test", 101))
+```
+
+
+### 20) Sampling it to the Boston dataset
+
+```{r Q20}
+set.seed(1248)
+
+boston_master <- Boston %>%
+  mutate(splits = sample(splits))
+```
+
+
+### 21) Separating the data into three
+
+```{r Q21}
+boston_train <- Boston %>% filter(., splits == "train")
+boston_valid <- Boston %>% filter(., splits == "validation")
+boston_test <- Boston %>% filter(., splits == "test")
+```
+
+
+### 22) Training model
+
+```{r Q22}
+model_1 <- lm(medv ~ lstat, data = boston_train)
+
+summary(model_1)
+```
+
+### 23) Calculating MSE on training set
+
+```{r Q23}
+model_1_mse_train <- mse(boston_train$medv, predict(model_1))
+```
+
+### 24) Calculating MSE on validation set
+
+```{r Q24}
+model_1_mse_valid <- mse(boston_valid$medv, predict(model_1, 
+                                                    newdata = boston_valid))
+```
+
+### 25) Second LM model and MSE calculations
+
+```{r Q25}
+model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+
+model_2_mse_train <- mse(boston_train$medv, predict(model_2))
+
+model_2_mse_validation <- mse(boston_valid$medv, predict(model_2,
+                                                         newdata = boston_valid))
+```
+
+
+### 26) Comparing the models
+
+Model 1 has a higher training MSE than model 2. But the valid MSE of Model 1 is lower
+than in Model 2. Furthermore, Model 1 is also more parsimonious. Therefore,
+I would choose model 1 between the two.
+
+### 27) MSE for test
+
+```{r Q27}
+model_1_mse_test <- mse(boston_test$medv, predict(model_1,
+                                                  newdata = boston_test))
+```
+
+The MSE for the test data is 23.96, which is a good estimate of the Bayes
+Error (assuming that the test set is like the intended prediction situation).
+
+## Cross-Validation
+
+### 28 + 29) Programming a k-fold cross validation for linear models
+```{r}
+cross_valid <- function(formula, dataset, k){
+  require(dplyr)
+  ## First, the data should be shuffled,, done in the following way
+  dataset <- dataset[sample(nrow(dataset)) ,]
+  ## Then, the dataset should have an indicator variable for k subsamples
+  dataset <- dataset %>% 
+    mutate(., fold = cut(1:nrow(dataset), breaks = k,
+                                labels = 1:k))
+  ## Create space for the mse values
+  mse <- rep(NA, k)
+  ## We want the function to calculate the mse k times, so we use a for loop
+  ## In each loop:
+  for(i in 1:k){
+    ## First, we split the dataset in a training and validation set
+    train_data <- dataset %>% filter(fold != i)
+    valid_data <- dataset %>% filter(fold == i)
+    
+    ## Then, we train the model in the training set
+    test_lm <- lm(formula = formula, data = train_data)
+    
+    ## Then, we get the outcome name (this was taken from your code)
+    outcome_name <- as.character(formula)[2]
+    
+    ## Finally, we calculate the mse value using the trained set on our
+    ## validation set and put this in the ith element
+    mse[i] <- mse(valid_data[[outcome_name]], 
+                  predict(test_lm, newdata = valid_data))
+  }
+  ## Finally, we calculate the mean of all mses and return this value
+  M_MSE <- mean(mse)
+  return(M_MSE)
+}
+
+set.seed(1248)
+cross_valid(medv ~ lstat + age + tax, dataset = Boston, k = 9)
+
+cross_valid(medv ~ lstat + I(lstat^2) + age + tax, dataset = Boston, k = 9)
+```
+

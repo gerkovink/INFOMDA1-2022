@@ -1,0 +1,208 @@
+---
+title: 'Practical 3: Wrangling & Visualisation'
+author: "Nina van Gerwen (1860852)"
+date: "28th of September, 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploring missingness
+
+### Loading the data and packages
+
+```{r include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+
+data(boys)
+
+str(boys)
+
+summary(boys)
+```
+
+
+### 1 + 2) Exploring the data through plots
+
+```{r}
+boys %>%
+  ggplot(data = ., aes(x = age)) +
+  geom_histogram(binwidth = .5, col = "black") +
+  theme_minimal()
+
+boys %>%
+  filter(., !is.na(gen)) %>% ## first remove NA values in order to increase
+  ## readability of the graph (as the large majority is NA)
+  ggplot(data = ., aes(x = gen)) +
+  geom_bar(col = "black") +
+  theme_minimal()
+```
+
+
+### 3 + 4) Missingness indicators
+
+```{r}
+## Creating the missingness indicators for the three variables
+boys <- boys %>%
+  mutate(
+  miss_gen = as.factor(ifelse(is.na(gen), "Yes", "No")),
+  miss_phb = as.factor(ifelse(is.na(phb), "Yes", "No")),
+  miss_tv = as.factor(ifelse(is.na(tv), "Yes", "No"))
+  )
+
+## Assessing whether missingness is related to age through logistic regression
+boys %>% glm(miss_gen ~ age, data = ., family = "binomial") %>% summary
+boys %>% glm(miss_phb ~ age, data = ., family = "binomial") %>% summary
+boys %>% glm(miss_tv ~ age, data = ., family = "binomial") %>% summary
+```
+
+Missingness very much is related to age.
+
+
+### 5 + 6) More plots for visualization
+
+```{r}
+boys %>%
+  ggplot(data = ., aes(x = age, fill = miss_gen)) +
+  geom_histogram(binwidth = .5) +
+  facet_wrap(boys$miss_gen)
+
+boys %>%
+  ggplot(data = ., aes(x = age, y = bmi, col = miss_gen)) +
+  geom_point()
+```
+
+## Visualising the data
+
+
+### 8 + 9 + 10) Even more plots
+
+```{r}
+boys %>%
+  ggplot(data = ., aes(y = age, fill = reg)) +
+  geom_boxplot() +
+  theme_minimal()
+
+boys %>%
+  ggplot(data = ., aes(x = age, fill = gen)) +
+  geom_density(alpha = .5) +
+  theme_minimal()
+
+boys %>%
+  ## First, create a categorical age variable
+  mutate(cat_age = cut(age, breaks = 22, labels = 0:21),
+         ## Also calculate overall mean age
+         mean_hgt = mean(hgt, na.rm = TRUE)) %>%
+  ## Then group by the categorical age variable
+  group_by(cat_age) %>%
+  ## Calculate the height difference in each age category compared to mean age
+  mutate(hgt_diff = round(mean(hgt, na.rm = TRUE) - mean_hgt)) %>%
+  ## select the two variables of interest for the plot
+  select(hgt_diff, cat_age) %>% 
+  ## we want only distinct values (otherwise geom_bar doesn't work properly)
+  distinct(.) %>%
+  ## create the plot
+  ggplot(data = ., aes(x = cat_age, y = hgt_diff)) +
+  geom_bar(stat = "identity", show.legend = FALSE,
+           aes(fill = hgt_diff)) +
+  coord_flip() +
+  labs(x = "Height difference (in cm)", y = "Age (in years)") +
+  theme_minimal()
+
+```
+
+
+I put a lot of effort in this graph, appreciate it!
+
+
+## Regression visualisation
+
+### 11) Data preparation
+
+```{r}
+data(elastic1)
+data(elastic2)
+
+elastic1 <- cbind(elastic1, indicator = as.factor("1"))
+elastic2 <- cbind(elastic2, indicator = as.factor("2"))
+
+elastic <- bind_rows(elastic1, elastic2)
+```
+
+
+### 12) Scatter plot
+
+```{r}
+elastic %>%
+  ggplot(data = ., aes(x = stretch, y = distance, col = indicator)) +
+  geom_point()
+```
+
+### 13) Recreating the scatter plot
+
+```{r}
+elastic %>%
+  ggplot(data = ., aes(x = stretch, y = distance, col = indicator)) +
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x)
+```
+The results appear consistent.
+
+### 14) Regression results
+
+```{r}
+results1 <- lm(distance ~ stretch, data = elastic1)
+results2 <- lm(distance ~ stretch, data = elastic2)
+```
+
+
+### 15) Getting results
+
+```{r}
+## Fitted values and standard errors:
+predict(results1, se.fit = TRUE)
+predict(results2, se.fit = TRUE)
+
+## Proportion explained variance
+summary(results1)
+summary(results2)
+```
+
+
+### 16) Residual plots
+
+```{r}
+plot(results1, which = 5)
+plot(results2, which = 5)
+```
+
+### 17) Cross-model predictions
+
+```{r}
+elastic2$predicted_values <- -119.143 + 6.571 * elastic2$stretch
+```
+
+
+### 18) More plots
+
+```{r}
+library(reshape2)
+## get the data
+elastic2 %>%
+  ## select only the useful variables
+  select(stretch, predicted_values, observed_values = distance) %>%
+  ## melt the data into a long format, with stretch as the indicator
+  melt(., id.vars = "stretch") %>%
+  ## then, create a scatterplot with stretch on the x-axis
+  ## and the distance values on y-axis.
+  ## and colour is the factor of whether they are predicted or observed
+  ggplot(data = ., aes(x = stretch, y = value, col = variable)) +
+  geom_point()
+```
+From the plot, you can see that the predicted values are similar to the
+observed values.
