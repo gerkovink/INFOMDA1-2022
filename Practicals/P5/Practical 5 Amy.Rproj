@@ -1,0 +1,180 @@
+```{r data}
+install.packages("class")
+
+```
+
+```{r install}
+library(MASS)
+library(class)
+library(ISLR)
+library(tidyverse)
+set.seed(45)
+
+```
+
+
+```{r a1}
+Default %>% 
+  ggplot(aes(x = balance, y = income, colour = default)) +
+  geom_point() +
+  theme_minimal()+
+  facet_grid(cols = vars(student))
+  
+
+```
+# This shows that students have a much lower income then non-students
+
+```{r a3}
+default_df <- 
+  Default %>% 
+  mutate(student = ifelse(student == "Yes", 1, 0)) %>% 
+  mutate(split = sample(rep(c("train", "test"), times = c(8000, 2000))))
+
+default_train <- 
+  default_df %>% 
+  filter(split == "train") %>% 
+  select(-split)
+
+default_test <- 
+  default_df %>% 
+  filter(split == "test") %>% 
+  select(-split)
+
+```
+
+
+```{r a4}
+knn_5_pred <- knn(default_train %>% select(-default), default_test %>% select(-default), as_factor(default_train$default), 5)
+
+```
+
+```{r a5}
+default_test %>% 
+  ggplot(aes(x = balance, y = income, colour = default)) +
+  geom_point(size = 1) +
+  theme_minimal()
+
+bind_cols(default_test, pred = knn_5_pred) 
+
+default_test %>% 
+  ggplot(aes(x = balance, y = income, colour = knn_5_pred)) +
+  geom_point(size = 1) +
+  theme_minimal()
+
+```
+
+```{r a6}
+
+knn_2_pred <- knn(default_train %>% select(-default), default_test %>% select(-default), as_factor(default_train$default), 2)
+
+bind_cols(default_test, pred = knn_2_pred) 
+default_test %>% 
+  ggplot(aes(x = balance, y = income, colour = knn_2_pred)) +
+  geom_point(size = 1) +
+  theme_minimal()
+```
+
+```{r a7&8}
+table(true = default_test$default, predicted = knn_2_pred)
+table(true = default_test$default, predicted = knn_5_pred)
+
+
+```
+If classification were perfect, the off-diagonal numbers would be 0 as all would fall under yes/yes or no/no.
+
+```{r a9}
+lr_mod <- glm(default ~ ., family = binomial, data = default_train)
+
+
+```
+
+```{r a10}
+predicted <- predict(lr_mod, newdata = default_train, type = "response") 
+
+observed <- default_train$default 
+
+df <- data.frame(predicted, observed)
+
+predvsobs <- df %>%
+  ggplot(aes(x = predicted, y = observed, colour = observed)) +
+  geom_point(position = position_jitter(width = 0.25), alpha = 0.5) + 
+  theme_minimal() +
+  coord_flip()
+
+plot(predvsobs)
+```
+
+```{r a11}
+coefs <- coef(lr_mod)
+coefs["balance"]
+
+person1 <- data.frame(student = 0, balance = 3000, income = 40000)
+
+predict(lr_mod, newdata = person1, type = "response") 
+
+```
+
+```{r a12}
+
+balance_df <- data.frame(
+  student = rep(0, 500),
+  balance = seq(0,3000, length.out = 500),
+  income = rep(mean(default_train$income), 500)
+)
+
+balance_df$predprob <- predict(lr_mod, newdata = balance_df, type = "response")
+
+balance_df %>% 
+  ggplot(aes(x = balance, y = predprob)) +
+  geom_line()
+
+```
+
+```{r a14}
+predictprob <- predict(lr_mod, newdata = default_test, type = "response")
+predict_lr <- factor(predictprob >0.5, labels = c("no", "yes"))
+table(true = default_test$default, predicted = predict_lr)
+
+```
+
+```{r a15}
+lda_mod <- lda(default ~ ., data = default_train)
+
+lda_mod
+# defaulters have a higher proportion of students than non-default. Also, this group has a much higher balance, but somewhat smaller income.
+```
+
+
+```{r a17}
+pred_lda <- predict(lda_mod, newdata = default_test)
+
+table(true = default_test$default, predicted = pred_lda$class)
+```
+```{r a18}
+lda_tit <- lda(Survived ~ PClass * Sex * Age, Titanic)
+
+test <- data.frame(PClass <- c("3rd", "2nd"),
+                   Age <- c(14, 14),
+                   Sex <- c("male", "female"))
+
+predict(lda_tit, newdata = test)
+
+# The boy only has a 12% change of surviving where as the girl is most likely to survice with 96% change.
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

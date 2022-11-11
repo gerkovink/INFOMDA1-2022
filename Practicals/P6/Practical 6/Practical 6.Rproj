@@ -1,0 +1,60 @@
+```{r data}
+
+install.packages("pROC")
+install.packages("rpart")
+install.packages("caret")
+```
+
+```{r data 2}
+
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+
+```{r a1}
+
+treatment <- read_csv("data/cardiovascular_treatment.csv") %>% mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+lr_mod <- glm(response ~ ., data = treatment, "binomial")
+
+pred_ <- as.factor(ifelse(predict(lr_mod, treatment, type="response")>0.5,"1","0"))
+
+table(pred_, as.factor(treatment$response))
+
+
+```
+```{r a2}
+cmm <- table(pred_, as.factor(treatment$response)) 
+  
+TN <- cmm[1, 1]
+TP <- cmm[2, 2]
+FN <- cmm[2, 1]
+FP <- cmm[1, 2]
+
+acc = (TP+TN) / sum(cmm)
+TPR = TP / (TP + FN)
+TNR = TN / (FP + TN)
+FPR = 
+PPV =
+NPV = 
+
+```
+
+
+
+
+
+
+
