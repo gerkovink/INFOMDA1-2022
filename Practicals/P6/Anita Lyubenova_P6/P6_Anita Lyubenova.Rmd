@@ -234,6 +234,31 @@ rpart.plot(iris_tree_full_mod)
 ```
 
 
+### Final Assignment
+
+```{r}
+rf_mod <- randomForest(Species ~ ., data = iris)
+
+var_imp <- importance(rf_mod)
+tibble(
+  importance = c(var_imp), 
+  variable = rownames(var_imp)
+) %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
+
+
+rf_mod
+
+table(iris$Species, predict(lda_iris)$class)
+```
 
 
 
