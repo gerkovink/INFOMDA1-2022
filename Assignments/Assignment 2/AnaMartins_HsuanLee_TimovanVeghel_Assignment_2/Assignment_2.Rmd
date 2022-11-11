@@ -413,7 +413,7 @@ In our case, we are most concerned about the positive predictive value (PPV) and
 lr_cv
 ```
 
-Furthermore, Itcan be seen that the accuracy of the 5-fold cross-validation logistic regression model on the validation datasets is 0.9.
+Furthermore, It can be seen that the accuracy of the 5-fold cross-validation logistic regression model on the validation datasets is 0.9.
 
 *2. Bagging*
 ```{r}
