@@ -352,7 +352,7 @@ movies_test <- movies[test, ]
 
 ## Predicting whether a movie is likely to be in the top 1000 of IMDB
 
-It is also an interesting topic to predict whether a movie has the potential to be in the top 1000 of IMDB. According to the IMDB website(`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), if a movie wishes to be in the top 1000, it requires an IMDB rating above 7.6. The 7.6 rating will hence be considered as a threshold for us to examine a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
+The 7.6 rating will be considered as a threshold for us to designate a potential top 1000 movie, i.e., a variable will be created in the dataset that is concerned with whether a movie has an IMDB rating above 7.6.
 
 **First, we create a feature providing us with information about whether the movie has a rating higher than 7.6.**
 ```{r}
