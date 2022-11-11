@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r, results = FALSE}
 library(MASS)
 library(ISLR)
 library(tidyverse)
@@ -25,6 +25,8 @@ library(randomForest)
 ```{r}
 set.seed(45)
 ```
+
+### Classification evaluation for logistic refression
 
 ```{r}
 treat <- read_csv("data/cardiovascular_treatment.csv") %>% 
@@ -46,7 +48,7 @@ FN <- cmat_lr[2, 1]
 FP <- cmat_lr[1, 2]
 TP <- cmat_lr[2, 2]
 
-
+#Confusion matrix materics
 tibble(
   Acc = (TP + TN) / sum(cmat_lr),
   TPR = TP / (TP + FN),
@@ -58,7 +60,7 @@ tibble(
 
 ```
 
-
+### Classification evaluation for linear discriminant analysis
 
 ```{r}
 lda_mod <- lda(response ~ ., treat)
@@ -109,11 +111,135 @@ NPV
 
 ```
 
-Brier score - measure of accuracy of probabilistic predictions
+### Brier score
+measure of accuracy of probabilistic predictions
 
 ```{r}
 mean((prob_lr_new - (as.numeric(new_patients$response) - 1)) ^ 2)
 ```
+
+
+### ROC curves
+
+
+```{r, results='hide'}
+lr1_mod <- glm(response ~ severity + bb_score + age, 
+               family = "binomial", data = treat)
+
+prob_lr1 <- predict(lr1_mod, type = "response")
+
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, 
+               family = "binomial", data = treat)
+
+prob_lr2 <- predict(lr2_mod, type = "response")
+
+	
+roc_lr1 <- roc(treat$response, prob_lr1)
+roc_lr2 <- roc(treat$response, prob_lr2)
+
+```
+
+
+```{r}
+roc_lr1
+roc_lr2
+
+ggroc(roc_lr1) + theme_minimal() + labs(title = "LR1")
+ggroc(roc_lr2) + theme_minimal() + labs(title = "LR1")
+```
+
+
+
+### Iris dataset
+
+```{r}
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+```
+```{r}
+iris %>% 
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, colour = Species)) + 
+  geom_point() +
+  scale_colour_viridis_d() +
+  theme_minimal() +
+  ggtitle("Lengths")
+```
+
+
+```{r}
+iris %>% 
+  ggplot(aes(x = Sepal.Width, y = Petal.Width, colour = Species)) + 
+  geom_point() +
+  scale_colour_viridis_d() +
+  theme_minimal() +
+  ggtitle("Widths")
+```
+
+
+
+```{r}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+
+pred_lda_iris_sepal<-predict(lda_iris_sepal)$class
+
+
+table(true = iris$Species, predicted = predict(lda_iris)$class)
+
+table(`true class`= iris$Species, predicted=pred_lda_iris_sepal)
+
+```
+
+### Classification trees
+
+
+```{r}
+iris_tree_mod <- rpart(Species ~ ., data = iris)
+rpart.plot(iris_tree_mod)
+
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf),
+               colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.75, yend = 1.75), 
+               colour = "black") +
+  scale_colour_viridis_d() +
+  theme_minimal()
+
+# continue splitting untill all observations have been classified
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, 
+                            control = rpart.control(minbucket = 1, cp = 0))
+
+rpart.plot(iris_tree_full_mod)
+```
+
+
+
+
+
+
+
+
 
 
 
