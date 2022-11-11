@@ -1,0 +1,170 @@
+---
+title: "Practical 2 - Data Visualisation"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(ISLR)
+library(tidyverse)
+set.seed(123)
+```
+
+
+
+```{r}
+head(Hitters)
+```
+
+
+
+```{r}
+hist(Hitters$Salary, xlab = "Salary in thousands of dollars")
+barplot(table(Hitters$League))
+plot(x = Hitters$Hits, y = Hitters$HmRun, 
+     xlab = "Hits", ylab = "Home runs")
+
+homeruns_plot <- 
+  ggplot(Hitters, aes(x = Hits, y = HmRun)) +
+  geom_point() +
+  labs(x = "Hits", y = "Home runs")
+
+homeruns_plot
+
+homeruns_plot + 
+  geom_density_2d() +
+  labs(title = "Cool density and scatter plot of baseball data") +
+  theme_minimal()
+
+student_grade  <- rnorm(32, 7)
+student_number <- round(runif(32) * 2e6 + 5e6)
+programme      <- sample(c("Science", "Social Science"), 32, replace = TRUE)
+
+gg_students <- tibble(
+  number = as.character(student_number), # an identifier
+  grade  = student_grade,                # already the correct type.
+  prog   = as.factor(programme)          # categories should be factors.
+)
+
+head(gg_students)
+
+
+ggplot(Hitters, aes(x = HmRun, y = Hits)) +
+  geom_point() +
+  labs(y = "Hits", x = "Home runs")
+
+ggplot(Hitters, aes(x = HmRun, y = Hits, colour = League, size = Salary)) +
+  geom_point() +
+  labs(y = "Hits", x = "Home runs")
+
+gg_students %>%
+  ggplot(aes(x = grade)) +
+  geom_histogram(binwidth = .5)
+
+
+gg_students %>% 
+  ggplot(aes(x = grade)) +
+  geom_density(fill = "light seagreen")
+
+
+gg_students %>% 
+  ggplot(aes(x = grade)) +
+  geom_density(fill = "light seagreen") +
+  geom_rug(size = 1, colour = "light seagreen")
+
+
+gg_students %>% 
+  ggplot(aes(x = grade)) +
+  geom_density(fill = "light seagreen", colour = NA) +
+  geom_rug(size = 1, colour = "light seagreen") +
+  theme_minimal() +
+  labs(y = "") +
+  xlim(0, 10)
+
+
+gg_students %>% 
+  ggplot(aes(x = prog, y = grade, fill = prog)) +
+  geom_boxplot() +
+  theme_minimal()
+
+gg_students %>% 
+  ggplot(aes(x = grade, fill = prog)) +
+  geom_density(alpha = .5, colour = NA) +
+  geom_rug(size = 1, colour = "light seagreen") +
+  theme_minimal() +
+  labs(y = "", fill = "Programme") +
+  xlim(0, 10)
+
+
+Hitters %>% 
+  ggplot(aes(x = Years)) + 
+  geom_bar() +
+  theme_minimal()
+
+table(Hitters$Years)
+
+
+Smarket[1:200,] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line() +
+  theme_minimal()
+
+Smarket[1:200, ] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "#00008b", size = 1) +
+  geom_point(colour = "#00008b", size = 1) +
+  theme_minimal()
+
+which.max(Smarket[1:200, ]$Volume)
+
+max(Smarket[1:200, ]$Volume)
+
+Smarket[1:200, ] %>% 
+  mutate(Day = 1:200) %>% 
+  ggplot(aes(x = Day, y = Volume)) +
+  geom_line(colour = "#00008b", size = 1) +
+  geom_label(aes(x = 170, y = 2.5, label = "Peak volume")) +
+  theme_minimal()
+
+baseball <-
+  Hitters %>% 
+  filter(!is.na(Salary)) %>% 
+  mutate(
+    Salary_range = cut(Salary, breaks = 3, 
+                       labels = c("Low salary", "Mid salary", "High salary")),
+    Career_hmrun_proportion = CHmRun/CHits
+  )
+
+
+baseball_plot <-   
+  baseball %>% 
+  ggplot(aes(x = CWalks, y = Career_hmrun_proportion)) +
+  geom_point() +
+  ylim(0, 0.4) +
+  xlim(0, 1600) + 
+  theme_minimal() +
+  labs(y = "Proportion of home runs",
+       x = "Career number of walks")
+
+baseball_plot
+
+baseball_plot + facet_wrap(~Salary_range)
+
+Carseats %>% 
+  ggplot(aes(x = Price, y = Sales, colour = Income)) +
+  geom_point() +
+  geom_density_2d() +
+  theme_minimal() +
+  scale_colour_viridis_c() + # add a custom colour scale
+  facet_wrap(vars(ShelveLoc))
+```
+
