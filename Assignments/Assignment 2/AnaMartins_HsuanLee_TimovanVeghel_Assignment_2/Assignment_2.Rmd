@@ -38,7 +38,7 @@ Let us clean this up a bit so we do not have to carry around more than we need t
 ```{r}
 movies <-
   movies %>%
-  select(-image,-genreList,-plot,-starList)
+  select(-image, -genreList, -plot, -starList)
 ```
 
 ```{r}
@@ -50,14 +50,14 @@ movies <-
 
 ```{r}
 movies <-
-  movies %>% 
+  movies %>%
   mutate(contentRating = as.factor(contentRating))
 ```
 
 ```{r}
 movies <-
-  movies %>% 
-  mutate(year = as.numeric(gsub('[()]', '', description))) %>% 
+  movies %>%
+  mutate(year = as.numeric(gsub('[()]', '', description))) %>%
   select(-description)
 ```
 
@@ -65,9 +65,9 @@ Actually, looking at the `stars`, we can see that the first name listed is the D
 
 ```{r}
 movies <-
-  movies %>% 
-  mutate(director = sub(", .*", "", movies$stars)) %>% 
-  mutate(stars = substring(stars, first = nchar(director) + 3)) %>% 
+  movies %>%
+  mutate(director = sub(", .*", "", movies$stars)) %>%
+  mutate(stars = substring(stars, first = nchar(director) + 3)) %>%
   mutate(actors = stars)
 ```
 
@@ -76,7 +76,7 @@ Also, because of the way the data was retrieved, we have multiples in there (e.g
 
 ```{r}
 movies <-
-  movies %>% 
+  movies %>%
   filter(!duplicated(id))
 ```
 
@@ -86,60 +86,64 @@ At the moment, our dataset is mostly made up of character variables, which will 
 
 ```{r}
 movies <-
-  movies %>% 
-  mutate(action = ifelse(grepl("Action", genres, fixed = TRUE), 1, 0),
-         adventure = ifelse(grepl("Adventure", genres, fixed = TRUE), 1, 0),
-         animation = ifelse(grepl("Animation", genres, fixed = TRUE), 1, 0),
-         biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
-         comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
-         crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
-         documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
-         drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
-         family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
-         fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
-         filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
-         gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
-         history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
-         horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
-         music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
-         musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
-         mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
-         news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
-         realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
-         romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
-         scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
-         sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
-         talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
-         thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
-         war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
-         western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),) %>% 
+  movies %>%
+  mutate(
+    action = ifelse(grepl("Action", genres, fixed = TRUE), 1, 0),
+    adventure = ifelse(grepl("Adventure", genres, fixed = TRUE), 1, 0),
+    animation = ifelse(grepl("Animation", genres, fixed = TRUE), 1, 0),
+    biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
+    comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
+    crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
+    documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
+    drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
+    family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
+    fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
+    filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
+    gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
+    history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
+    horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
+    music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
+    musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
+    mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
+    news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
+    realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
+    romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
+    scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
+    sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
+    talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
+    thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
+    war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
+    western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),
+  ) %>%
   select(-genres)
 ```
 
 These are all of the Genres available in the IMDb API. However, when retrieving the data from the API, we couldn't find certain genres within our criteria (runtime > 60 and number of votes > 25000), so we can take those out to not carry variables we don't need.
 
 ```{r}
-movies = movies[ , colSums(movies != 0, na.rm = TRUE) > 0]
+movies <- movies[, colSums(movies != 0, na.rm = TRUE) > 0]
 ```
 
 Additionally, we filter out missing values for content ratings and create dummy variables for content ratings. 
 ```{r}
 movies <- movies %>%
   filter(contentRating != c("Not Rated", "Unrated")) %>%
-  mutate(PG13 = ifelse(contentRating == "PG-13", 1,0),
-         R = ifelse(contentRating == "R", 1,0),
-         PG = ifelse(contentRating == "PG", 1,0),
-         Passed = ifelse(contentRating == "Passed", 1,0),
-         G = ifelse(contentRating == "G", 1,0),
-         TVMA = ifelse(contentRating == "TV-MA", 1,0),
-         TV14 = ifelse(contentRating == "TV-14", 1,0),
-         Approved = ifelse(contentRating == "Approved", 1,0),
-         TVPG = ifelse(contentRating == "TV-PG", 1,0),
-         GP = ifelse(contentRating == "GP", 1,0),
-         NC17 = ifelse(contentRating == "NC-17", 1,0),
-         twelve = ifelse(contentRating == "12", 1,0),
-         M_PG = ifelse(contentRating == "M/PG", 1,0),
-         M = ifelse(contentRating == "M", 1,0)) %>%
+  mutate(
+    PG13 = ifelse(contentRating == "PG-13", 1, 0),
+    R = ifelse(contentRating == "R", 1, 0),
+    PG = ifelse(contentRating == "PG", 1, 0),
+    Passed = ifelse(contentRating == "Passed", 1, 0),
+    G = ifelse(contentRating == "G", 1, 0),
+    TVMA = ifelse(contentRating == "TV-MA", 1, 0),
+    TV14 = ifelse(contentRating == "TV-14", 1, 0),
+    Approved = ifelse(contentRating == "Approved", 1, 0),
+    TVPG = ifelse(contentRating == "TV-PG", 1, 0),
+    GP = ifelse(contentRating == "GP", 1, 0),
+    NC17 = ifelse(contentRating == "NC-17", 1, 0),
+    twelve = ifelse(contentRating == "12", 1, 0),
+    M_PG = ifelse(contentRating == "M/PG", 1, 0),
+    M = ifelse(contentRating == "M", 1, 0)
+  ) %>%
   select(-contentRating)
 ```
 
@@ -154,34 +158,34 @@ Again, let us arrange it in a similar way as the last one:
 ```{r}
 top250 <-
   top250 %>%
-  select(-fullTitle, -image)
+  select(-fullTitle,-image, -rank)
 ```
 
 From here, we only need the Directors' names:
 
 ```{r}
 top250 <-
-  top250 %>% 
+  top250 %>%
   mutate(director = sub(", .*", "", top250$crew))
 top250 <-
-  top250 %>% 
+  top250 %>%
   mutate(director = sub("dir.", "", top250$director))
 top250 <-
-  top250 %>% 
+  top250 %>%
   mutate(director = gsub("[()]", "", top250$director))
 top250 <-
-  top250 %>% 
+  top250 %>%
   mutate(director = str_sub(director, end = -2))
 ```
 
 ```{r}
-directors <- top250$director 
+directors <- top250$director
 directors <- unique(directors)
 ```
 
 ```{r}
 movies <-
-  movies %>% 
+  movies %>%
   mutate(top_director = ifelse(director %in% directors, 1, 0))
 ```
 
@@ -189,8 +193,8 @@ It would be useful to have a similar thing for the actors:
 
 ```{r}
 top250 <-
-  top250 %>% 
-  mutate(director = sub(", .*", "", top250$crew)) %>% 
+  top250 %>%
+  mutate(director = sub(", .*", "", top250$crew)) %>%
   mutate(crew = substring(crew, first = nchar(director) + 3))
 ```
 
@@ -200,7 +204,7 @@ actors <- unlist(strsplit(top250$crew, ", "))
 
 ```{r}
 movies <-
-  movies %>% 
+  movies %>%
   mutate(actors = stars)
 movies <-
   movies %>%
@@ -247,21 +251,56 @@ movies <- movies %>%
   mutate(actor14 = sub(", .*", "", movies$stars)) %>%
   mutate(stars = substring(stars, first = nchar(actor14) + 3))
 movies <-
-  movies %>% 
-  mutate(actor15 = stars) %>% 
+  movies %>%
+  mutate(actor15 = stars) %>%
   select(-stars)
 ```
 
 ```{r}
 movies <-
-  movies %>% 
-  mutate(top_actor = ifelse(actor1 %in% actors | actor2 %in% actors | actor3 %in% actors | actor4 %in% actors | actor5 %in% actors | actor6 %in% actors | actor7 %in% actors | actor8 %in% actors | actor9 %in% actors | actor10 %in% actors | actor11 %in% actors | actor12 %in% actors | actor13 %in% actors | actor14 %in% actors | actor15 %in% actors, 1, 0))
+  movies %>%
+  mutate(
+    top_actor = ifelse(
+      actor1 %in% actors |
+        actor2 %in% actors |
+        actor3 %in% actors |
+        actor4 %in% actors |
+        actor5 %in% actors |
+        actor6 %in% actors |
+        actor7 %in% actors |
+        actor8 %in% actors |
+        actor9 %in% actors |
+        actor10 %in% actors |
+        actor11 %in% actors |
+        actor12 %in% actors |
+        actor13 %in% actors |
+        actor14 %in% actors | actor15 %in% actors,
+      1,
+      0
+    )
+  )
 ```
 
 ```{r}
 movies <-
-  movies %>% 
-  select(-actor1, -actor2, -actor3, -actor4, -actor5, -actor6, -actor7, -actor8, -actor9, -actor10, -actor11, -actor12, -actor13, -actor14, -actor15)
+  movies %>%
+  select(
+    -actor1,
+    -actor2,
+    -actor3,
+    -actor4,
+    -actor5,
+    -actor6,
+    -actor7,
+    -actor8,
+    -actor9,
+    -actor10,
+    -actor11,
+    -actor12,
+    -actor13,
+    -actor14,
+    -actor15
+  )
 ```
 
 ## Exploratory Data Analysis
@@ -280,7 +319,7 @@ Looking at the genres, we can see the genre that we have more of is drama, with 
 We have almost 20% of movies having a top director, while only 0.4% have a top actor.
 
 ```{r}
-movies %>% 
+movies %>%
   ggplot(aes(x = imDbRating)) +
   geom_histogram(binwidth = 0.5) +
   theme_minimal() +
@@ -293,45 +332,47 @@ Referring back to the "random" movies remark, here we can clearly see that the I
 
 ```{r}
 movies <- movies %>%
-  mutate(action = as.factor(action),
-         adventure = as.factor(adventure),
-         animation = as.factor(animation),
-         biography = as.factor(biography),
-         comedy = as.factor(comedy),
-         crime = as.factor(crime),
-         drama = as.factor(drama),
-         family = as.factor(family),
-         fantasy = as.factor(fantasy),
-         filmnoir = as.factor(filmnoir),
-         history = as.factor(history),
-         horror = as.factor(horror),
-         music = as.factor(music),
-         musical = as.factor(musical),
-         mystery = as.factor(mystery),
-         realitytv = as.factor(realitytv),
-         romance = as.factor(romance),
-         scifi = as.factor(scifi),
-         sport = as.factor(sport),
-         thriller = as.factor(thriller),
-         war = as.factor(war),
-         western = as.factor(western), 
-         top_director = as.factor(top_director),
-         top_actor = as.factor(top_actor),
-         
-         PG13 = as.factor(PG13),
-         R = as.factor(R),
-         PG = as.factor(PG),
-         Passed = as.factor(Passed),
-         G = as.factor(G),
-         TVMA = as.factor(TVMA),
-         TV14 = as.factor(TV14),
-         Approved = as.factor(Approved),
-         TVPG = as.factor(TVPG),
-         GP = as.factor(GP),
-         NC17 = as.factor(NC17), 
-         twelve = as.factor(twelve),
-         M_PG = as.factor(M_PG),
-         M = as.factor(M))
+  mutate(
+    action = as.factor(action),
+    adventure = as.factor(adventure),
+    animation = as.factor(animation),
+    biography = as.factor(biography),
+    comedy = as.factor(comedy),
+    crime = as.factor(crime),
+    drama = as.factor(drama),
+    family = as.factor(family),
+    fantasy = as.factor(fantasy),
+    filmnoir = as.factor(filmnoir),
+    history = as.factor(history),
+    horror = as.factor(horror),
+    music = as.factor(music),
+    musical = as.factor(musical),
+    mystery = as.factor(mystery),
+    realitytv = as.factor(realitytv),
+    romance = as.factor(romance),
+    scifi = as.factor(scifi),
+    sport = as.factor(sport),
+    thriller = as.factor(thriller),
+    war = as.factor(war),
+    western = as.factor(western),
+    top_director = as.factor(top_director),
+    top_actor = as.factor(top_actor),
+    
+    PG13 = as.factor(PG13),
+    R = as.factor(R),
+    PG = as.factor(PG),
+    Passed = as.factor(Passed),
+    G = as.factor(G),
+    TVMA = as.factor(TVMA),
+    TV14 = as.factor(TV14),
+    Approved = as.factor(Approved),
+    TVPG = as.factor(TVPG),
+    GP = as.factor(GP),
+    NC17 = as.factor(NC17),
+    twelve = as.factor(twelve),
+    M_PG = as.factor(M_PG),
+    M = as.factor(M)
+  )
 ```
 
 ## Split the data into training data and test data.
@@ -341,12 +382,12 @@ movies <- movies %>%
 movies <- movies %>%
   drop_na()
 # split data
-movies <- movies[sample(nrow(movies)), ]
-train <- seq(1, nrow(movies)*0.8)
+movies <- movies[sample(nrow(movies)),]
+train <- seq(1, nrow(movies) * 0.8)
 test <- seq(max(train) + 1, nrow(movies))
 
-movies_train <- movies[train, ]
-movies_test <- movies[test, ]
+movies_train <- movies[train,]
+movies_test <- movies[test,]
 ```
 
 
@@ -376,16 +417,18 @@ train_control <- trainControl(method = "cv", number = 5)
 
 ```{r}
 movies_train <- movies_train %>%
-  select(-id, -title, -imDbRating, -director, -actors, -realitytv, -year)
+  select(-id,-title,-imDbRating,-director,-actors,-realitytv,-year)
 ```
 
 ```{r, warning=FALSE}
 # fit the LR model on training dataset
-lr_cv <- train(top1000 ~ .,
-               data = movies_train,
-               trControl = train_control,
-               method = "glm",
-               family=binomial())
+lr_cv <- train(
+  top1000 ~ .,
+  data = movies_train,
+  trControl = train_control,
+  method = "glm",
+  family = binomial()
+)
 summary(lr_cv)
 ```
 
@@ -404,7 +447,7 @@ pred_lr <- predict(lr_cv, method = "response")
 confusionMatrix(pred_lr, movies_train$top1000)
 ```
 
-We built a confusion matrix for the 5-fold cross-validated logistic regression model on the training data. It can be seen that the accuracy of this model is 0.91, which is not bad. 
+We built a confusion matrix for the 5-fold cross-validated logistic regression model on the training data. It can be seen that the accuracy of this model is 0.91, which is not bad, especially compared to the baseline accuracy, which is 0.85.
 
 In our case, we are most concerned about the positive predictive value (PPV) and negative predictive value (NPV) as we would like to know if a movie is identified as likely to be in the top 1000 of IMDB, what is the probability of it really being in the top 1000 of IMDB, PPV can give us the information; conversely, if a movie is determined as not likely to be in the top 1000, what is the probability that it really does not make it to the top 1000 of IMDB, NPV can provide information. Here, the logistic regression model with 5-fold cross-validation has a PPV of 0.93 and an NPV of 0.76 on the training dataset.
 
@@ -418,11 +461,13 @@ Furthermore, It can be seen that the accuracy of the 5-fold cross-validation log
 *2. Bagging*
 ```{r}
 # fit the bagging model on training dataset
-bag_cv <- train(top1000 ~ .,
-               data = movies_train,
-               trControl = train_control,
-               method = "treebag",
-               importance = T)
+bag_cv <- train(
+  top1000 ~ .,
+  data = movies_train,
+  trControl = train_control,
+  method = "treebag",
+  importance = T
+)
 ```
 
 ```{r, fig.height=7.5, fig.width=9}
@@ -440,7 +485,7 @@ pred_bag <- predict(bag_cv, type = "raw")
 confusionMatrix(pred_bag, movies_train$top1000)
 ```
 
-The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
+The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1, again much higher than baseline acuracy. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
 
 ```{r}
 # check the results on internal validation dataset
@@ -452,11 +497,13 @@ The most characteristic of the bagging method is that it uses bootstrap aggregat
 *3. Random Forest*
 ```{r}
 # fit the bagging model on training dataset
-rf_cv <- train(top1000 ~ .,
-               data = movies_train,
-               trControl = train_control,
-               method = "rf",
-               importance = T)
+rf_cv <- train(
+  top1000 ~ .,
+  data = movies_train,
+  trControl = train_control,
+  method = "rf",
+  importance = T
+)
 ```
 
 ```{r, fig.height=7.5, fig.width=9}
@@ -488,11 +535,13 @@ Due to the similarity with the bagging method, the random forest has the interna
 *4. 5-fold cross-validation Boosting*
 ```{r, warning=FALSE}
 # fit the bagging model on training dataset
-boost_cv <- train(top1000 ~ .,
-               data = movies_train,
-               trControl = train_control,
-               method = "gbm",
-               verbose = F,)
+boost_cv <- train(
+  top1000 ~ .,
+  data = movies_train,
+  trControl = train_control,
+  method = "gbm",
+  verbose = F,
+)
 ```
 
 ```{r, fig.height=7.5, fig.width=10}
@@ -530,11 +579,13 @@ boost_test <- predict(boost_cv, newdata = movies_test)
 
 ```{r}
 # show the confusion matrix and related info of each model
-list(Five_fold_CV_LR = lr_test,
-     Bagging = bag_test, 
-     Random_Forest = rf_test, 
-     Five_fold_CV_Boosting = boost_test) %>%
-  map(~ confusionMatrix(.x, movies_test$top1000))
+list(
+  Five_fold_CV_LR = lr_test,
+  Bagging = bag_test,
+  Random_Forest = rf_test,
+  Five_fold_CV_Boosting = boost_test
+) %>%
+  map( ~ confusionMatrix(.x, movies_test$top1000))
 ```
 
 All four models (i.e., the 5-fold cross-validation logistic regression model, the bagging model, the random forest model, and the 5-fold cross-validation boosting model) were fitted to the test dataset we partitioned at the beginning to test and compare the performance of each model.
@@ -544,3 +595,92 @@ First, we evaluated the accuracy of each model - the boosting model had the high
 Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.93 and an NPV of 0.78.
 
 To conclude, among the four models we compared, the boosting model is the idealist model so that it is served as our final model.
+
+## Which movies will be worth watching this year, then?
+
+There is a [comprehensive list by Rotten Tomatoes about the most antecipated movies of the year](https://editorial.rottentomatoes.com/article/most-anticipated-movies-of-2022/) and we think we should try to be helpful and let you know which ones you should be watching! (using our best model - the boosting one)
+
+Let us, then, create a dataset with the movies starting from November that we have information on:
+
+```{r}
+title <- c("Enola Holmes 2")
+imDbRatingVotes <- c(32000)
+metacriticRating <- c(64)
+runtime <- c(129)
+director <- c("Harry Bradbeer")
+actors <- c("Millie Bobby Brown, Henry Cavill, David Thewlis")
+genres <- c("Action, Adventure, Crime")
+contentRating <- c("PG-13")
+```
+
+```{r}
+upcoming <- tibble(
+  title = title,
+  imDbRatingVotes = imDbRatingVotes,
+  metacriticRating = metacriticRating,
+  runtime = runtime,
+  director = director,
+  actors = actors,
+  genres = genres,
+  contentRating = rating
+)
+```
+
+```{r}
+upcoming <-
+  upcoming %>% 
+  mutate(
+    action = ifelse(grepl("Action", genres, fixed = TRUE), 1, 0),
+    adventure = ifelse(grepl("Adventure", genres, fixed = TRUE), 1, 0),
+    animation = ifelse(grepl("Animation", genres, fixed = TRUE), 1, 0),
+    biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
+    comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
+    crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
+    documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
+    drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
+    family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
+    fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
+    filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
+    gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
+    history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
+    horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
+    music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
+    musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
+    mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
+    news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
+    realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
+    romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
+    scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
+    sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
+    talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
+    thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
+    war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
+    western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),
+  ) %>%
+  select(-genres)
+```
+
+```{r}
+# not working
+#upcoming <-
+#  upcoming %>% 
+#  filter(contentRating != c("Not Rated", "Unrated")) %>%
+#  mutate(
+#    PG13 = ifelse(contentRating == "PG-13", 1, 0),
+#    R = ifelse(contentRating == "R", 1, 0),
+#    PG = ifelse(contentRating == "PG", 1, 0),
+#    Passed = ifelse(contentRating == "Passed", 1, 0),
+#    G = ifelse(contentRating == "G", 1, 0),
+#    TVMA = ifelse(contentRating == "TV-MA", 1, 0),
+#    TV14 = ifelse(contentRating == "TV-14", 1, 0),
+#    Approved = ifelse(contentRating == "Approved", 1, 0),
+#    TVPG = ifelse(contentRating == "TV-PG", 1, 0),
+#    GP = ifelse(contentRating == "GP", 1, 0),
+#    NC17 = ifelse(contentRating == "NC-17", 1, 0),
+#    twelve = ifelse(contentRating == "12", 1, 0),
+#    M_PG = ifelse(contentRating == "M/PG", 1, 0),
+#    M = ifelse(contentRating == "M", 1, 0)
+#  ) %>%
+#  select(-contentRating)
+```
+
