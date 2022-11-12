@@ -8,7 +8,7 @@ library(MASS)
 library(ISLR)
 library(tidyverse)
 
-library(pROC)
+library(pROC) # ROC curve
 
 library(rpart)
 library(rpart.plot)
@@ -21,7 +21,7 @@ set.seed(45)
 
 ## Confusion matrix, continued
 
-**Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability.**
+**1. Create a logistic regression model lr_mod for this data using the formula response ~ . and create a confusion matrix based on a .5 cutoff probability.**
 ```{r}
 treat <- read.csv("cardiovascular_treatment.csv") %>%
   mutate(severity = as.factor(severity),

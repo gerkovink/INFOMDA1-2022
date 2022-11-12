@@ -19,9 +19,13 @@ library(tidyverse)
 
 Specifications of the "Cool density and scatter plot of baseball data" plot:
 
-- Aesthetics: none defined by the user, the plot uses the default
-- Geoms: the points geoms is used, meaning the data is displayed in a scatter plot, as well as the 2d density, which displays the data according to density curves
-- Scales: the scales are defined automatically
+- Aesthetics:
+  - number of hits mapped to x-position
+  - number of home runs mapped to y-position
+- Geoms: the points geoms is used, meaning the data is displayed in a scatter plot, and contour lines
+- Scales: 
+  - x-axis: continuous
+  - y-axis: continuous
 - Facets: there are no facets, the whole data is displayed in one place
 - Other: the labels for the axis and the title are changed, as well as the theme, which is set to minimal
 
@@ -188,8 +192,8 @@ ln
 16. **Use the function `which.max()` to find out which of the first 200 days has the highest trade volume and use the function `max()` to find out how large this volume was**
 
 ```{r}
-day <- which.max(nSmarket[1:200, ]$Volume)
-volume <- max(nSmarket[1:200, ]$Volume)
+which.max(nSmarket[1:200, ]$Volume)
+max(nSmarket[1:200, ]$Volume)
 ```
 
 17. **Use `geom_label(aes(x = your_x, y = your_y, label = "Peak volume"))` to add a label to this day. You can use either the values or call the functions. Place the label near the peak!**
@@ -212,7 +216,7 @@ baseball <-
 
 baseball <-
   baseball %>% 
-  mutate(SalaryTiers = cut(baseball$Salary, breaks=c(0, 425, 750, 2460), labels = c("Rich", "Very Rich", "Extremely Rich"))) %>% 
+  mutate(SalaryTiers = cut(baseball$Salary, breaks = 3, labels = c("Rich", "Very Rich", "Extremely Rich"))) %>% 
   mutate(HmRunProportion = (baseball$HmRun / baseball$Hits))
 
 baseball

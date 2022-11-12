@@ -18,99 +18,54 @@ library(ggforce)
 
 ```{r}
 set.seed(45)
-df <-
-  read_csv("data/Indian_Liver_Patient_Dataset_(ILPD).csv", col_names = FALSE) %>%
-  mutate(
-    age = X1,
-    gender = X2,
-    tb = X3,
-    db = X4,
-    alkphos = X5,
-    sgpt = X6,
-    sgot = X7,
-    tp = X8,
-    alb = X9,
-    ag = X10,
-    split = X11
-  ) %>%
-  select(-X1,-X2,-X3,-X4,-X5,-X6,-X7,-X8,-X9,-X10,-X11)
-```
-
-```{r}
-summary(df)
-
-train_df <- df %>%
-  filter(split == 1) %>%
-  select(-split)
-test_df <- df %>%
-  filter(split == 2) %>%
-  select(-split)
+df <- readRDS("data/train_disease.RDS")
 ```
 
 1. **Get an impression of the data by looking at the structure of the data and creating some descriptive statistics.**
 
+```{r}
+summary(df)
+```
+
+
 2. **2. To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.**
 
 ```{r}
-train_df %>% 
-  ggplot(aes(x = age)) +
-  geom_point(aes(y = tb), color = "red") +
-  geom_point(aes(y = db), color = "orange") +
-  geom_point(aes(y = ag), color = "yellow") +
-  geom_point(aes(y = sgpt), color = "green") +
-  geom_point(aes(y = sgot), color = "cyan") +
-  geom_point(aes(y = tp), color = "blue") +
-  geom_point(aes(y = alb), color = "purple") +
-  geom_point(aes(y = ag), color = "brown")
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Total_Bilirubin)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Direct_Bilirubin)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Alkaline_Phosphotase)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Alamine_Aminotransferase)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Aspartate_Aminotransferase)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Total_Protiens)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Albumin)) +
+  theme_minimal()
+df %>% 
+  ggplot(aes(x = Disease)) +
+  geom_point(aes(y = Ratio_Albumin_Globulin)) +
+  theme_minimal()
 ```
 
-This is not very useful. Cyan (`sgot`) and green (`sgpt`) seem to be much larger than the others.
-
-```{r}
-train_df %>% 
-  ggplot(aes(x = age)) +
-  geom_point(aes(y = sgpt), color = "green") +
-  geom_point(aes(y = sgot), color = "cyan")
-```
-
-Not very useful either.
-
-```{r}
-train_df %>% 
-  ggplot(aes(y = tb)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = db)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = alkphos)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = sgpt)) +
-  geom_boxplot()
-train_df %>% 
-  ggplot(aes(y = sgot)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = tp)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = alb)) +
-  geom_boxplot()
-
-train_df %>% 
-  ggplot(aes(y = ag)) +
-  geom_boxplot()
-```
-
-Most of the variables have multiple outliers, which we can assume would be the non-patients, since we have more patients than non-patients.
-
-There is no `Disease` variable though...
+The sick patients seem to have lower values of everything except Total Protiens, Albumin and Ratio Albumin Globulin than the healthy patients. So these variables seem to not affect the outcome very much, at first glance.
 
 3. **Shortly reflect on the difference between bagging, random forests, and boosting.**
 
@@ -128,3 +83,171 @@ library(devtools)
 source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
 ```
 
+<<<<<<< HEAD
+=======
+Random forests provide an improvement over bagged trees by way of a small tweak that decorrelates the trees. As in bagging, we build a number of decision trees on bootstrapped training samples. But when building these decision trees, each time a split in a tree is considered, a random sample of *m* predictors is chosen as split candidates from the full set of *p* predictors. The split is allowed to use only one of those *m* predictors. A fresh sample of *m* predictors is taken at each split, and typically we choose *m ≈ √ p* —that is, the number of predictors considered at each split is approximately equal to the square root of the total number of predictors. In other words, in building a random forest, at each split in the tree,
+the algorithm is not even allowed to consider a majority of the available predictors.
+
+In **boosting** the trees are grown sequentially. New trees are made from the residuals of the main tree and then added to it.
+
+4. Apply bagging to the training data, to predict the outcome `Disease`, using the `caret` library.
+
+```{r}
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+```
+
+```{r}
+bag_train <- train(Disease ~ ., df, method = 'treebag', trControl = cvcontrol, importance = TRUE)
+```
+
+5. **Interpret the variable importance measure using the varImp function on the trained model object.**
+
+```{r}
+varImp(bag_train)
+```
+
+The most important value for the outcome is `Alkaline_Phosphotase`, which has 100% importance, and the least important is `GenderFemale`, which does not have any importance.
+
+6. **Create training set predictions based on the bagged model, and use the `confusionMatrix()` function from the `caret` package to assess it’s performance.**
+
+```{r}
+bag_pred <- predict(bag_train)
+```
+
+```{r}
+confusionMatrix(data = bag_pred, reference = df$Disease)
+```
+
+7. **Now ask for the output of the bagged model. Explain why the under both approaches differ.**
+
+```{r}
+bag_train
+```
+
+8. **Fit a random forest to the training data to predict the outcome `Disease`, using the `caret` library.**
+
+```{r}
+rf_train <- train(Disease ~ ., df, method = 'rf', trControl = cvcontrol, importance = TRUE)
+```
+
+9. **Again, interpret the variable importance measure using the `varImp` function on the trained model object. Do you draw the same conclusions as under the bagged model?** 
+
+```{r}
+varImp(rf_train)
+```
+
+No, they are slightly different.
+
+10. **Output the model output from the random forest. Are we doing better than with the bagged model?**
+
+```{r}
+rf_train
+```
+
+Yes, slightly better.
+
+11. **Now, fit a boosting model using the caret library to predict disease status.**
+
+```{r}
+gbm_train <- train(Disease ~ ., df, method = 'gbm', trControl = cvcontrol)
+```
+
+12. **Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.**
+
+```{r}
+summary(gbm_train)
+```
+
+Again, the qualitative importance values change.
+
+13. **Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?**
+
+```{r}
+gbm_train
+```
+
+Yes, we are doing better.
+
+14. **Download the file `shap.R` from [this](https://github.com/pablo14/shap-values) Github repository.**
+
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+15. **Specify your model as follows, and use it to create predictions on the training data.**
+
+```{r}
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+```
+
+16. **First, calculate the `SHAP` rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.**
+
+```{r}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+```
+
+`Direct_Bilirubin` is the most important one for prediction `Disease` and `GenderFemale` is the least important one.
+
+17. **Plot the SHAP values for every individual for every feature and interpret them.**
+
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+```
+
+```{r}
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+```
+
+People with higher Direct_Bilirubin have less chance of having the disease, while for GenderFemale it's almost the same for every value, as it is not very relevant for the prediction.
+
+18. **Verify which of the models you created in this practical performs best on the test data.**
+
+```{r}
+newdata <- readRDS("data/test_disease.RDS")
+```
+
+
+```{r}
+bag_test <- predict(bag_train, newdata)
+rf_test <- predict(rf_train, newdata)
+gbm_test <- predict(gbm_train, newdata)
+xgboost_test <- predict(xgboost_train, model.matrix(Disease ~ ., newdata)[, -1]) %>% 
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1, 2), labels = c("Healthy", "Disease"))
+```
+
+```{r}
+confusionMatrix(bag_test, newdata$Disease)
+confusionMatrix(rf_test, newdata$Disease)
+confusionMatrix(gbm_test, newdata$Disease)
+confusionMatrix(xgboost_test, newdata$Disease)
+```
+
+The random forest performs the best on the test set.
+>>>>>>> 45062488c84842da89c170c73a96e16f95a2f104
