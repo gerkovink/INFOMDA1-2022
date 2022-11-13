@@ -866,14 +866,14 @@ upcoming <- rbind(old, upcoming)
 ```
 
 Let us plot the pattern of missing values.
-```{r, warning=FALSE}
+```{r, warning=FALSE, fig.height=7.5, fig.width=10}
 miss_plot <- aggr(upcoming, col=c('darkblue','red'), numbers=T, sortVars=T, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
 ```
 
 The graph reveals that 75% of the data has no missing information, 25% of the data is missing the number of votes.
 
 *Use classification and regression trees method for imputation*
-```{r, warning=FALSE}
+```{r echo=T, results='hide', warning=FALSE}
 imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=500)
 summary(imp)
 ```
@@ -881,7 +881,7 @@ summary(imp)
 In the imputation section, we adopted a classification and regression tree method as there are some imbalances in our data (i.e., Genre) that turn out to be dummy variables, some of which may be linear combinations of others. The predictive mean matching involves linear regression, that may lead to some errors, so that in our case, cart is a more suitable method.
 
 *Check the results of our imputation*
-```{r, warning=FALSE}
+```{r, warning=FALSE, fig.height=7.5, fig.width=10}
 densityplot(imp)
 ```
 
