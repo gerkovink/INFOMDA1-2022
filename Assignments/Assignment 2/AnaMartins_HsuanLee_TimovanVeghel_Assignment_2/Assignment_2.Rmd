@@ -179,14 +179,14 @@ top250 <-
 ```
 
 ```{r}
-directors <- top250$director
-directors <- unique(directors)
+top_directors <- top250$director
+top_directors <- unique(top_directors)
 ```
 
 ```{r}
 movies <-
   movies %>%
-  mutate(top_director = ifelse(director %in% directors, 1, 0))
+  mutate(top_director = ifelse(director %in% top_directors, 1, 0))
 ```
 
 It would be useful to have a similar thing for the actors:
@@ -199,7 +199,7 @@ top250 <-
 ```
 
 ```{r}
-actors <- unlist(strsplit(top250$crew, ", "))
+top_actors <- unlist(strsplit(top250$crew, ", "))
 ```
 
 ```{r}
@@ -261,20 +261,20 @@ movies <-
   movies %>%
   mutate(
     top_actor = ifelse(
-      actor1 %in% actors |
-        actor2 %in% actors |
-        actor3 %in% actors |
-        actor4 %in% actors |
-        actor5 %in% actors |
-        actor6 %in% actors |
-        actor7 %in% actors |
-        actor8 %in% actors |
-        actor9 %in% actors |
-        actor10 %in% actors |
-        actor11 %in% actors |
-        actor12 %in% actors |
-        actor13 %in% actors |
-        actor14 %in% actors | actor15 %in% actors,
+      actor1 %in% top_actors |
+        actor2 %in% top_actors |
+        actor3 %in% top_actors |
+        actor4 %in% top_actors |
+        actor5 %in% top_actors |
+        actor6 %in% top_actors |
+        actor7 %in% top_actors |
+        actor8 %in% top_actors |
+        actor9 %in% top_actors |
+        actor10 %in% top_actors |
+        actor11 %in% top_actors |
+        actor12 %in% top_actors |
+        actor13 %in% top_actors |
+        actor14 %in% top_actors | actor15 %in% top_actors,
       1,
       0
     )
@@ -598,32 +598,106 @@ To conclude, among the four models we compared, the boosting model is the ideali
 
 ## Which movies will be worth watching this year, then?
 
-There is a [comprehensive list by Rotten Tomatoes about the most antecipated movies of the year](https://editorial.rottentomatoes.com/article/most-anticipated-movies-of-2022/) and we think we should try to be helpful and let you know which ones you should be watching! (using our best model - the boosting one)
+There is a [comprehensive list by Rotten Tomatoes about the most antecipated movies of the year](https://editorial.rottentomatoes.com/article/most-anticipated-movies-of-2022/) and we think we should try to be helpful and let you know which ones you should be watching! (using our best model - the boosting one) As they are coming out in the future, we are not going to use the `imDbRatingVotes` variable, so we can also see how good the model is at predicting without it or some other variables that are not yet available.
 
 Let us, then, create a dataset with the movies starting from November that we have information on:
 
 ```{r}
-title <- c("Enola Holmes 2")
-imDbRatingVotes <- c(32000)
-metacriticRating <- c(64)
-runtime <- c(129)
-director <- c("Harry Bradbeer")
-actors <- c("Millie Bobby Brown, Henry Cavill, David Thewlis")
-genres <- c("Action, Adventure, Crime")
-contentRating <- c("PG-13")
+title <-
+  c(
+    "Enola Holmes 2",
+    "Black Panther: Wakanda Forever",
+    "The Menu",
+    "Devotion",
+    "The Fabelmans",
+    "Glass Onion: A Knives Out Mystery",
+    "Pinocchio",
+    "The Whale",
+    "Avatar: The Way of Water",
+    "I Wanna Dance With Somebody",
+    "Puss in Boots: The Last Wish",
+    "The Pale Blue Eye",
+    "Babylon"
+  )
+metacriticRating <- c(64, 67, 74, 60, 86, 81, 89, 65, NA, NA, NA, NA, NA)
+runtime <- c(129, 161, 106, 138, 151, 139, 117, 117, 190, NA, NA, 128, 188)
+year <-
+  c(2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022,
+    2022)
+director <-
+  c("Harry Bradbeer",
+    "Ryan Coogler",
+    "Mark Mylod",
+    "J.D. Dillard",
+    "Steven Spielberg",
+    "Rian Johnson",
+    "Guillermo del Toro",
+    "Darren Aronofsky",
+    "James Cameron",
+    "Kasi Lemmons",
+    "Joel Crawford",
+    "Scott Cooper",
+    "Damien Chazelle")
+actors <-
+  c(
+    "Millie Bobby Brown, Henry Cavill, David Thewlis",
+    "Letitia Wright, Lupita Nyong'o, Danai Gurira",
+    "Anya Taylor-Joy, Ralph Fiennes, Nicholas Hoult",
+    "Glen Powell, Jonathan Majors, Serinda Swan",
+    "Michelle Williams, Gabriel LaBelle, Paul Dano",
+    "Daniel Craig, Edward Norton, Kate Hudson",
+    "Gregory Mann, Ewan McGregor, Ron Perlman",
+    "Brendan Fraser, Sadie Sink, Ty Simpkins",
+    "Zoe Saldana, Sigourney Weaver, Sam Worthington",
+    "Stanley Tucci, Naomi Ackie, Tamara Tunie",
+    "Antonio Banderas, Salma Hayek, Harvey Guillén",
+    "Christian Bale, Gillian Anderson, Harry Melling",
+    "Brad PittMargot RobbieJean Smart"
+  )
+genres <-
+  c(
+    "Action, Adventure, Crime",
+    "Action, Adventure, Drama",
+    "Comedy, Horror, Thriller",
+    "Action, Drama, War",
+    "Drama",
+    "Comedy, Crime, Drama",
+    "Animation, Drama, Family",
+    "Drama",
+    "Action, Adventure, Fantasy",
+    "Biography, Drama, Music",
+    "Animation, Adventure, Comedy",
+    "Crime, Horror, Mystery",
+    "Comedy, Drama, Hystory"
+  )
+contentRating <- c("PG-13", "M/12", "R", "PG-13", "PG-13", "PG-13", "PG", "R", NA, NA, "PG", "R", NA)
 ```
 
 ```{r}
 upcoming <- tibble(
   title = title,
-  imDbRatingVotes = imDbRatingVotes,
   metacriticRating = metacriticRating,
   runtime = runtime,
+  year = year,
   director = director,
   actors = actors,
   genres = genres,
-  contentRating = rating
+  contentRating = as.factor(contentRating)
 )
+upcoming$metacriticRating[which(!(
+  upcoming$metacriticRating %in% unique(upcoming$metacriticRating)
+))] <- NA
 ```
 
 ```{r}
@@ -661,26 +735,112 @@ upcoming <-
 ```
 
 ```{r}
-# not working
-#upcoming <-
-#  upcoming %>% 
-#  filter(contentRating != c("Not Rated", "Unrated")) %>%
-#  mutate(
-#    PG13 = ifelse(contentRating == "PG-13", 1, 0),
-#    R = ifelse(contentRating == "R", 1, 0),
-#    PG = ifelse(contentRating == "PG", 1, 0),
-#    Passed = ifelse(contentRating == "Passed", 1, 0),
-#    G = ifelse(contentRating == "G", 1, 0),
-#    TVMA = ifelse(contentRating == "TV-MA", 1, 0),
-#    TV14 = ifelse(contentRating == "TV-14", 1, 0),
-#    Approved = ifelse(contentRating == "Approved", 1, 0),
-#    TVPG = ifelse(contentRating == "TV-PG", 1, 0),
-#    GP = ifelse(contentRating == "GP", 1, 0),
-#    NC17 = ifelse(contentRating == "NC-17", 1, 0),
-#    twelve = ifelse(contentRating == "12", 1, 0),
-#    M_PG = ifelse(contentRating == "M/PG", 1, 0),
-#    M = ifelse(contentRating == "M", 1, 0)
-#  ) %>%
-#  select(-contentRating)
+upcoming <-
+  upcoming %>% 
+  filter(contentRating != "Not Rated", contentRating != "Unrated") %>%
+  mutate(
+    PG13 = ifelse(contentRating == "PG-13", 1, 0),
+    R = ifelse(contentRating == "R", 1, 0),
+    PG = ifelse(contentRating == "PG", 1, 0),
+    Passed = ifelse(contentRating == "Passed", 1, 0),
+    G = ifelse(contentRating == "G", 1, 0),
+    TVMA = ifelse(contentRating == "TV-MA", 1, 0),
+    TV14 = ifelse(contentRating == "TV-14", 1, 0),
+    Approved = ifelse(contentRating == "Approved", 1, 0),
+    TVPG = ifelse(contentRating == "TV-PG", 1, 0),
+    GP = ifelse(contentRating == "GP", 1, 0),
+    NC17 = ifelse(contentRating == "NC-17", 1, 0),
+    twelve = ifelse(contentRating == "12", 1, 0),
+    M_PG = ifelse(contentRating == "M/PG", 1, 0),
+    M = ifelse(contentRating == "M", 1, 0)
+  ) %>%
+  select(-contentRating)
+```
+
+```{r}
+upcoming <-
+  upcoming %>% 
+  mutate(top_director = ifelse(director %in% top_directors, 1, 0))
+```
+
+```{r}
+upcoming <-
+  upcoming %>% 
+  mutate(actor1 = sub(", .*", "", upcoming$actors)) %>% 
+  mutate(actors = substring(actors, first = nchar(actor1) + 3))
+upcoming <-
+  upcoming %>% 
+  mutate(actor2 = sub(", .*", "", upcoming$actors)) %>% 
+  mutate(actor3 = substring(actors, first = nchar(actor2) + 3)) %>% 
+  select(-actors)
+```
+
+```{r}
+upcoming <-
+  upcoming %>%
+  mutate(top_actor = ifelse(
+    actor1 %in% top_actors |
+      actor2 %in% top_actors |
+      actor3 %in% top_actors,
+    1,
+    0
+  ))
+```
+
+```{r}
+upcoming <- upcoming %>%
+  mutate(
+    action = as.factor(action),
+    adventure = as.factor(adventure),
+    animation = as.factor(animation),
+    biography = as.factor(biography),
+    comedy = as.factor(comedy),
+    crime = as.factor(crime),
+    drama = as.factor(drama),
+    family = as.factor(family),
+    fantasy = as.factor(fantasy),
+    filmnoir = as.factor(filmnoir),
+    history = as.factor(history),
+    horror = as.factor(horror),
+    music = as.factor(music),
+    musical = as.factor(musical),
+    mystery = as.factor(mystery),
+    realitytv = as.factor(realitytv),
+    romance = as.factor(romance),
+    scifi = as.factor(scifi),
+    sport = as.factor(sport),
+    thriller = as.factor(thriller),
+    war = as.factor(war),
+    western = as.factor(western),
+    top_director = as.factor(top_director),
+    top_actor = as.factor(top_actor),
+    
+    PG13 = as.factor(PG13),
+    R = as.factor(R),
+    PG = as.factor(PG),
+    Passed = as.factor(Passed),
+    G = as.factor(G),
+    TVMA = as.factor(TVMA),
+    TV14 = as.factor(TV14),
+    Approved = as.factor(Approved),
+    TVPG = as.factor(TVPG),
+    GP = as.factor(GP),
+    NC17 = as.factor(NC17),
+    twelve = as.factor(twelve),
+    M_PG = as.factor(M_PG),
+    M = as.factor(M)
+  )
+```
+
+
+```{r}
+upcoming_pred <- predict(boost_cv, newdata = upcoming, na.rm = TRUE)
+
+upcoming <-
+  upcoming %>% 
+  mutate(pred = upcoming_pred)
+
+upcoming %>% 
+  select(title, pred)
 ```
 
