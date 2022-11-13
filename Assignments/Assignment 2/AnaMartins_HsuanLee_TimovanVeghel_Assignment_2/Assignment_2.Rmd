@@ -322,8 +322,9 @@ The minimum rating film we have from IMDb users has 1.0 out of 10 and the maximu
 The lowest runtime we have is 46 minutes, which means somehow a movie got to escape the API filter, and the longest is longer than 5 hours (I had to look that up... it's an italian movie, of course).
 The first movie we have is from 1920 and the latest is from 2022 (which makes sense as this was taken directly from the IMDb database, which is always up to date with the movies coming out). The mean for the year is at 2001, which means we have more recent movies than older movies, which makes sense since there are more movies being produced now.
 
-Looking at the genres, we can see the genre that we have more of is drama, with about half of the movies earning that title, and the one we have least of is Reality-TV, only having one movie from that category.
-We have almost 20% of movies having a top director, while only 0.4% have a top actor.
+Looking at the genres, we can see the genre that we have more of is drama, with about half of the movies earning that title, and the one we have least of is Reality-TV.
+
+We have almost 20% of movies having a top director, and 46% have a top actor.
 
 ```{r, warning=FALSE}
 movies %>%
@@ -490,14 +491,14 @@ pred_bag <- predict(bag_cv, type = "raw")
 confusionMatrix(pred_bag, movies_train$top1000)
 ```
 
-The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1, again much higher than baseline acuracy. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
+The confusion matrix of the bagging model on the training data shows almost perfect results with accuracy, sensitivity, specificity, PPV and NPV close to 1, again much higher than baseline accuracy. However, it is still not certain if it is a decent model as we do not know whether it is over-fitted or not.
 
 ```{r, warning=FALSE}
 # check the results on internal validation dataset
 bag_cv
 ```
 
-The most characteristic of the bagging method is that it uses bootstrap aggregation to obtain many training datasets by sampling multiple times from the sample, fitting a tree to each training dataset, and using majority vote for classification or simple average for regression. The out of bag data can be served as the internal validation datasets. Hence, we can observe that the accuracy of the internal validation dataset shown here is 0.9.
+The most characteristic of the bagging method is that it uses bootstrap aggregation to obtain many training datasets by sampling multiple times from the sample, fitting a tree to each training dataset, and using majority vote for classification or simple average for regression. The out of bag data can be served as the internal validation datasets. Hence, we can observe that the accuracy of the internal validation dataset shown here is 0.89.
 
 *3. Random Forest*
 ```{r, warning=FALSE}
@@ -520,7 +521,7 @@ rf_cv %>%
 
 The random forest model reveals a different variable importance plot than the bagging model. The reason for this is that bagging has a high correlation issue between the trees. To overcome this problem, the random forest places a restriction on each split of the tree by randomly drawing features at any split with only those features that are drawn being considered.
 
-Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie's director is a top 250 director (`top_director`), and the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot than for ur previous model.
+Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie is animation (`animation`) or not, and whether the movie's director is a top 250 director (`top_director`), then the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot than for ur previous model.
 
 ```{r, warning=FALSE}
 # create confusion matrix on the training data
@@ -535,7 +536,7 @@ Similar to the output of the bagging model, the confusion matrix of the random f
 rf_cv
 ```
 
-Due to the similarity with the bagging method, the random forest has the internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 21 features are sampled in each split.
+Due to the similarity with the bagging method, the random forest has the internal validation data set from which the accuracy can be tested. Here, we can see that the random forest model has the highest accuracy of 0.9 as 40 features are sampled in each split.
 
 *4. 5-fold cross-validation Boosting*
 ```{r, warning=FALSE}
@@ -556,7 +557,7 @@ boost_cv %>%
   plot
 ```
 
-The order of importance of the features is similar to that of the random forest model, as can be seen from the variable importance plot of the boosting model. Critics' rating (`metacriticRating`) is the most important feature, next is the total number of votes (`imDbRatingVotes`), followed by whether the director of the movie is a top 250 director (`top_director`), and the running time of the movie (`runtime`). Compared to the random forest model, however, the features listed after the fourth variable in the boosted model contribute little to the model.
+The order of importance of the features is similar to that of the random forest model, as can be seen from the variable importance plot of the boosting model. Critics' rating (`metacriticRating`) is the most important feature, next is the total number of votes (`imDbRatingVotes`), followed by the running time of the movie (`runtime`), and whether the director of the movie is a top 250 director (`top_director`). Compared to the random forest model, however, the features listed after the fourth variable in the boosted model contribute little to the model.
 
 ```{r, warning=FALSE}
 # create confusion matrix on the training data
@@ -564,14 +565,14 @@ pred_boost <- predict(boost_cv, type = "raw")
 confusionMatrix(pred_boost, movies_train$top1000)
 ```
 
-The confusion matrix of the boosting model on the training data has an accuracy of 0.91, a sensitivity of 0.98, a slightly lower specificity of 0.55, a PPV of 0.92, and an NPV of 0.8.
+The confusion matrix of the boosting model on the training data has an accuracy of 0.93, a sensitivity of 0.98, a slightly lower specificity of 0.64, a PPV of 0.94, and an NPV of 0.83.
 
 ```{r, warning=FALSE}
 # check the results on the validation dataset
 boost_cv
 ```
 
-Based on the accuracy of the 5-fold cross-validation boosting model on the validation datasets, the best accuracy of the boosting model is 0.9 for two splits on a tree with 50 trees.
+Based on the accuracy of the 5-fold cross-validation boosting model on the validation datasets, the best accuracy of the boosting model is 0.9 for three splits on a tree with 150 trees.
 
 **Third, let's test on the test data and determine which model has the best performance.**
 ```{r, warning=FALSE}
@@ -595,9 +596,9 @@ list(
 
 All four models (i.e., the 5-fold cross-validation logistic regression model, the bagging model, the random forest model, and the 5-fold cross-validation boosting model) were fitted to the test dataset we partitioned at the beginning to test and compare the performance of each model.
 
-First, we evaluated the accuracy of each model - the boosting model had the highest accuracy at 0.92, followed by the random forest model and logistic regression model at 0.91, and the bagging model had the lowest accuracy at 0.908.
+First, we evaluated the accuracy of each model - the boosting model had the highest accuracy at 0.92, followed by the logistic regression model at 0.91, and the bagging model and random forest model had the lowest accuracy at 0.907.
 
-Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.93 and an NPV of 0.78.
+Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.94 and an NPV of 0.74.
 
 To conclude, among the four models we compared, the boosting model is the most ideal model so that it is served as our final model.
 
