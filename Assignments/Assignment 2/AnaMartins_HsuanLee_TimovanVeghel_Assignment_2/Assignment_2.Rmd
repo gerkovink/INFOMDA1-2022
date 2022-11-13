@@ -605,6 +605,7 @@ Let us, then, create a dataset with the movies starting from November that we ha
 ```{r}
 title <-
   c(
+    "Parasite",
     "Enola Holmes 2",
     "Black Panther: Wakanda Forever",
     "The Menu",
@@ -619,10 +620,15 @@ title <-
     "The Pale Blue Eye",
     "Babylon"
   )
-metacriticRating <- c(64, 67, 74, 60, 86, 81, 89, 65, NA, NA, NA, NA, NA)
-runtime <- c(129, 161, 106, 138, 151, 139, 117, 117, 190, NA, NA, 128, 188)
+imDbRatingVotes <-
+  c(790128, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
+metacriticRating <-
+  c(96, 64, 67, 74, 60, 86, 81, 89, 65, NA, NA, NA, NA, NA)
+runtime <-
+  c(132, 129, 161, 106, 138, 151, 139, 117, 117, 190, NA, NA, 128, 188)
 year <-
-  c(2022,
+  c(2019,
+    2022,
     2022,
     2022,
     2022,
@@ -636,7 +642,9 @@ year <-
     2022,
     2022)
 director <-
-  c("Harry Bradbeer",
+  c(
+    "Bong Joon Ho",
+    "Harry Bradbeer",
     "Ryan Coogler",
     "Mark Mylod",
     "J.D. Dillard",
@@ -648,9 +656,11 @@ director <-
     "Kasi Lemmons",
     "Joel Crawford",
     "Scott Cooper",
-    "Damien Chazelle")
+    "Damien Chazelle"
+  )
 actors <-
   c(
+    "Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong",
     "Millie Bobby Brown, Henry Cavill, David Thewlis",
     "Letitia Wright, Lupita Nyong'o, Danai Gurira",
     "Anya Taylor-Joy, Ralph Fiennes, Nicholas Hoult",
@@ -663,10 +673,11 @@ actors <-
     "Stanley Tucci, Naomi Ackie, Tamara Tunie",
     "Antonio Banderas, Salma Hayek, Harvey Guillén",
     "Christian Bale, Gillian Anderson, Harry Melling",
-    "Brad PittMargot RobbieJean Smart"
+    "Brad Pitt, Margot Robbie, Jean Smart"
   )
 genres <-
   c(
+    "Drama, Thriller",
     "Action, Adventure, Crime",
     "Action, Adventure, Drama",
     "Comedy, Horror, Thriller",
@@ -681,12 +692,27 @@ genres <-
     "Crime, Horror, Mystery",
     "Comedy, Drama, Hystory"
   )
-contentRating <- c("PG-13", "M/12", "R", "PG-13", "PG-13", "PG-13", "PG", "R", NA, NA, "PG", "R", NA)
+contentRating <-
+  c("M/14",
+    "PG-13",
+    "M/12",
+    "R",
+    "PG-13",
+    "PG-13",
+    "PG-13",
+    "PG",
+    "R",
+    NA,
+    NA,
+    "PG",
+    "R",
+    NA)
 ```
 
 ```{r}
 upcoming <- tibble(
   title = title,
+  imDbRatingVotes = as.numeric(imDbRatingVotes),
   metacriticRating = metacriticRating,
   runtime = runtime,
   year = year,
@@ -695,9 +721,6 @@ upcoming <- tibble(
   genres = genres,
   contentRating = as.factor(contentRating)
 )
-upcoming$metacriticRating[which(!(
-  upcoming$metacriticRating %in% unique(upcoming$metacriticRating)
-))] <- NA
 ```
 
 ```{r}
@@ -710,23 +733,19 @@ upcoming <-
     biography = ifelse(grepl("Biography", genres, fixed = TRUE), 1, 0),
     comedy = ifelse(grepl("Comedy", genres, fixed = TRUE), 1, 0),
     crime = ifelse(grepl("Crime", genres, fixed = TRUE), 1, 0),
-    documentary = ifelse(grepl("Documentary", genres, fixed = TRUE), 1, 0),
     drama = ifelse(grepl("Drama", genres, fixed = TRUE), 1, 0),
     family = ifelse(grepl("Family", genres, fixed = TRUE), 1, 0),
     fantasy = ifelse(grepl("Fantasy", genres, fixed = TRUE), 1, 0),
     filmnoir = ifelse(grepl("Film-Noir", genres, fixed = TRUE), 1, 0),
-    gameshow = ifelse(grepl("Game-Show", genres, fixed = TRUE), 1, 0),
     history = ifelse(grepl("History", genres, fixed = TRUE), 1, 0),
     horror = ifelse(grepl("Horror", genres, fixed = TRUE), 1, 0),
     music = ifelse(grepl("Music", genres, fixed = TRUE), 1, 0),
     musical = ifelse(grepl("Musical", genres, fixed = TRUE), 1, 0),
     mystery = ifelse(grepl("Mystery", genres, fixed = TRUE), 1, 0),
-    news = ifelse(grepl("News", genres, fixed = TRUE), 1, 0),
     realitytv = ifelse(grepl("Reality-TV", genres, fixed = TRUE), 1, 0),
     romance = ifelse(grepl("Romance", genres, fixed = TRUE), 1, 0),
     scifi = ifelse(grepl("Sci-Fi", genres, fixed = TRUE), 1, 0),
     sport = ifelse(grepl("Sport", genres, fixed = TRUE), 1, 0),
-    talkshow = ifelse(grepl("Talk-Show", genres, fixed = TRUE), 1, 0),
     thriller = ifelse(grepl("Thriller", genres, fixed = TRUE), 1, 0),
     war = ifelse(grepl("War", genres, fixed = TRUE), 1, 0),
     western = ifelse(grepl("Western", genres, fixed = TRUE), 1, 0),
@@ -785,6 +804,9 @@ upcoming <-
     1,
     0
   ))
+upcoming <-
+  upcoming %>% 
+  select(-actor1, -actor2, -actor3)
 ```
 
 ```{r}
@@ -834,7 +856,7 @@ upcoming <- upcoming %>%
 
 
 ```{r}
-upcoming_pred <- predict(boost_cv, newdata = upcoming, na.rm = TRUE)
+upcoming_pred <- predict(boost_cv, newdata = upcoming)
 
 upcoming <-
   upcoming %>% 
@@ -844,3 +866,4 @@ upcoming %>%
   select(title, pred)
 ```
 
+According to our model, none of the "Most Antecipated Movies for 2022" are actually worth watching. The two first movies in there actually came out in the meanwhile, and we can confirm that they do have less than 7.6 at the time of writing this. For the rest of them, 
