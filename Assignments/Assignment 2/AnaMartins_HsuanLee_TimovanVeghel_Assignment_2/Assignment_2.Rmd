@@ -26,6 +26,8 @@ library(tidyverse)
 library(caret) # for fitting the trees and LR with CV
 library(gbm) # for boosting
 library(psych) # for making a pretty summary
+library(mice) # for imputing the missing data of new movies
+library(VIM) # plot the missing data
 options(scipen = 999) # remove e
 ```
 
@@ -312,9 +314,12 @@ summary(movies)
 ```
 
 We can take a quick look to what these statistics tell us, just for fun (and also to make sure our sample is actually random).
+
 The minimum rating film we have from IMDb users has 1.0 out of 10 and the maximum has 9.2, with the mean of the score being 6.74. The minimum rating film we have from critics has 6.0 out of 100 and the maximum has the max score of 100, with a mean at 59.61, which is quite close to the IMDb ratings. It is expected that the critics scores are lower than the IMDb ratings in general however, so this seems about right.
+
 The lowest runtime we have is 46 minutes, which means somehow a movie got to escape the API filter, and the longest is longer than 5 hours (I had to look that up... it's an italian movie, of course).
 The first movie we have is from 1920 and the latest is from 2022 (which makes sense as this was taken directly from the IMDb database, which is always up to date with the movies coming out). The mean for the year is at 2001, which means we have more recent movies than older movies, which makes sense since there are more movies being produced now.
+
 Looking at the genres, we can see the genre that we have more of is drama, with about half of the movies earning that title, and the one we have least of is Reality-TV, only having one movie from that category.
 We have almost 20% of movies having a top director, while only 0.4% have a top actor.
 
@@ -389,7 +394,6 @@ test <- seq(max(train) + 1, nrow(movies))
 movies_train <- movies[train,]
 movies_test <- movies[test,]
 ```
-
 
 ## Predicting whether a movie is likely to be in the top 1000 of IMDB
 
@@ -598,14 +602,13 @@ To conclude, among the four models we compared, the boosting model is the ideali
 
 ## Which movies will be worth watching this year, then?
 
-There is a [comprehensive list by Rotten Tomatoes about the most antecipated movies of the year](https://editorial.rottentomatoes.com/article/most-anticipated-movies-of-2022/) and we think we should try to be helpful and let you know which ones you should be watching! (using our best model - the boosting one) As they are coming out in the future, we are not going to use the `imDbRatingVotes` variable, so we can also see how good the model is at predicting without it or some other variables that are not yet available.
+There is a [comprehensive list by Rotten Tomatoes about the most antecipated movies of the year](https://editorial.rottentomatoes.com/article/most-anticipated-movies-of-2022/) and we think we should try to be helpful and let you know which ones you should be watching! (using our best model - the boosting one) As they are coming out in the future, we are going to impute the `imDbRatingVotes` variable.
 
 Let us, then, create a dataset with the movies starting from November that we have information on:
 
 ```{r}
 title <-
   c(
-    "Parasite",
     "Enola Holmes 2",
     "Black Panther: Wakanda Forever",
     "The Menu",
@@ -621,14 +624,13 @@ title <-
     "Babylon"
   )
 imDbRatingVotes <-
-  c(790128, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
+  c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
 metacriticRating <-
-  c(96, 64, 67, 74, 60, 86, 81, 89, 65, NA, NA, NA, NA, NA)
+  c(64, 67, 74, 60, 86, 81, 89, 65, NA, NA, NA, NA, NA)
 runtime <-
-  c(132, 129, 161, 106, 138, 151, 139, 117, 117, 190, NA, NA, 128, 188)
+  c(129, 161, 106, 138, 151, 139, 117, 117, 190, NA, NA, 128, 188)
 year <-
-  c(2019,
-    2022,
+  c(2022,
     2022,
     2022,
     2022,
@@ -643,7 +645,6 @@ year <-
     2022)
 director <-
   c(
-    "Bong Joon Ho",
     "Harry Bradbeer",
     "Ryan Coogler",
     "Mark Mylod",
@@ -660,7 +661,6 @@ director <-
   )
 actors <-
   c(
-    "Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong",
     "Millie Bobby Brown, Henry Cavill, David Thewlis",
     "Letitia Wright, Lupita Nyong'o, Danai Gurira",
     "Anya Taylor-Joy, Ralph Fiennes, Nicholas Hoult",
@@ -677,7 +677,6 @@ actors <-
   )
 genres <-
   c(
-    "Drama, Thriller",
     "Action, Adventure, Crime",
     "Action, Adventure, Drama",
     "Comedy, Horror, Thriller",
@@ -693,8 +692,7 @@ genres <-
     "Comedy, Drama, Hystory"
   )
 contentRating <-
-  c("M/14",
-    "PG-13",
+  c("PG-13",
     "M/12",
     "R",
     "PG-13",
@@ -856,13 +854,47 @@ upcoming <- upcoming %>%
 
 
 ```{r}
-upcoming_pred <- predict(boost_cv, newdata = upcoming)
+# Extract four movies from the old data, for better imputation results
+set.seed(2022)
 
-upcoming <-
-  upcoming %>% 
+old <- movies[sample(nrow(movies), 30),] %>%
+  select(-id,-imDbRating,-actors)
+
+upcoming <- rbind(old, upcoming)
+```
+
+
+
+
+
+
+
+
+```{r}
+aggr_plot <- aggr(upcoming, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+```
+
+```{r}
+imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=500)
+summary(imp)
+```
+
+```{r}
+densityplot(imp)
+```
+
+```{r}
+upcoming_imp <- complete(imp,1)
+```
+
+```{r}
+upcoming_pred <- predict(boost_cv, newdata = upcoming_imp)
+
+upcoming_imp <-
+  upcoming_imp %>% 
   mutate(pred = upcoming_pred)
 
-upcoming %>% 
+upcoming_imp %>% 
   select(title, pred)
 ```
 
