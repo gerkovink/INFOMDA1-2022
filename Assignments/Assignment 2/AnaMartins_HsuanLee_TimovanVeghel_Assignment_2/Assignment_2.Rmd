@@ -883,10 +883,11 @@ In the imputation section, we adopted a classification and regression tree metho
 
 *Check the results of our imputation*
 ```{r, warning=FALSE, fig.height=7.5, fig.width=10}
+plot(imp)
 densityplot(imp)
 ```
 
-The density plot appeared to be acceptable, with most of the lines following the shape of the observed data (blue).
+In our case, the convergence is satisfied from most of the spaghetti plots, also the density plot appears to be acceptable with most of the lines following the shape of the observed data (blue).
 
 *We therefore obtain our imputed data*
 ```{r, warning=FALSE}
