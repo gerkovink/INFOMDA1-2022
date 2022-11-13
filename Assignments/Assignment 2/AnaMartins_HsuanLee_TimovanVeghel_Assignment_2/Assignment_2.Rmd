@@ -872,7 +872,7 @@ The graph reveals that 75% of the data has no missing information, 25% of the da
 
 *Use classification and regression trees method for imputation*
 ```{r echo=T, results='hide', warning=FALSE}
-imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=500)
+imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=999)
 summary(imp)
 ```
 
@@ -904,4 +904,4 @@ upcoming_imp %>%
   select(title, pred)
 ```
 
-According to our model, only one of the "Most Anticipated Movies for 2022" is actually worth watching, `Pinocchio`. This means we predict this film will have an IMDb rating of over 7.6 and is likely to make it into IMDB's top 1000. While playing around with the `set.seed()` we sometimes also got that "Black Panther; Wakanda Forever" and "The Fabelmans" would get to the top 1000, so these will also probably be close to making it to a rating of 7.6.
+According to our model, only two of the "Most Anticipated Movies for 2022" is actually worth watching, `The Fabelmans` and `Pinocchio`. This means we predict thess films will have an IMDb rating of over 7.6 and is likely to make it into IMDB's top 1000.
