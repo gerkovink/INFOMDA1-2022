@@ -7,15 +7,15 @@ output: html_document
 
 ## Goals 
 
-In this project, we aim to find out if there is a way to predict whether a movie has the potential to in the IMDB top 1000. According to the IMDB website (`https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc`), an IMDB rating of at least 7.6 is required for a movie to be part of the top 1000. Our models will be based on a randomized dataset, retrieved from the [IMDb API](https://imdb-api.com). Hopefully our model will be sufficiently accurate to let us know which movies to visit the cinema for!
+In this project, we aim to find out if there is a way to predict whether a movie has the potential to in the IMDB top 1000. According to the [IMDB website](https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating,asc), an IMDB rating of at least 7.6 is required for a movie to be part of the top 1000. Our models will be based on a randomized dataset, retrieved from the [IMDb API](https://imdb-api.com). Hopefully our model will be sufficiently accurate to let us know which movies to visit the cinema for!
 
 ## About the Dataset
 
-The dataset we will be using is taken from the [IMDb API](https://imdb-api.com) on the 4th of November of 2022, as we did not find any dataset online that satisfied what we wanted (they were either too big, too small, or had wrong data). The maximum amount of data we can get at once is 250 movies, so what we do to try to generate (mostly) random data is searching for movies with each of the genres available and getting them by ascending and descending alphabetical order (see [data/movie_data_generating.py](data/movie_data_generating.py) for more details). The starting dataset contains 11649 random (see below why we can call them random) movies that are on IMDB.
+The dataset we will be using is taken from the [IMDb API](https://imdb-api.com) on the 4th of November of 2022, as we did not find any dataset online that satisfied what we wanted (they were either too big, too small, or had wrong data). The maximum amount of data we can get at once is 250 movies, so what we do to try to generate (mostly) random data is searching for movies with each of the genres available and getting them by ascending and descending alphabetical order (see [data/movie_data_generating.py](data/movie_data_generating.py) for more details). The starting dataset contains 9414 random (see below why we can call them random) movies that are on IMDB.
 
 The dataset has 14 variables: `id`, `image`, `title`, `description`, `runtimeStr`, `genres`, `genresList`, `contentRating`, `imDbRating`, `imDbRatingVotes`, `metacriticRating`, `plot`, `stars` and `starList`.
 
-We will be taking away variables that do not interest us, like `image`, `genresList` (we have the genres in `genres` already), `plot` and `starList` (again, we have the actors in `stars` already), as those are not useful to analyse. Variables like the `stars` are not useful for analysis, because they would most definitely result in overfitting due to the high variability per movie (each movie has a unique set of 'stars' and there is quite a lot of them). Another particularity of the dataset is that this data was already taken only for Feature Films, for runtime longer than 60 minutes and for more IMDb votes than 25000 (what IMDb considers to make the rating official) to eliminate titles we do not want to analyse.
+We will be taking away variables that do not interest us, like `image`, `genresList` (we have the genres in `genres` already), `plot` and `starList` (again, we have the actors in `stars` already), as those are not useful to analyse. Variables like the `stars` are also not useful for direct analysis, because they would most definitely result in overfitting due to the high variability per movie (each movie has a unique set of 'stars' and there is quite a lot of them), but using these to get other variables will be something we do. Another particularity of the dataset is that this data was already taken only for Feature Films, for runtime longer than 60 minutes and for more IMDb votes than 25000 (what IMDb considers to make the rating official) to eliminate titles we do not want to analyse.
 
 ## Getting the Data
 
@@ -30,6 +30,7 @@ library(psych) # for making a descriptive statistics
 library(mice) # for imputing the missing data of new movies
 library(VIM) # plot the missing data
 options(scipen = 999) # remove e
+set.seed(2022)
 ```
 
 ```{r, warning=FALSE}
@@ -150,7 +151,7 @@ movies <- movies %>%
   select(-contentRating)
 ```
 
-Now, to use the `director` variable, we need to create another dummy value. For this, we are going to create `director_top250`. Let us load our second dataset:
+Now, to use the `director` variable, we need to create another dummy value. For this, we are going to create `top_director`. Let us load our second dataset:
 
 ```{r, warning=FALSE}
 top250 <- read_csv("data/top250_data.csv")
@@ -416,7 +417,6 @@ In the statistical analysis section, four models will be fitted, they are the si
 *1. 5-fold cross-validation Logistic Regression*
 ```{r, warning=FALSE}
 # specify the cross-validation method, and number of k-fold
-set.seed(2022)
 train_control <- trainControl(method = "cv", number = 5)
 ```
 
@@ -437,9 +437,9 @@ lr_cv <- train(
 summary(lr_cv)
 ```
 
-As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`),and the running time of a movie (`runtime`) are the critical elements affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
+As shown by the output of the 5-fold cross-validated logistic regression, the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`), and the running time of a movie (`runtime`) are the critical elements affecting a movie's entry into the IMDB top 1000. One can state that for every one increase in the number of votes, the log-odds of entering the IMDB top 1000 rises by 0.00007; for every increase of one in Metacritic rating, the log-odds of entering the IMDB top 1000 ascends by 0.1; and for every 1 minute addition to the movie's running time, the log-odds of entering the IMDB top 1000 goes up by 0.02. All three features possess a positive relation with being in the IMDB Top 1000.
 
-In terms of the genre of the movie, six genres influence a movie's ability to enter the IMDB Top 1000: `adventure`, `animation`, `comedy`, `horror`, `science fiction`, and `sports`. Among them, except for animation, the other five genres relate negatively to entering the IMDB Top 1000. In other words, if a movie belongs to the adventure category, the log-odds of entering the IMDB top 1000 drops by 1.1; if a movie belongs to the comedy category, the log-odds of entering the IMDB top 1000 declines by 0. 7; if a movie is a horror movie, the log-odds of entering the IMDB top 1000 decreases by 1.5; if a movie is a science fiction movie, the log-odds of entering the IMDB top 1000 falls by 1.5. On the contrary, if a movie is an animated movie, the log-odds of entering the IMDB top 1000 increases by 1.1.
+In terms of the genre of the movie, six genres influence a movie's ability to enter the IMDB Top 1000: `adventure`, `animation`, `comedy`, `horror`, `scifi`, and `sports`. Among them, except for animation, the other five genres relate negatively to entering the IMDB Top 1000. In other words, if a movie belongs to the adventure category, the log-odds of entering the IMDB top 1000 drops by 1.1; if a movie belongs to the comedy category, the log-odds of entering the IMDB top 1000 declines by 0. 7; if a movie is a horror movie, the log-odds of entering the IMDB top 1000 decreases by 1.5; if a movie is a science fiction movie, the log-odds of entering the IMDB top 1000 falls by 1.5. On the contrary, if a movie is an animated movie, the log-odds of entering the IMDB top 1000 increase by 1.1.
  
 Regarding content ratings, there are four content ratings that affect a movie's chances of making the IMDB Top 1000: `PG-13`, `R`, `PG`, `G`. They all have a negative association with entry into the IMDB Top 1000, i.e., if a movie is listed as one of the above content ratings, the log-odds of entering the IMDB Top 1000 will decrease.
 
@@ -482,7 +482,7 @@ bag_cv %>%
   plot
 ```
 
-The variable importance plot indicates that the four features with the highest importance in the bagging model are the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`), the running time of the movie (`runtime`), and a movie's director being a top 250 director(`top_director`) or not. The remaining features are relatively less important than the above four.
+The variable importance plot indicates that the four features with the highest importance in the bagging model are the total number of votes (`imDbRatingVotes`), the average rating of critics (`metacriticRating`), the running time of the movie (`runtime`), and a movie's director being a top 250 director (`top_director`) or not. The remaining features are relatively less important than the above four.
 
 ```{r, warning=FALSE}
 # create confusion matrix on training data
@@ -518,9 +518,9 @@ rf_cv %>%
   plot
 ```
 
-The random forest model reveals different variable importance plot with the bagging model. The reason for this is that bagging has a high correlation issue between the trees. To overcome this problem, the random forest places a restriction on each split of the tree by randomly drawing features at any split with only those features that are drawn being considered.
+The random forest model reveals a different variable importance plot than the bagging model. The reason for this is that bagging has a high correlation issue between the trees. To overcome this problem, the random forest places a restriction on each split of the tree by randomly drawing features at any split with only those features that are drawn being considered.
 
-Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie's director is a top 250 director (`top_director`), and the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot.
+Here, the random forest model suggests that the critics' rating (`metacriticRating`) is the most important feature, followed by the total number of votes (`imDbRatingVotes`), then by whether the movie's director is a top 250 director (`top_director`), and the movie's running time (`runtime`). The features listed behind the total number of votes (`imDbRatingVotes`) are, however, relatively much less important in the variable importance plot than for ur previous model.
 
 ```{r, warning=FALSE}
 # create confusion matrix on the training data
@@ -599,7 +599,7 @@ First, we evaluated the accuracy of each model - the boosting model had the high
 
 Second, as we are most interested in what is the probability that a movie is actually in the IMDB top 1000 if it is identified as likely to be in the IMDB top 1000, and what is the probability that a movie is truly not in the IMDB top 1000 if it is identified as unlikely to be in the top 1000, thus, the PPV and NPV of the models are of interest to us for comparison. The bagging model performed the worst on PPV and NPV, the random forest and logistic regression models were nearly the same, the boosting model had the best overall performance on PPV and NPV with a PPV of 0.93 and an NPV of 0.78.
 
-To conclude, among the four models we compared, the boosting model is the idealist model so that it is served as our final model.
+To conclude, among the four models we compared, the boosting model is the most ideal model so that it is served as our final model.
 
 ## Which movies will be worth watching this year, then?
 
@@ -857,8 +857,6 @@ upcoming <- upcoming %>%
 
 Here we started our imputation work. In order to have a plausible imputation result, we randomly sampled 30 old movies from the `movies` dataset combined with upcoming movies.
 ```{r, warning=FALSE}
-set.seed(2022)
-
 old <- movies[sample(nrow(movies), 30),] %>%
   select(-id,-imDbRating,-actors)
 
@@ -874,7 +872,6 @@ The graph reveals that 75% of the data has no missing information, 25% of the da
 
 *Use classification and regression trees method for imputation*
 ```{r echo=T, results='hide', warning=FALSE}
-set.seed(2022)
 imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=500)
 summary(imp)
 ```
@@ -903,8 +900,8 @@ upcoming_imp <-
   mutate(pred = upcoming_pred)
 
 upcoming_imp %>% 
-  filter(year == 2022) %>%
+  tail(10) %>%
   select(title, pred)
 ```
 
-According to our model, two of the "Most Anticipated Movies for 2022" are actually worth watching. They are `The Fabelmans`; and `Pinocchio`. Both films have predictions of over 7.6 and are likely to make it into IMDB's top 1000.
+According to our model, only one of the "Most Anticipated Movies for 2022" is actually worth watching, `Pinocchio`. This means we predict this film will have an IMDb rating of over 7.6 and is likely to make it into IMDB's top 1000. While playing around with the `set.seed()` we sometimes also got that "Black Panther; Wakanda Forever" and "The Fabelmans" would get to the top 1000, so these will also probably be close to making it to a rating of 7.6.
