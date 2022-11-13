@@ -874,6 +874,7 @@ The graph reveals that 75% of the data has no missing information, 25% of the da
 
 *Use classification and regression trees method for imputation*
 ```{r echo=T, results='hide', warning=FALSE}
+set.seed(2022)
 imp <- mice(upcoming,m=5,maxit=50,meth='cart',seed=500)
 summary(imp)
 ```
