@@ -1,0 +1,305 @@
+---
+title: "Heart Disease Prediction"
+author: "Simranjit"
+date: "2022-10-28"
+output: html_document
+---
+**Abstract**
+I’ll be working with the Cleveland Clinic Heart Disease dataset which contains 14 variables related to patient diagnostics and one outcome variable indicating the presence or absence of heart disease.1 The data was accessed from the UCI Machine Learning Repository in September 2019.
+2. The goal is to be able to accurately classify as having or not having heart disease based on diagnostic test data.The "target"field refers to the presence of the heart disease in the patient.it is integered value 0 = no disease and 1 = disease.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ISLR)
+library(tidyverse)
+library(kableExtra)
+library(rsample)
+library(parsnip)
+library(magrittr)
+library(gbm)
+library(yardstick)
+library(viridisLite)
+
+```
+##Read the Data
+The first part of the analysis is to read in the data set
+
+```{r}
+Dataset <-read_csv("C:/Users/L.Singh/OneDrive/Bureaublad/simran/data/heart.csv")
+glimpse(Dataset)
+
+dim(Dataset)
+```
+```{r}
+nrow(Dataset)
+summary(Dataset)
+
+head(Dataset)
+
+```
+
+```{r}
+
+str(Dataset)
+```
+There are 14 variables provided in the data set and the last one is the dependent variable that we want to be able to predict. Here is a summary of what the other variables mean:
+
+1.**Age**: Age of subject
+
+2.**Sex**: Gender of subject:
+0 = female 1 = male
+
+3.**Chest-pain type**: Type of chest-pain experienced by the individual:
+1 = typical angina
+2 = atypical angina
+3 = non-angina pain
+4 = asymptomatic angina
+
+4.**Resting Blood Pressure**: Resting blood pressure in mm Hg
+
+5. **Cholesterol**: Serum cholesterol in mg/dl
+
+6.**Fasting Blood Sugar**: Fasting blood sugar level relative to 120 mg/dl: 0 = fasting blood sugar <= 120 mg/dl
+1 = fasting blood sugar > 120 mg/dl
+
+7. **Resting ECG**: Resting electrocardiographic results
+0 = normal
+1 = ST-T wave abnormality
+2 = left ventricle hyperthrophy
+
+8.**thalach**Max Heart Rate Achieved: Max heart rate of subject
+
+9.**exang** Exercise Induced Angina:
+0 = no 1 = yes
+
+10.**oldpeak**ST Depression Induced by Exercise Relative to Rest: ST Depression of subject
+
+11.**slope** Peak Exercise ST Segment:
+1 = Up-sloaping
+2 = Flat
+3 = Down-sloaping
+
+12.**ca** Number of Major Vessels (0-3) Visible on Flouroscopy: Number of visible vessels under flouro
+
+13.**Thal**: Form of thalassemia: 3
+3 = normal
+6 = fixed defect
+7 = reversible defect
+
+14.**Target**: Indicates whether subject is suffering from heart disease or not:
+0 = absence
+1 = heart disease present
+
+
+**Missing values in the dataset**
+Missing values can be problematic if present. We can also check to see if there is missing data.
+
+
+```{r}
+library(DataExplorer)
+library(ggplot2)
+colSums(is.na(Dataset))
+plot_missing(Dataset)
+
+```
+As we can see above, there aren’t any missing values across our dataset, which will make it easier for us as we start to prepare our dataset for machine learning analysis.
+**Implementing Changes**
+
+```{r}
+Dataset$sex<-as.factor(Dataset$sex)
+levels(Dataset$sex)<-c("0","1")
+Dataset$cp<-as.factor(Dataset$cp)
+levels(Dataset$cp)<-c("typical","atypical","non-anginal","asymptomatic")
+Dataset$fbs<-as.factor(Dataset$fbs)
+levels(Dataset$fbs)<-c("False","True")
+Dataset$restecg<-as.factor(Dataset$restecg)
+levels(Dataset$restecg)<-c("normal","stt","hypertrophy")
+Dataset$exang<-as.factor(Dataset$exang)
+levels(Dataset$exang)<-c("No","Yes")
+Dataset$slope<-as.factor(Dataset$slope)
+levels(Dataset$slope)<-c("upsloping","flat","downsloping")
+Dataset$ca<-as.factor(Dataset$ca)
+
+Dataset$target<-as.factor(Dataset$target)
+levels(Dataset$target)<-c("No", "Yes")
+```
+
+
+
+**To see wheteher the changes are implemented**
+```{r}
+str(Dataset)
+
+summary(Dataset)
+```
+**EDA**
+```{r}
+ggplot(Dataset, aes(x = age, fill = target, color = target)) + geom_histogram(binwidth = 1,colour = "Black") + labs(x = "age", y = "frequency",title = "heart disease according to age") + theme_bw() + scale_fill_manual(values = c("Yes" = "#FF6666" , "No" = "#6666FF"))
+```
+It shows that the age group from 40 to 60 has the higher probability of getting heart disease than other age groups.
+
+```{r}
+
+table(Dataset$target)
+
+165/303
+#Probability of heart disease is 0.54 means 54% of patients suffering from heart disease. 
+```
+**correlation matrix**
+```{r}
+library(GGally)
+Dataset %>% ggcorr(method  = c("pairwise", "kendall"),
+                                   high       = "#20a486ff",
+                                   low        = "#fde725ff",
+                                   label      = TRUE, 
+                                   hjust      = .75, 
+                                   size       = 3, 
+                                   label_size = 3,
+                                   nbreaks    = 5
+                                   ) +
+  labs(title = "Correlation Matrix",
+  subtitle = "Kendall Method Using Pairwise Observations")
+
+
+
+
+```
+
+No variables appear to be highly correlated. As such, it seems reasonable to stay with the original 14 variables as we proceed further.
+**Build the model**
+**Splitting the Dataset into training set() and testing set()**
+
+The plan is to split up the original data set to form a training group and testing group. The training group will be used to fit the model while the testing group will be used to evaluate predictions. The initial_split() function creates a split object which is just an efficient way to store both the training and testing sets. 
+```{r}
+set.seed(100)
+sample <- sample(c(TRUE, FALSE), nrow(Dataset), replace=TRUE, prob=c(0.80,0.20))
+train  <- Dataset[sample, ]
+test   <- Dataset[!sample, ]
+```
+The Dataset is divided into training 80% and testing data 20%
+
+**Linear Regression**
+Model generation on training data and then validating the model with testing data. 
+```{r}
+lr<-glm(target~.,data = train,family = "binomial")
+```
+To check well how model is generated, and then built the confusion matrix to know the accuracy of the model.
+```{r}
+train$pred<-fitted(lr)
+head(train)
+```
+As we can see that the predicted score in probability of having heart disease. But we have to distinguish between having heart disease or not which we can determine from ROC curve.
+```{r}
+Dataset %>%
+  group_by(target) %>%
+  summarise(mean=mean(trestbps))
+
+```
+```{r}
+
+
+```
+
+
+```{r}
+library(ROCR)
+pred<-prediction(train$pred,train$target)
+perf<-performance(pred,"tpr","fpr")
+plot(perf,colorize = T,print.cutoffs.at = seq(0.1,by = 0.1))
+```
+With the ROC curve we can observe that 0.6 is having better sensitivity and specificity . There 0.6 is selected as our cutoff to distinguish.
+```{r}
+#Area under curve
+
+Auc = as.numeric(performance(pred, 'auc')@y.values)
+Auc
+```
+we can conclude that we are getting 94% of our predicted values lying under the curve.
+```{r}
+train$pred1<-ifelse(train$pred<0.6,"No","Yes")
+library(caret)
+confusionMatrix(factor(train$pred1),train$target)
+```
+#Here we find that the accuracy of the model is 88.93% is accurate. 
+
+**Random Forest**
+```{r} 
+library(randomForest)
+
+set.seed(100)
+model_rf<-randomForest(target~.,data = train)
+model_rf
+plot(model_rf)
+```
+The plot above shows the Error and the Number of Trees as a result of our random forest analysis. We can very easily see that the Error drops dramatically as more trees are added and averaged. For reference, the red line represents the MCR of class designated as not having heart disease in our training set, whereas the green line represents the MCR of class designated as having heart disease in our training set. Additionally, the black line represents the overall MCR or OOB error. The overall error rate is what we are interested in which seems considerably good. 
+```{r}
+library(rpart)
+library(rpart.plot)
+tree<-rpart(target~age + sex + cp + trestbps + chol + restecg + thalach + target,method = "anova",data = train, cp = 0.001)
+rpart.plot(tree)
+```
+#With the help of decision tree we can say that most significant variable out of all are cp, ca,thal,chol,trestbps and the higher the risk in males.
+**Accuracy of the model**
+
+
+**Bagging**
+
+```{r}
+
+
+
+
+
+
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_train <- train(target~age + sex + cp + trestbps + chol + restecg + thalach + target,
+                   data = train, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+
+bag_train %>%
+  varImp %>%
+  plot
+
+```
+From bagging we find that most important factor are thalach,age,choland trestbps.
+```{r}
+confusionMatrix(predict(bag_train, type = "raw"),
+                train$target)
+```
+```{r}
+bag_train
+```
+**Gradient Boosting**
+```{r}
+gbm_train <- train(target~ age + sex + cp + trestbps + chol + restecg + thalach + target,
+                   data = train,
+                    verbose = 5,
+                  
+                   method = "gbm",
+                   
+                   trControl = cvcontrol)
+summary(gbm_train)
+```       
+here we again find that chol,thalach are most important factors for the heart disease which are the causes of the disease.
+```{r}
+gbm_train
+```
+
+##Conclusion
+Heart diseases are considered to be one of the main reasons that lead to the death. The
+correct prediction of heart disease can prevent life threats, however incorrect prediction
+can be fatal at the same time.
+I have considered  the ways to solve the problem of prediction cardiovasculars diseases using Random forest,Bagging and  this intresting conclusions are derived.
+
+In the end, we worked through a fair bit of analysis on this heart disease dataset. From this, we’ve come up with a few interesting conclusions:
+
+Many of the attributes that were available in the Cleveland Heart Disease dataset, and the individuals in this dataset, matched many of the underlying factors that can lead to heart disease. For instance, many that did indeed have heart disease exhibited higher resting blood pressure, higher cholesterol, and were older, on average than those that did not have heart disease. 
+
+
