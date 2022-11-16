@@ -1,0 +1,201 @@
+---
+title: "Week 8"
+author: "Simranjit"
+date: "2022-11-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+```{r}
+set.seed(45)
+dataset <- readRDS("C:/Users/L.Singh/OneDrive/Bureaublad/simran/data/data/train_disease.RDS")
+
+
+
+```
+1. Get an impression of the data by looking  at the structure of the data and creating some descriptive statistics.
+```{r}
+head(dataset)
+```
+```{r}
+tail(dataset)
+```
+```{r}
+dataset %>%
+  select(-c(Gender, Disease)) %>%
+  describeBy(dataset$Disease, fast = TRUE) 
+```
+2.To further explore the data we work with, create some interesting data visualizations that show whether there are interesting patterns in the data.
+```{r}
+dataset %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_boxplot(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+```{r}
+dataset %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+```
+```{r}
+prop.table(table(dataset$Gender, dataset$Disease), margin = 1) %>%
+  as.data.frame %>%
+  select(Gender = Var1, Disease = Var2, `Relative Frequency` = Freq) %>%
+  ggplot(aes(y = `Relative Frequency`, x = Gender, col = Disease, fill = Disease)) +
+  geom_histogram(alpha = 0.8, stat = "identity", position = "dodge") +
+  scale_fill_brewer(palette = "Paired") +
+  scale_color_brewer(palette = "Paired") +
+  theme_minimal()
+```
+##3. Reflect on the difference between bagging, random forests, and boosting.
+
+##Bagging
+
+The process of using bootstrapped samples with replacement and applying a model on each of them and then average out the results to avoid high variance is called bagging.
+##Random Forest
+while building each tree in random forest, not all the features are considered at each split.
+
+In bagging, we take all the features at each split unlike discounting them in random forests. 
+##Boosting
+Boosting is a sequential process. Boosting involves combining a large number of decision trees.
+
+Boosting learns the patterns in the data from weak learners to finally develop a strong model.
+
+There is always an ambiguity in deciding when to use bagging or boosting in the data sets that we will encounter. Bagging will give best results when it is in concern with over fitting or high variance and Boosting will perform well with models that have high errors and reduces them as it enhances and reduces the risk of errors by adjusting weights to weak learners. B
+
+
+
+4. Apply bagging to the training data, to predict the outcome Disease, using the caret library.
+```{r}
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_train <- train(Disease ~ .,
+                   data = dataset, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+```
+5. Interpret the variable importance measure using the varImp function on the trained model object.
+```{r}
+bag_train %>%
+  varImp %>%
+  plot
+
+
+```
+6. Create training set predictions based on the bagged model, and use the confusionMatrix() function from the caret package to assess it’s performance.`
+```{r}
+confusionMatrix(predict(bag_train, type = "raw"),
+                dataset$Disease)
+```
+7. Output and difference between both approaches
+```{r}
+bag_train
+```
+8. Fit a random forest to the training data to predict the outcome Disease, using the caret library.
+```{r}
+rf_train <- train(Disease ~ .,
+                  data = dataset, 
+                  method = 'rf',
+                  trControl = cvcontrol,
+                  importance = TRUE)
+```
+
+9.Again, interpret the variable importance measure using the varImp function on the trained model object. Do you draw the same conclusions as under the bagged model?
+```{r}
+rf_train %>%
+  varImp %>%
+  plot
+
+```
+10.Output from the random forest.
+```{r}
+rf_train
+```
+11.Now, fit a boosting model using the caret library to predict disease status.`
+```{r}
+gbm_train <- train(Disease ~ .,
+                   data = dataset,
+                   method = "gbm",
+                   verbose = F,
+                   trControl = cvcontrol)
+```
+12. Again, interpret the variable importance measure. You will have to call for summary() on the model object you just created. Compare the output to the previously obtained variable importance measures.
+```{r}
+summary(gbm_train)
+```
+13.Output the model output from our gradient boosting procedure. Are we doing better than with the bagged and random forest model?
+```{r}
+gbm_train
+```
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+15. Specify your model as follows, and use it to create predictions on the training data.
+```{r}
+train_x <- model.matrix(Disease ~ ., dataset)[,-1]
+train_y <- as.numeric(dataset$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, dataset$Disease)
+```
+16. First, calculate the SHAP rank scores for all variables in the data, and create a variable importance plot using these values. Interpret the plot.
+```{r}
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+```
+```{r}
+var_importance(shap_results)
+```
+17. Plot the SHAP values for every individual for every feature and interpret them.
+
+```{r}
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+```
+
+
