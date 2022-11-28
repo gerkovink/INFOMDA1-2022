@@ -1,0 +1,457 @@
+
+---
+title: 'Assingment 2: diabetes'
+author: S. Cernat, J. Regtien, Liebregts, A. , Mans Carlo
+date: "2022-11-13"
+output: html_document
+---
+
+
+```{r, echo=FALSE}
+# Load the packages needed
+library(tidyverse)
+library(caret)
+library(pROC)
+library(corrplot)
+library(xgboost)
+library(data.table)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+
+# Introduction 
+The aim of this project is to predict the incidence of diabetes from patient data, such as blood pressure, insulin levels and blood glucose levels. Diabetes can cause quite serious complications if not discovered in time. On the flip side, it requires costly blood testing to discover the disease. Therefore, if data that is readily available can be employed to classify who has diabetes, this can be quite beneficial, both for early detection as well as from a cost/benefit perspective, as testing can be done in a more directed fashion.     
+
+## About the dataset
+The source of this data set is the National Institute of Diabetes and Digestive and Kidney
+Diseases and it only includes data from females of Pima Indian heritage that are at least 21 years of age. About 49% of the observations have missing values, introducing unique challenges to working with this dataset. [Link](https://www.kaggle.com/datasets/akshaydattatraykhare/diabetes-dataset?datasetId=2527538&sortBy=voteCount) to Kaggle dataset.
+
+- Pregnancies: Number of times patient has been pregnant
+- Glucose: Plasma glucose concentration at 2 hours in an oral glucose tolerance test
+- BloodPressure: Diastolic blood pressure (mm Hg)
+- SkinThickness: Triceps skin fold thickness (mm)
+- Insulin: 2-Hour serum insulin (mu U/ml)
+- BMI: Body mass index (weight in kg/(height in m)^2)
+- DiabetesPedigreeFunction: Diabetes pedigree function (diabetes likelihood based on ancestor history)
+- Age: Age (years)
+- Outcome: Class variable, 0 (no diabetes) or 1 (with diabetes)
+
+# 1. Cleaning 
+```{r}
+# Load the dataset
+set.seed(227)
+diabet <- read_csv("./data/diabetes.csv")
+```
+
+From just looking at the data it becomes clear that there are a lot of missing values in the form of 0. This seems to be completely at random (MCAR) at a first glance. We will first look for all the columns that have a missing value.
+
+
+```{r}
+# Look at the column which have a missing value.
+diabet %>% arrange_all()
+```
+
+Unfortunately SkinThickness, Insulin , Bloodpressure show missing values (0). Probably, data for Pregancies could be imputated using the age/pregancies distribution. However, we are willing to assume that pregancies = o means that there were in fact 0 pregancies.
+
+```{r}
+# These are the rows which have at least one missing value.
+diabet %>% filter(BloodPressure == 0 | SkinThickness == 0 | Insulin == 0)
+
+diabet %>%
+  filter(BloodPressure == 0 | SkinThickness == 0 | Insulin == 0) %>%
+  group_by(Outcome) %>%
+  summarise(count = n())
+```
+
+We can see above that there  does not seem to be a relationship between outcome and the missing values. We will see later that the ratio of Healthy/Disease (0/1) is  aprox. 2:1 ratio, just as above.
+
+
+We will clean the data by: 
+1. making a column if there is at least one missing value per row
+2. transform 1/0 to disease/healthy for convenience
+3. make the dependent variable a factor
+
+```{r}
+# Make a new column letting us know if it has a missing value or no
+diabet2 <- diabet %>%
+  mutate(Missing = ifelse(BloodPressure != 0 & SkinThickness != 0 & Insulin != 0, "No", "Yes")) %>%
+  mutate(Outcome = replace(Outcome, Outcome == 1, "Diseased")) %>%
+  mutate(Outcome = replace(Outcome, Outcome == 0, "Healthy")) %>%
+  mutate(Outcome = as.factor(Outcome))
+```
+
+
+We will now remove the missing values. Now the data is cleaned. Unfortunately aprox. 47% of the data was removed in this process.
+
+```{r}
+# Remove the 0s
+clean_diabet <- diabet2 %>%
+  filter(Missing == "No")
+```
+
+
+We will look at the proportions of the outcome in our new cleaned data.
+
+```{r}
+# The proportion of diseased vs healthy
+clean_diabet %>%
+  group_by(Outcome) %>%
+  summarise(count = n()) %>% 
+  mutate(prop = count/sum(count) )
+```
+
+As stated earlier, the data is skewed , with twice as many healthy vs diseased people. This means the data is unbalanced. For similar problems usually over/under-sampling would be a solution but we think our proportion would is still feasible for modeling.
+
+
+# 2. EDA
+
+
+```{r}
+# We can create the below table to get a more quantitative glimpse of the data. We wish to spot meaningful features.
+
+clean_diabet %>%
+  group_by(Outcome) %>%
+  summarise(Mean_age = mean(Age), Mean_glucose = mean(Glucose), mean_BMI = mean(BMI),
+            mean_ST = mean(SkinThickness), mean_BP = mean(BloodPressure), mean_DF = mean(DiabetesPedigreeFunction))
+```
+
+Based on the summary it seems like Diseased people are more likely to have higher values for all features but this is clearly not enough to draw any conclusion.
+
+
+```{r}
+# Function to plot different variables
+plot_density <- function(col, ds = clean_diabet) {
+  ds %>% ggplot(aes(x = !!sym(col))) +
+    theme_minimal() +
+    geom_density(aes(fill = Outcome), alpha = 0.7) +
+    scale_fill_brewer(palette = "Set1")
+}
+```
+
+
+```{r}
+# The distribution of the features relative to the Outcome.
+
+lapply(colnames(clean_diabet)[c(-11, -10, -9)], plot_density)
+```
+
+Based on the above plots, it  can be assumed that `glucose` levels, `age`, `SkinThickness` and `BMI` would be strong predictors for the disease. On the flip side, `Blood Pressure` likely wouldn't be a good predictor as the distribution of the Healthy is almost similar to the Diseased . However, because it is unlikely that the variables will always show a very simple relationship with our target variable and because our table is very simplistic and no statistical assumption were actually tested, would still plot some of these _poor_ predictors to see if we can *spot meaningful features*.
+
+
+```{r}
+ggplot(data = clean_diabet) + 
+  geom_density2d(aes(x = Insulin, y = Glucose)) +
+  geom_point(aes(x = Insulin, y = Glucose)) +
+  facet_wrap(~Outcome) + theme_minimal()
+```
+
+
+```{r}
+ggplot(data = clean_diabet) + 
+  geom_density2d(aes(x = Age, y = Glucose)) +
+  geom_point(aes(x = Age, y = Glucose)) +
+  facet_wrap(~Outcome) + theme_minimal()
+```
+
+The above plots suggest that a healthy person is more likely to be younger and have lower glucose levels. For healthy people a linear relationship between glucose and insulin can be spotted.
+
+
+
+```{r}
+Dataset2 <- clean_diabet %>%
+  mutate(Over35 = Age > 35)
+```
+
+```{r}
+ggplot(data = Dataset2) +
+  geom_point(aes(x = BMI, y = Glucose, color = Over35)) + 
+  facet_grid(cols = vars(Outcome)) + 
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal()
+```
+LEGEND: TRUE - Age above 35 years; FALSE - Below 35 years
+
+Age does not seem to correlate with `BMI` or `Glucose`. Overall we see the same pattern. Healthy people have lower values for most if not all parameters, while people with diabetes tend to have higher values.
+
+Ultimately, we did a correlation plot so see if features correlate with each other. This is based on Pearson correlation. We tested this because we plan to do a logistic regression, which, because is a linear model can suffer from multicolinearity.
+
+```{r}
+# Correlation between variables
+
+cor <- clean_diabet %>%
+  select(-Outcome, -Missing) %>%
+  cor()
+corrplot(cor)
+```
+
+Age is correlated with pregnancies, which is expected. Insulin is correlated with glucose, which we also thought so earlier and it makes sense biologically for healthy people. BMI is also correlated with SkinThickhness.
+
+
+
+# Two simple models
+
+In this assignment we want to try the classification performance of trees vs linear regressions. We believe that for the medical field it is important to understand the important features and be easily explained to medical professionals without complicated domain knowledge. Trees and regressions offer the _possibility to explain_ their decisions, especially for trees. Logistic regressions can be tuned with the help of the treshold. More on this later.
+
+*We want to consider the diseased patients the positives.* The code below will accomodate this.
+
+```{r}
+# Splitting the data into a test and a training set
+clean_diabet$id <- 1:nrow(clean_diabet)
+train <- clean_diabet %>% slice_sample(prop = 0.7)
+test <- anti_join(clean_diabet, train, by = "id")
+```
+
+
+```{r}
+# The distribution of positives and negatives in the train
+test %>%
+  group_by(Outcome) %>%
+  summarise(count = n())
+train %>%
+  group_by(Outcome) %>%
+  summarise(count = n())
+```
+
+
+
+
+```{r}
+# Creating a very simple lr model
+lazy_lr <- glm(Outcome ~ . -id , family = "binomial", data = train %>% select(-Missing))
+summary(lazy_lr)
+```
+
+
+
+```{r}
+# Testing the model on the training
+pred <- ifelse(predict(lazy_lr, method = "response", newdata = test) > 0.5, "Healthy", "Diseased")
+tab <- table(test$Outcome, pred)
+
+FP <- tab[2, 1]
+TP <- tab[1, 1]
+TN <- tab[2, 2]
+FN <- tab[1, 2]
+
+tibble(
+  Acc = (TP + TN) / sum(tab),
+  Senz = TP / (TP + FN),
+  Spec = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+)
+
+```
+
+
+```{r}
+#Confusion matrix lazy logistic model
+tab
+```
+
+
+```{r}
+#We will try a simple tree model now
+formula <- Outcome ~   Glucose + Insulin +BMI 
+model_RT <- rpart(formula, data = train)
+rpart.plot(model_RT)
+```
+
+```{r}
+RT_pred = predict(model_RT, newdata = test, type = 'class')
+confusionMatrix(RT_pred, test$Outcome, positive = "Diseased")
+```
+
+*Conclusion simple models* Both the simple models performed pretty well on the test set. Both displayed 0.75-0.8 accuracies. The logistic model had a slightly improved sensitivity (for which the positive means diseased). Therefore both models do a bad job at predicting diseased state.
+
+
+# Improved models
+
+## Trees
+
+```{r}
+#Here we will create a random forest
+formula2 <- as.formula(Outcome ~ . -id )
+model_RF = randomForest(formula2, data = train %>% select(-Missing))
+
+```
+
+```{r}
+#Predicting and testing the RF model
+RF_pred = predict(model_RF, newdata = test, type = 'class')
+confusionMatrix(RF_pred, test$Outcome, positive = "Diseased")
+```
+
+Next we will try a boosted tree.
+
+```{r}
+train <- train[,-10:-11]
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+boost <-  train(Outcome ~ .,
+                   data = train,
+                   method = "gbm",
+                   verbose = F,
+                   trControl = cvcontrol)
+summary(boost)
+test <- test[,-10:-11]
+boostpred <- predict(boost, newdata = test, type = 'raw')
+confusionMatrix(boostpred, test$Outcome)
+``` 
+
+
+
+## Improved logistic regression (with feature selection)
+
+
+Based on the correlation matrix displayed during the EDA, we have determined that some of the variables showed correlation with each other. We have carefully removed one of the correlated features duos. Here we present the formula which gave us the best performance.
+
+
+
+
+
+```{r}
+# MODEL 1
+formula <- as.formula(Outcome ~ Age + Glucose + BMI )
+train_control <- trainControl(method = "cv", number = 4)
+
+model1 <- train(formula,
+  data = train,
+  trControl = train_control,
+  method = "glm",
+  family = binomial()
+)
+
+summary(model1)
+```
+
+
+```{r}
+
+# Predicting LR
+pred_lr <- predict(model1, method = "response", newdata = test)
+confusionMatrix(pred_lr, test$Outcome, positive = "Diseased")
+```
+
+This model presents a 0.83 accuracy. The Sensitivity is 0.73 and Specificity is 0.87. Not bad!
+
+
+
+At the beginning of the project we chose to remove the rows which contain missing data. After selecting the relevant features, some of the rows that had missing values on the irrelevant features can be reintroduced both in the training and testing. Turns out that now all the data is reintroduced so know we have twice as many values to train our model.
+
+We now want to remodel the data based on the included rows.
+
+
+
+```{r}
+# To reintroduce the data we are going to select take the rows with missing values -> shuffle -> assign 70%/30% to train/test -> assign to previous train/test. Why? we shall compare  
+diabet_lr <- diabet2 %>% filter(Missing == "Yes")
+diabet_lr$id <- 1:nrow(diabet_lr)
+train_missing <- diabet_lr %>% slice_sample(prop = 0.7)
+test_missing <- anti_join(diabet_lr, train_missing, by = "id")
+
+
+train_lr <- bind_rows(list(train, train_missing)) %>% select(-Missing)
+test_lr <- bind_rows(list(test, test_missing)) %>% select(-Missing)
+```
+
+```{r}
+
+# The distribution of positives and negatives in the new train/test
+test_lr %>%
+  group_by(Outcome) %>%
+  summarise(count = n()) %>% 
+  mutate(prop = count/sum(count))
+
+train_lr %>%
+  group_by(Outcome) %>%
+  summarise(count = n()) %>% 
+  mutate(prop = count/sum(count))
+```
+
+```{r}
+# create new model trained on the new data
+model2 <- train(formula,
+  data = train_lr,
+  trControl = train_control,
+  method = "glm",
+  family = binomial()
+)
+
+summary(model2)
+
+model2
+```
+
+```{r}
+# Predict the new model MODEL 2
+pred_lr_all <- predict(model2, method = "response", newdata = test_lr)
+confusionMatrix(pred_lr_all, test_lr$Outcome, positive = "Diseased")
+```
+
+```{r}
+#Try the MODEL1 again on the new data
+confusionMatrix(predict(model1, method = "response", newdata = test_lr), test_lr$Outcome, positive = "Diseased")
+```
+
+One of the advantages of logistic regression is that the predictions can be tuned according to a chosen threshold. All the models we showed in this project had poor true positives rate aka they were pretty poor at predicting actual diseased people. We think an threshold can be chosen based on the experience of a clinician. Therefore, we will not choose a threshold as we don't know what is more dangerous; having diabetes and not knowing or being diagnosed as diabetic without having it ? However, we provide here the means of choosing one.
+
+```{r}
+pred_roc <- predict(model2, type = "prob", newdata = test_lr)[, 2]
+test_roc <- roc(response = test_lr$Outcome, predictor = pred_roc, plot = TRUE, print.auc = TRUE)
+```
+
+
+```{r}
+matplot(data.frame(test_roc$sensitivities, test_roc$specificities), x = test_roc$thresholds, type = "l", xlab = "threshold", ylab = "TPR, TNR")
+legend("bottomright", legend = c("TNR", "TPR"), lty = 1:2, col = 1:2)
+```
+
+
+#Based on the plot above , if true positive rate needs to be maximized, as we can see that is a problem with our models, we can see that choosing a higher treshold might help .(*The algorithms for our models assumed Diseased to be 0 and Healthy to be 1. We stubbornly wanted Diseased to be the positive one to have a clinical significance*)
+
+# Discussions
+
+We tried logistic regressions and trees to create a model to predict the diabetes patients. All the models did a pretty poor job at predicting the true positives (we chose that to mean the diseased). This could be due to the imbalanced data. Moreover, we were surprised to find that the logistic models trained on more observations had a worse performance in accuracy and sensitivity. This could be to variation in the data and poor models that were not able to generalize. In terms of accuracy and specificity the trees were the best models. However, this could be due to training it on the smaller data set (without NA). Interestingly, the important features chosen by the boosted tree were distinct from the ones chosen by the logistic models. Overall, we believe for a medical setting that the logstic model could be the most pratcial since the treshold can be adjusted.
+
+
+
+```{r}
+```
+
+
+
+
+```{r}
+```
+
+
+
+```{r}
+```
+
+
+
+```{r}
+```
+
+
+
+```{r}
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+```
