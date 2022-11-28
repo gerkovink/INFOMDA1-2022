@@ -1,0 +1,740 @@
+---
+title: "SLV Assignment 2: Classifying Different Types of Rice"
+author: "Shannon Dickson, Nina van Gerwen, Ola Dacko and Anita Lyubenova"
+date: "`r format(Sys.Date(), '%B %d %Y')`"
+output: 
+   bookdown::html_document2:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: false
+    theme: paper
+---
+
+<style type="text/css">
+  
+body{ /* Normal  */
+  font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 18px;
+  color: DarkBlue;
+}
+h1 { /* Header 1 */
+  font-size: 18px;
+}
+h2 { /* Header 2 */
+  font-size: 18px;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+}
+code.r{ /* Code block */
+  font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+  font-size: 14px;
+}
+</style>
+
+---
+
+```{r setup, echo = FALSE, warning=FALSE}
+# Global settings
+library(knitr)
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+hook_output <- knitr::knit_hooks$get("output")
+
+# Truncate output that is too long
+knitr::knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x <- xfun::split_lines(x)
+    if (length(x) > n) {
+      x <- c(head(x, n), "....\n")
+    }
+    x <- paste(x, collapse = "\n")
+  }
+  hook_output(x, options)
+})
+```
+
+```{r packages, echo = FALSE}
+library(ggridges)
+library(MASS, exclude = "select")
+library(caret)
+library(DiagrammeR)
+library(SHAPforxgboost)
+library(xgboost)
+library(data.table)
+library(here)
+library(sampling)
+library(ggridges)
+library(readr)
+library(tidyverse)
+library(kableExtra)
+library(gtsummary)
+library(ggpubr)
+library(RColorBrewer)
+library(corrplot)
+library(devtools)
+```
+
+```{r data, echo = FALSE}
+# Read in the data
+rice1 <- read_csv(file = "rice.csv")
+rice<-rice1
+```
+
+```{r clean, echo = FALSE, include = FALSE}
+# Overview of the data
+glimpse(rice)
+
+# Data cleaning
+# - Here we select only the variables we want to work with
+# - Next we use mutate_if() to check if a variable is a 'character'
+# - then we convert these 'character' variables to 'factor'
+# - Next we use mutate() convert the `id` variable to integer
+# - now the data is classed correctly
+# - scale the data to meet the assumption of common variance
+rice <- rice %>% 
+  dplyr::select(-id) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate_if(is.double, as.numeric) %>% 
+  mutate_if(is.numeric, ~scale(.) %>% as.vector) 
+
+# Missing data
+# - There is no missing data
+anyNA(rice)
+```
+
+# Introduction
+
+Rice is one of the most widely used grain products globally, owing to its versatility and affordability. Not all rice is created equally, and those in the rice industry need a reliable way of distinguishing between the different variants. Our study focuses on two variants: jasmine and gonen rice. Jasmine and gonen rice are visually very similar and an interesting question is if machine learning methods can better distinguish between them than humans. We compare the prediction performance of the following models:
+
+* Linear Discriminant Analysis (LDA)
+* XGBoost
+
+Our data come from [Kaggle](https://www.kaggle.com/datasets/mssmartypants/rice-type-classification). 
+
+## Descriptive Statistcs and Exploratory Analysis
+
+**Table 1** gives an overview the characteristics of jasmine and gonen rice types. There are 11 features and a total of 18,185 individual rice grains (i.e., our sample size). These features are:
+
+* **Area:** total area of a rice grain
+* **Major axis length:** the longest diameter of the rice grain
+* **Minor axis length:** the shortest diameter of the rice grain
+* **Eccentricity:** a rice grain's deviance from circularity
+* **Equivalent diameter:** the diameter of the rice grain had it been completely spherical
+* **Extent:** the radius of the smallest circle of a rice grain
+* **Perimeter:** the circumference of the rice grain
+* **Roundness:** how closely the rice grain approaches a perfect circle
+* **Convex area:**  a convex function of the area of the rice grain
+* **Aspect ratio:** the ratio of height to width of a rice grain
+
+All 11 features are statistically different between the two rice types and will be included in the exploratory phase of our analysis. There is no missing data. 
+
+**Table 1: Rice Characteristics**
+
+```{r descriptive, echo = FALSE}
+# Summary table 
+# - Selecting only the variables we are interested in 
+rice %>%
+# - Creating a summary table using gtsummary::tbl_summary
+# - Ensuring variables are evaluated as the correct type
+# - Changing the labels/levels to display 
+  tbl_summary(by = Class,
+              type = c(Area, MajorAxisLength, MinorAxisLength, Eccentricity, ConvexArea, EquivDiameter, Extent, Perimeter, Roundness, AspectRation) ~ "continuous",
+            label = list(vars(Area) ~ "Area",
+                           vars(MajorAxisLength) ~ "Major Axis Length",
+                           vars(MinorAxisLength) ~ "Minor Axis Length",
+                           vars(Eccentricity) ~ "Eccentricity",
+                           vars(Extent) ~ "Extent",
+                           vars(Perimeter) ~ "Perimeter",
+                           vars(Roundness) ~ "Roundness",
+                           vars(AspectRation) ~ "Aspect Ration"),
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+# - Extra options from gtsummary
+ # add_overall() %>% 
+  add_p(test = all_continuous() ~ "t.test") %>% 
+  bold_labels() %>% 
+  
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Rice**") %>% 
+# - piping through to kableExtra for styling
+  as_kable_extra() %>% 
+  kableExtra::kable_paper(bootstrap_options = "striped", full_width = TRUE) %>% 
+  row_spec(0, bold = TRUE) %>% 
+  footnote(general = "<i>Data are standardized</i>", escape = FALSE)
+```
+
+**Figure 1** shows the correlations between all of the features in our data. Most correlations are quite strong indicating that multicollinearity could be an issue. In particular, `Equivalent Diameter`, `Convex Area`, and `Area` have correlations of 1 and will be excluded in the analysis. 
+
+**Figure 1: Correlation matrix of the predictors** 
+
+```{r, echo = FALSE}
+# - I prepare the data as a matrix
+corr_data <- rice %>% 
+  dplyr::select(-Class) %>% 
+  as.matrix()
+
+# - I create a correlation matrix
+corr_mtx <- corr_data %>%
+  cor()
+
+# - I change the matrix row and column names to be more informative
+colnames(corr_mtx) <- c("Area", "Major Axis Length", "Minor Axis Length", "Eccentricity", "Convex Area", "Equivalent Diameter", "Extent", "Perimeter", "Roundness", "Aspect Ratio")
+
+rownames(corr_mtx) <- c("Area", "Major Axis Length", "Minor Axis Length", "Eccentricity", "Convex Area", "Equivalent Diameter", "Extent", "Perimeter", "Roundness", "Aspect Ratio")
+  
+# - I create a colour palette for the correlogram
+color <- colorRampPalette(c("#b36200", "#fff3e5", "#698b69"))
+
+# - Finally, I plot the correlogram using corrplot::corrplot
+corrplot(corr_mtx,
+         method = "color",
+         type = "upper",
+         order = "AOE",
+         addCoef.col = "black",
+         col = color(200),
+         tl.col = "black",
+         tl.srt = 35,
+         sig.level = 0.05,
+         insig = "blank",
+         cl.cex = 0.6,
+         tl.cex = 0.7,
+         number.cex = 0.7)
+```
+
+```{r, echo = FALSE}
+# Remove highly correlated variables
+rice <- rice %>% 
+  dplyr::select(-ConvexArea, -EquivDiameter, -Roundness)
+```
+
+**Figure 2** shows the densities of the remaining features for jasmine and gonen rice grains. The classes are very separable within `Area`, `Eccentricity`, `Aspect Ratio`, and `Minor Axis Length`. Since logistic regression can break down when classes are separable, LDA is a more suitable choice for our prediction models. Moreover, these density plots are approximately normal.
+
+**Figure 2: Density Plots of Rice Characteristics**
+
+```{r, echo = FALSE}
+# Series of density plots
+# - Initialize somewhere for the plots to live
+plot <- list()
+# - Specify what I want to plot
+plot_variables <- names(rice[,1:7])
+
+# - Loop ggplot over the variables
+for(i in plot_variables) {
+  
+  plot[[i]] <- ggplot(rice, aes_string(x = i, col = "Class", fill = "Class")) + 
+                      geom_density(alpha = 0.2) + 
+                      geom_rug() +
+                      ylab("") +
+                      scale_color_manual(values = c("darkseagreen4", "darkorange2")) +
+                      scale_fill_manual(values = c("darkseagreen4", "darkorange2")) +
+                      theme_pubclean() 
+  
+  }
+
+# - Now collate the plots together with my favorite function for this
+ggarrange(plotlist = plot, ncol = 3, nrow = 3, common.legend = TRUE, legend = "top") %>% 
+   annotate_figure(left = text_grob("Density", size = 12, rot = 90, face = "bold"))
+```
+
+# Predictive Models
+
+Rice classification and prediction is compared for the following models: LDA, Bagging, and XGBOOST. We begin with the most parsimonious model and build the complexity to see which model performs best for our data. 
+
+## LDA
+
+Linear Discriminant Analysis (LDA) is our choice for the more parsimonious model. LDA computes *discriminant scores* for each observation to classify the rice type. Discriminant scores are calculated by finding linear combinations of the predictor variables. For a single predictor, the LDA classifier is estimated as follows
+
+$$\hat{\delta}_k(x) = x^T\Sigma^{-1}\hat{\mu}_k- \frac{1}{2}\hat{\mu}_k^T\Sigma^{-1}-\hat{\mu}_k+log(\hat{\pi}_k), $$
+where, 
+
+* $\hat{\delta}_k(x)$ is the estimated discriminant score that the observation will fall in the $k^{th}$ class within the response variable based on the value of the predictor $x$
+* $\hat{\mu}_k$ is the average of all the training observations from the $k^{th}$ class
+* $\Sigma$ is a covariance matrix common to all $K$ classes
+* $\hat{\pi}_k$ is the prior probability that an observation belongs to the $k^{th}$ class
+
+LDA assigns an observation to the rice type for which the discriminant score is greatest. LDA has the following assumptions:
+
+* **Multivariate normality of the predictor variables within each class:** Checked by plotting the distribution of each predictors included in the model.
+* **Homogeneity of variance:** Checked by plotting the distribution of each predictors included in the model. Data are also standardized which ensures the mean is zero and the variance is 1. 
+* **Multicollinearity:** Checked by computing pairwise correlation of the predictors. 
+
+We partitioned the data into training and testing samples with an 80:20 ratio, so that model performance and external validity can be assessed. 
+
+```{r split, echo = FALSE}
+# Data partitioning
+# - Set seed for reproducibility
+set.seed(1248)
+# - Create a split indicator
+splits <- rice$Class %>% createDataPartition(p = 0.8, list = FALSE)
+# - Split the data into train and test
+train_data <- rice[splits, ]
+test_data <- rice[-splits, ]
+```
+
+```{r lda, echo = FALSE}
+# Linear Discriminant Analysis
+# - train the model 
+lda_model <- lda(Class~., data = train_data)
+# - get training predictions
+lda_train_predictions <- lda_model %>% predict(train_data)
+# - lda training confusion matrix
+lda_cm_train <- table(true = train_data$Class, predicted = lda_train_predictions$class)
+# - lda test model
+test_predictions <- lda_model %>% predict(test_data)
+# - lda test confusion matrix
+lda_cm_test <- table(true = test_data$Class, predicted = test_predictions$class)
+```
+
+### Results
+
+The selected LDA model is:
+
+$$Rice \sim Area  + MajorAxisLength + MinorAxisLength  + Eccentricity + Extent + Perimeter + AspectRatio$$
+The LDA output indicates that our prior probabilities are $\hat{\pi}_{gonen} = 0.451$ and $\hat{\pi}_{jasmine} = 0.549$; that is, 45% of the training grains are `gonen` rice and 55% are `jasmine` rice. Group means are the average of each predictor and are the $\mu_K$ estimates. The coefficients of linear discriminants represent the linear combination of the predictor variables. For example, if we focus only on 'Area' and 'MajorAxisLength' the LD1 score is computed as $0.708 * Area - 1.635 * MajorAxisLength$. If this is large then the grain will be classified as `gonen`, else it will be classified as `jasmine.` 
+
+**Table 2** provides the coefficients of the linear discriminants from the model for each predictor. These coefficients are standardized, allowing us to compare them to relatively. `MinorAxisLength` has the largest coefficent; $LD1 = -7.65$. For every unit increase in standard deviation of `MinorAxisLength` above the mean, a rice grain's LD score decreases by $7.65$ and the probability of being classified as `gonen` increases. 
+
+**Table 2: Coefficients and group means of the LDA**
+
+```{r, echo = FALSE}
+# LDA model output
+# - Extract the relevant information from the model
+data.frame(lda_model$scaling,
+           Gonen = lda_model$means[1,],
+           Jasmine = lda_model$means[2,]) %>% 
+# - format the kable
+           kbl(digits = 3,
+               col.names = c("Coefficient", "Gonen", "Jasmine"),
+               row.names = TRUE) %>% 
+           kable_paper(bootstrap_options = "striped",
+                       full_width = FALSE) %>% 
+           add_header_above(c(" " = 2, "Group Means" = 2)) %>% 
+           footnote(general = "<small>$\\pi_{gonen} = 0.451; \\pi_{jasmine} = 0.549$<small>",
+                    escape = FALSE,
+                    footnote_as_chunk = TRUE) %>% 
+           row_spec(0, bold = TRUE) %>%
+           column_spec(1, bold = TRUE)
+```
+
+
+Coefficients of the linear discriminants are somewhat contrived and difficult to interpret standalone. **Figure 3** plots the LD score against the model predicted posterior probability of classes as `gonen`, offering a more intuitive representation than in **Table 2**. The decision threshold for classification is the base rate (proportion) of `gonen` in the observed data at $0.451$. The base rate is a better benchmark for accuracy than the default $0.50$.
+
+**Figure 3: LDA predicted probability of being classed as gonen rice**
+
+```{r, echo = FALSE}
+# Predicted Probability Plot
+# - Tibble the data
+as_tibble(cbind(lda_train_predictions$x,
+                prob = lda_train_predictions$posterior[,2])) %>% 
+# - Create classification key
+  mutate(predicted_class = as.factor(ifelse(prob > .549, "Jasmine", "Gonen"))) %>%
+# - Plot  
+  ggplot(., aes(x = LD1, y = prob, col = predicted_class)) +
+  geom_jitter(alpha = 0.4, size = 0.6) +
+  labs(x = "Linear Discriminant Score",
+       y = "Posterior probability for gonen rice") +
+  xlim(-2, 2) +
+  scale_color_manual(name = "Rice Type",
+                     breaks = c("Gonen", "Jasmine"),
+                     values = c("darkseagreen4", "darkorange2")) +
+  theme(plot.title = element_text(size = 12, face = "bold")) +
+  theme_bw()
+```
+
+**Figure 4** shows the distribution of the class discrimination based on the LD scores. The model successively separates the majority of rice grains by class based on their LD score. 
+
+**Figure 4: Density of Linear Discriminant Scores**
+
+```{r, echo = FALSE}
+# Discriminant outcome plot
+# - Tibble the data
+as.data.frame(cbind(lda_train_predictions$x,
+                    train_data[,8])) %>%
+# - Plot  
+  ggplot(., aes(x = LD1, y = Class, fill = Class, col = Class)) +
+  geom_density_ridges(jittered_points = TRUE, scale = 1, alpha = 0.2,
+                      point_size = 0.4, point_alpha = 0.2,
+                      position = position_raincloud(adjust_vlines = TRUE)) +
+  labs(x = "",
+       y = "") +
+  scale_fill_manual(values = c("darkseagreen4", "darkorange2")) +
+  scale_colour_manual(values = c("darkseagreen4", "darkorange2")) +
+  scale_y_discrete(labels = c("Gonen", "Jasmine")) +
+  theme(legend.position = "none") +
+  theme_bw() 
+```
+
+**Table 3** shows the performance metrics of the LDA model on the training and testing samples. Accuracy, sensitivity, specificity, and precision are very high for the training and test samples. Classification error is low. 
+
+**Table 3: Model performance metrics**
+
+```{r, echo = FALSE}
+# PERFORMANCE
+# - lda training
+TN <- lda_cm_train[1, 1]
+FN <- lda_cm_train[2, 1]
+FP <- lda_cm_train[1, 2]
+TP <- lda_cm_train[2, 2]
+
+metrics_lda_train <- data.frame(
+  ACC = (TP + TN) / sum(lda_cm_train),
+  SENS = TP / (TP + FN),
+  SPEC = TN / (TN + FP),
+  BA = ((TP / (TP + FN)) + (TN / (TN + FP))) / 2,
+  PREC = TP / (TP + FP)
+)
+# - lda test
+TN <- lda_cm_test[1, 1]
+FN <- lda_cm_test[2, 1]
+FP <- lda_cm_test[1, 2]
+TP <- lda_cm_test[2, 2]
+
+metrics_lda_test <- data.frame(
+  ACC = (TP + TN) / sum(lda_cm_test),
+  SENS = TP / (TP + FN),
+  SPEC = TN / (TN + FP),
+  BA = ((TP / (TP + FN)) + (TN / (TN + FP))) / 2,
+  PREC = TP / (TP + FP)
+)
+
+
+rbind(metrics_lda_train, metrics_lda_test) %>% 
+            `row.names<-` (c("Train", "Test")) %>% 
+             kbl(digits = 3, col.names = c("Accuracy", "Sensitivity", "Specificity", "Balanced Accuracy", "Precision")) %>% 
+             kable_paper(bootstrap_options = "striped", full_width = TRUE) %>% 
+             row_spec(0, bold = TRUE, ) %>% 
+             column_spec(1, bold = TRUE) %>% 
+             pack_rows("LDA Model", 1, 2)
+```
+
+### Discussion
+
+Our LDA model had excellent predictive performance in terms of classification (balanced) accuracy, sensitivity, specificity, and precision. There seems to be very little trade-off between these metrics, possibly due to the very large sample size of both training and test data. Some predictor variables verged on violating the assumption of multivariate normality (see **Figure 2:** `Extent`). Multicollinearity was also high, leading us to exclude certain variables. 
+
+Next we will explore a more complex model XGBoost, which can handle the features of the data that violate the LDA assumptions. 
+
+## XGBOOST
+
+XGBoost or extreme gradient boosting is a sequential training algorithm that improves on the speed of the gradient boosting algorithm. XGBoost build decision trees sequentially, with each iteration learning from the residual errors of its predecessor. This method minimizes the prediction error of the final tree/solution. 
+
+A nice feature of XGBoost is the ability to handle highly correlated data; as in our data. This is an advantage over other boosting algorithms like Adaptive Boosting and is likely to produce more stable predictions compared to LDA. 
+
+In our analyses we built two XGBoost models with the following key differences:
+
+* **XGBoost Model 1:** tuning the number of iterations
+* **XGBoost Model 2:** tuning the number of iterations and two other parameters using cross-validation (CV).
+
+We apply 5-fold cross-validation to determine the best number of iterations for the XGBOOST algorithm.
+
+```{r, results='hide'}
+# Data preparation
+rice_complete <- rice1 %>% 
+  dplyr::select(-id) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate_if(is.double, as.numeric) %>% 
+  mutate_if(is.numeric, ~scale(.) %>% as.vector) 
+# - Reload and set seed
+set.seed(123)
+data <- rice_complete
+n <- nrow(data)
+
+# - Quick visualization 
+idx<-srswor(0.8*n,n)
+train<-data[idx==1,] 
+test<-data[idx!=1,] 
+
+# Models
+
+# - First we prepare a list of parameters that are going to be passed to xgb.cv 
+# - to evaluate the number of iteration needed for the model to produce the optimum estimates
+# - `booster` and `objective` parameters are set so that the algorithm will be appropriate for binary outcome classification 
+# - the rest parameters is the default for the xgboost() function
+params <- list(booster = "gbtree", objective = "binary:logistic", 
+               eta=0.3, gamma=0, max_depth=6, min_child_weight=1, subsample=1,
+               colsample_bytree=1) 
+
+# - We set a proper format of input data for the xgboost() function
+# - labels are the outcome for training data
+# - dtrain is the predictors of training outcome
+labels <- as.numeric(train$Class)-1
+dtrain <- xgb.DMatrix(data = as.matrix(train[,1:10]),label = labels) 
+# - labels_t is the outcome for testing data
+# - dtest is the predictors of testing outcome
+labels_t <- as.numeric(test$Class)-1 
+dtest <- xgb.DMatrix(data = as.matrix(test[,1:10]),label = labels_t) 
+```
+
+```{r, results='hide'}
+# Cross validation
+# - to evaluate the best max number of iterations(nrounds)
+xgbcv <- xgb.cv( params = params, data = dtrain, nrounds = 100, nfold = 5, showsd = T, stratified = T, print_every_n = 10, early_stopping_rounds = 20, maximize = F)
+# - save it as best number of iterations under the `nrounds`
+nrounds<-xgbcv$best_iteration
+```
+
+### Results
+
+#### Model 1
+
+We first run XGBoost with the default parameters and 23 iterations (the latter chosen by CV). Classification errors decrease in later iterations. This model performs well; with an training accuracy of $0.995$ and a test accuracy of $0.988$. 
+
+```{r, echo = FALSE, results = "hide"}
+# XGBoost 
+# - training model with:
+# - set of default parameters
+# - best number of iteration via CV
+# - returning binary classification error rate
+# - returning the error for the first and last iteration
+model1<-xgboost(data = dtrain, 
+                params = params, 
+                nrounds = nrounds, 
+                eval_metric = "error", 
+                print_every_n = nrounds) 
+```
+
+```{r, echo=FALSE}
+# Model evaluation
+# - training set
+xgbpred1a <- predict(model1,dtrain)
+xgbpred1a <- ifelse(xgbpred1a > 0.5,1,0)
+xgb_mod1_cm_train<-confusionMatrix (as.factor(xgbpred1a), as.factor(labels))
+# - test set
+xgbpred1b <- predict (model1,dtest)
+xgbpred1b <- ifelse (xgbpred1b > 0.5,1,0)
+xgb_mod1_cm_test<-confusionMatrix (as.factor(xgbpred1b), as.factor(labels_t))
+
+# - gather the metrics
+metrics_xgb1_train<-c(xgb_mod1_cm_train$overall[1],
+                      xgb_mod1_cm_train$byClass[c(1,2,11,5)])
+
+metrics_xgb1_test<-c(xgb_mod1_cm_test$overall[1],
+                     xgb_mod1_cm_test$byClass[c(1,2,11,5)])
+```
+
+**Table 4: Model 1 performance metrics**
+
+```{r, echo=FALSE}
+rbind(metrics_xgb1_train, metrics_xgb1_test) %>% 
+            `row.names<-` (c("Train", "Test")) %>% 
+             kbl(digits = 3, col.names = c("Accuracy", "Sensitivity", "Specificity", "Balanced Accuracy", "Precision")) %>% 
+             kable_paper(bootstrap_options = "striped", full_width = TRUE) %>% 
+             row_spec(0, bold = TRUE, ) %>% 
+             column_spec(1, bold = TRUE) %>% 
+             pack_rows("XGBOOST: Model 1", 1, 2)
+```
+
+#### Model 2
+
+The parameters `eta` and `max_depth` for the second model are tuned using CV. The best set of parameters is saved and used to train a the XGBoost model. 
+
+```{r, results='hide'}
+# Model 
+train <- as.data.frame(train)
+
+# - specify method and conditions for tuning procedure
+cv.ctrl <- trainControl(method = "repeatedcv",
+                        repeats = 2,
+                        number = 3, 
+                        classProbs = TRUE,
+                        allowParallel=T)
+
+# - propose multiple options for `eta` and `max_depth` 
+xgb.grid <- expand.grid(nrounds = nrounds,
+                        eta = c(0.1,0.3,0.4,0.5,0.6,0.8),
+                        max_depth = c(2,4,6,8,10),
+                        gamma=0,
+                        min_child_weight=1,
+                        subsample=1,
+                        colsample_bytree=1)
+
+# - run the tuning procedure using caret::train() function
+xgb_tune <-caret::train(x=train[,1:10],y=train[,11],
+                        method="xgbTree",
+                        trControl=cv.ctrl,
+                        tuneGrid=xgb.grid,
+                        verbose=T,
+                        metric="Accuracy",
+                        nthread =3)
+
+# - extract the set of best parameters  
+best_tuned_param<-as.list(xgb_tune$bestTune[-1])
+best_tuned_param$booster="gbtree"
+best_tuned_param$objective = "binary:logistic"
+
+# - pass the tuned parameters to a new model and 
+model2<-xgboost(data = dtrain,
+                params = best_tuned_param,
+                nrounds = nrounds,
+                eval_metric = "error",
+                print_every_n = 20)
+```
+
+Upon inspecting the confusion matrix of the train and test data we see there are no major changes in the predictive performance. The test accuracy is slightly lower than the training accuracy.
+
+This model will be further used for visualizations and for the comparison with LDA.
+
+```{r, results='hide', echo=FALSE}
+# Confusion matrix
+
+# - evaluate the tuned model on the training data
+xgbpred2a <- predict(model2,dtrain)
+xgbpred2a <- ifelse(xgbpred2a > 0.5,1,0)
+xgb_mod2_cm_train<-confusionMatrix (as.factor(xgbpred2a), as.factor(labels))
+
+# - evaluate the tuned model on the test data
+xgbpred2b <- predict (model2,dtest)
+xgbpred2b <- ifelse (xgbpred2b > 0.5,1,0)
+xgb_mod2_cm_test<-confusionMatrix (as.factor(xgbpred2b), as.factor(labels_t))
+
+# - gather the metrics
+metrics_xgb2_train<-c(xgb_mod2_cm_train$overall[1],xgb_mod2_cm_train$byClass[c(1,2,11,5)])
+metrics_xgb2_test<-c(xgb_mod2_cm_test$overall[1],xgb_mod2_cm_test$byClass[c(1,2,11,5)])
+```
+
+**Table 5: Model 2 performance metrics**
+
+```{r, echo = FALSE}
+rbind(metrics_xgb2_train, metrics_xgb2_test) %>%
+  `row.names<-` (c("Train", "Test")) %>% 
+  kbl(digits = 3,
+      col.names = c("Accuracy", "Sensitivity", "Specificity", "Balanced Accuracy", "Precision")) %>%
+  kable_paper(bootstrap_options = "striped", full_width = TRUE) %>% 
+              row_spec(0, bold = TRUE, ) %>% 
+              column_spec(1, bold = TRUE) %>% 
+              pack_rows("XGBOOST: Model 2", 1, 2)
+```
+
+
+**Figure 5** shows the contribution for each predictor in the model. The most important predictor variable is `MinorAxisLength`, by a large margin. `Area`, `Roundness`, `Eccentricity` and `ConvexArea` are also important variables for the model. Comparatively, the remaining predictors are less important. 
+
+```{r, results='hide'}
+# Feature importance
+# - look at the distributions of sharpy score for each of the predictors
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+
+# - calculate the SHAP scores for each variable used for classification
+shap_result_rice= shap.score.rank(xgb_model = model2, 
+                              X_train =dtrain,
+                              shap_approx = F
+                              )
+# - prepare data 
+shap_long_rice = shap.prep(shap = shap_result_rice,
+                           X_train = as.matrix(train[,1:10]))
+```
+
+**Figure 5: XGBoost variable importance**
+
+```{r, echo = FALSE}
+# - Variable importance
+data.frame(variable=names(shap_result_rice$mean_shap_score),
+                            mean_shap_score=shap_result_rice$mean_shap_score,
+                            row.names = NULL)%>%
+    arrange(-mean_shap_score) %>%
+    ggplot(aes(x = factor(variable, levels = rev(variable)), y = mean_shap_score, )) +
+    geom_point(stat = "identity", size=3) +
+    geom_linerange(aes(ymin=0, ymax=mean_shap_score))+
+    theme_minimal() +
+    labs(
+      x = "Variable",
+      y = "Mean SHAP score") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.9))+
+    coord_flip()
+```
+
+
+**Figure 6** illustrates how the predictors classify the grains into into `gonen` or `jasmine.` The SHAP value is on the x-axis; this indicates how much the log-odds change in log-odds. We can calculate the probability of being classified as `gonen`. Variable names are on the y-axis and ordered by importance (most to least). The mean SHAP value is alongside the variables. The gradient color indicates the original value for that predictor. Each point represents a row from the original dataset. 
+
+High valyes of `MinorAxisLength` are associated with negative change in the log-odds (negative SHAP). This means that `gonen` (i.e. 0) is more likely to be predicted. In contrast, lower values of `MinorAxisLength` (brighter colour) are associated with predicting `jasmine` (i.e. 1) more often.
+
+**Figure 6: SHAP summary plot**
+
+```{r,echo = FALSE}
+#plot the SHAP estimates distributions
+SHAPforxgboost::shap.plot.summary(shap_long_rice)
+```
+
+**Figure 7** is a detailed visualiation of the relationship between the four most important predictors and the classification of rice grains. On the x-axis is the contribution to the predicted odds ratio for each value of a predictor. On the y-axis is the SHAP value (change in log-odds; positive SHAP values indicate classification in favor of `Jasmine`). Each dot is an observation. 
+
+`MinorAxisLength` easily classifies both types of rice grain. `Area` cannot classify rice grains into classes as accurately as the `MinorAxisLength`. Some observations have a log-odds and SHAP value around 0, meaning the predictors may classify these observations at close to chance rate.
+
+**Figure 7: Predictor values and classification**
+
+```{r, echo=FALSE}
+par(mar=c(0,0,0,0))
+xgb.plot.shap(data = as.matrix(train[,1:10]), # input data
+              model = model2, # xgboost model
+           #   features = names(shap_result_rice$mean_shap_score[1:10]), # only top
+              n_col = 2, # layout option
+              plot_loess = T, # add red line to plot
+              top_n = 4)
+#title("Figure 7. Predictor values and classification",side=3, line=0, cex=2)
+```
+
+
+# Model Comparison
+
+Accuracy, balanced accuracy, sensitivity, specificity, and precision were high for all models, as seen in **Table 6**. 
+
+**Table 6: Performance metrics for all model ** 
+
+```{r, echo = FALSE}
+# PERFORMANCE
+lda_cm_metrics_train<-confusionMatrix(lda_cm_train)
+lda_cm_metrics_test<-confusionMatrix(lda_cm_test)
+
+metrics_lda_train<-c(lda_cm_metrics_train$overall[1],lda_cm_metrics_train$byClass[c(1,2,11,5)])
+metrics_lda_test<-c(lda_cm_metrics_test$overall[1],lda_cm_metrics_test$byClass[c(1,2,11,5)])
+```
+
+```{r, echo = FALSE}
+rbind(metrics_lda_train, metrics_lda_test,metrics_xgb2_train, metrics_xgb2_test) %>% 
+            `row.names<-` (c("Train", "Test", "Train", "Test")) %>% 
+             kbl(digits = 3, col.names = c("Accuracy", "Sensitivity", "Specificity", "Balanced Accuracy", "Precision")) %>% 
+             kable_paper(bootstrap_options = "striped", full_width = TRUE) %>% 
+             row_spec(0, bold = TRUE, ) %>% 
+             column_spec(1, bold = TRUE) %>% 
+             pack_rows("LDA Model", 1, 2) %>% 
+             pack_rows("XGBoost: Model 2", 3,4)
+```
+
+Model calibration is an important yet often overlooked aspect of prediction modelling. Calibration is the mismatch between the probabilities predicted by the model and the probabilities observed in the data. Perfectly calibrated models exhibit a straight line. **Figure 8** shows the calibration curves for each model. While LDA exhibits strong mismatch between the observed and predicted probabilities, XGBOOST is very close to perfect calibration. 
+
+In our analysis classification accuracy is of greater importance than model calibration. There are few serious consequences for mismatch between observed and predicted probabilities when it comes to classifying rice. Any of our model are suitable then for rice classification. However, since XGBoost Model 2 has high accuracy and good calibration, this is our final selected model. 
+
+**Figure 8: Model Calibration Curves**
+
+```{r, echo = FALSE}
+# Calibration plot
+# - Get the data for the model
+calibration_data_lda <- data.frame(pred_prob = lda_train_predictions$posterior[,1],
+                               class = ifelse(train_data$Class == "Gonen", 1, 0),
+                               method="LDA"
+                               )
+
+calibration_data_xgb <- data.frame(pred_prob=predict(model2,dtrain),
+                                  class=ifelse(train$Class=="Gonen", 0, 1),
+                                  method="XGB")
+
+calibration_data<-rbind(calibration_data_lda,calibration_data_xgb)
+
+# - Plot the loess curves
+calibration_data %>% 
+  ggplot(aes(pred_prob, class, group=method, color=method)) +
+    geom_abline(slope = 1, intercept = 0) +
+    geom_smooth(method = stats::loess, se = TRUE) +
+    scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+    scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+    labs(x = "Model Estimated Probabilities",
+         y = "Empirical Probabilities") +
+  theme_bw()+
+  scale_colour_manual(values = c("darkseagreen4", "darkorange2")) 
+```
