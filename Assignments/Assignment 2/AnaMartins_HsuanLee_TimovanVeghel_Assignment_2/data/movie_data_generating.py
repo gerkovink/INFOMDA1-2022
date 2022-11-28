@@ -14,7 +14,6 @@ csv_writer = csv.writer(data_file)
 api_key = "k_waqdtpx9"
 
 for genre in genres:
-    print(genre)
     for i in range(0, 2):
         if asc:
             url = "https://imdb-api.com/API/AdvancedSearch/" + api_key + "?title_type=feature&genres=" + genre + "&count=250&sort=alpha,asc&moviemeter=60,&num_votes=25000,"
@@ -24,7 +23,6 @@ for genre in genres:
             asc = True
 
         response = requests.request("GET", url)
-        print(response.text)
         data = json.loads(response.text)
 
         movies = data['results']

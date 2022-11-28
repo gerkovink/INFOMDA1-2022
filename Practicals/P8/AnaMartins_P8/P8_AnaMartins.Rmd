@@ -69,8 +69,22 @@ The sick patients seem to have lower values of everything except Total Protiens,
 
 3. **Shortly reflect on the difference between bagging, random forests, and boosting.**
 
-Bagging is a general-purpose procedure for reducing the variance of a statistical learning method. It takes repeated samples from the dataset, builds a separate prediction model for each sample and averages the resulting predictions.
+**Bagging** is a general-purpose procedure for reducing the variance of a statistical learning method. It takes repeated samples from the dataset, builds a separate prediction model for each sample and averages the resulting predictions.
 
+**Random forests** provide an improvement over bagged trees by way of a small tweak that decorrelates the trees. As in bagging, we build a number of decision trees on bootstrapped training samples. But when building these decision trees, each time a split in a tree is considered, a random sample of *m* predictors is chosen as split candidates from the full set of *p* predictors. The split is allowed to use only one of those *m* predictors. A fresh sample of *m* predictors is taken at each split, and typically we choose *m ≈ √ p* —that is, the number of predictors considered at each split is approximately equal to the square root of the total number of predictors. In other words, in building a random forest, at each split in the tree,
+the algorithm is not even allowed to consider a majority of the available predictors.
+
+**Boosting** works similarly to bagging, except that the trees are grown sequentially: each tree is grown using information from previously grown trees. Boosting does not involve bootstrap sampling; instead each tree is fit on a modified version of the original data set.
+
+14. **14. Download the file `shap.R` from [this](https://github.com/pablo14/shap-values) Github repository.**
+
+```{r}
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+```
+
+<<<<<<< HEAD
+=======
 Random forests provide an improvement over bagged trees by way of a small tweak that decorrelates the trees. As in bagging, we build a number of decision trees on bootstrapped training samples. But when building these decision trees, each time a split in a tree is considered, a random sample of *m* predictors is chosen as split candidates from the full set of *p* predictors. The split is allowed to use only one of those *m* predictors. A fresh sample of *m* predictors is taken at each split, and typically we choose *m ≈ √ p* —that is, the number of predictors considered at each split is approximately equal to the square root of the total number of predictors. In other words, in building a random forest, at each split in the tree,
 the algorithm is not even allowed to consider a majority of the available predictors.
 
@@ -236,3 +250,4 @@ confusionMatrix(xgboost_test, newdata$Disease)
 ```
 
 The random forest performs the best on the test set.
+>>>>>>> 45062488c84842da89c170c73a96e16f95a2f104
