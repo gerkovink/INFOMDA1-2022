@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap');
+
+body{ /* Normal  */
+  font-family: 'Lato', sans-serif;
+}
+
+td{  /* Table  */
+  font-size: 12px;
+}
+
+h1{ /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+
+h2{ /* Header 2 */
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+h3{ /* Header 3 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color:  #158cba;
+}
+
+a {
+   color: #158cba;
+}
+#header {
+  padding: 20px;
+  text-align: center;
+  background: #158cba; 
+  opacity: 0.9; 
+  /* color: white; */
+  margin: 10px 0px;
+  height: 40%;
+  border-radius: 5px 5px 5px 5px;
+}
+
+#header>h1{
+  color: white;
+}
+
+.subtitle{
+  color: white;
+  font-size: 20px;
+  margin: 20px;
+  font-weight: bold;
+}
+   
+
+#header>h4.author{
+   color: white;
+   margin: 20px;
+   display: inline-block;
+   text-align: center;
+   font-size: 20px;
+   font-style: italic;
+}
+
+#header>h4.date{
+   color: white;
+   float: center;
+   clear: left;
+   margin: 0;
+}
+
+.head{
+ font-size: 17px;
+}
+
+.data{
+   font-size: 17px;
+   font-weight: bold;
+}
+
+.note{
+  font-size: 13px;
+  text-align: right;
+  font-style: italic;
+  padding-right: 3px;
+}
+
+
+h1{ /* Header 1 */
+  font-size: 20px;
+  font-weight: bold;
+}
+
+h2{ /* Header 2 */
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+h3{ /* Header 3 */
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+summary{
+  cursor:pointer;
+  font-size: 15px;
+}
+
+pre{
+  font-size: 13px;
+}

@@ -1,0 +1,1476 @@
+---
+title: "Assignment 2: Predicting Diabetes" 
+subtitle: |
+  \Large Supervised Learning & Visualization 
+  
+  ![](img/diabetes.jpeg){width=4in}  
+author: 
+- Daniel Anadria
+- Kyuri Park 
+- Ernst-Paul Swens
+- Emilia Loescher
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+   bookdown::html_document2: 
+      css: style.css
+      toc: yes
+      toc_depth: 3
+      toc_float: yes
+      number_sections: yes
+      fig_caption: yes
+      theme: united
+      highlight: tango
+      code_folding: show
+bibliography: SLV_A2.bib
+---
+
+```{r setup, include=FALSE}
+## knitr options
+# chunk settings
+knitr::opts_chunk$set(
+   message = FALSE,
+   warning = FALSE,
+   comment = NA,
+   fig.align = "center")
+
+# suppress ggplot warnings
+options(warn = -1) 
+```
+
+<hr>
+
+# Introduction
+
+## Description of Dataset 
+
+Our dataset originates from [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?resource=download&select=diabetes_binary_5050split_health_indicators_BRFSS2015.csv). It contains information on health indicators regarding diabetes based on the *Behavioral Risk Factor Surveillance System* (BRFSS), which is a health-related telephone survey performed annually by *American Centers for Disease Control and Prevention* (CDC). The dataset originally had 330 features (columns) but based on diabetes research on the risk factors of diabetes and other chronic health conditions, the publisher of the dataset cleaned it up accordingly. This resulted in 21 features along with the target variable `Diabetes`. Here, we use the dataset from the year 2015 which contains 70692 observations. See *Table 1* below for the description of each variable in detail.
+
+| **Variable**           | **Description**     | **Coding**                  |
+| :--------------------- | :-----------------------------------|  :-----------------------------------|
+| `Diabetes_binary`      | Respondent has diabetes |0 = no, 1 = yes |
+| `HighBP`               | Respondent has high blood pressure |0 = no, 1 = yes |
+| `HighChol`             | Respondent has high cholesterol |0 = no, 1 = yes |
+| `CholCheck`            | Respondent had cholesterol check in 5 years |0 = no, 1 = yes |
+| `BMI`                  | Body Mass Index of respondent| unit = $kg$/$m^2$|
+| `Smoker`               | Respondent smoked at least 100 cigarettes |0 = no, 1 = yes |
+| `Stoke`               | Respondent had a stroke |0 = no, 1 = yes |
+| `HeartDiseaseorAttack` | Respondent had coronary heart disease or myocardial infarction |0 = no, 1 = yes |
+| `PhysActivity`         | Respondent had physical activity in past 30 days |0 = no, 1 = yes |
+| `Fruits`               | Respondent consumes fruit 1 or more times per day |0 = no, 1 = yes |
+| `Veggies`              | Respondent consumes vegetables 1 or more times per day |0 = no, 1 = yes |
+| `HvyAlcoholConsump`    | Respondent consumes high amounts of alcohol |0 = no, 1 = yes |
+| `AnyHealthcare `       | Respondent has any kind of health care coverage |0 = no, 1 = yes |
+| `NoDocbcCost`          | Respondent needed to see a doctor but could not because of cost |0 = no, 1 = yes |
+| `GenHlth `             | Respondent's general health |1 = excellent, 2 = very good, 3 = good, 4 = fair, 5 = poor |
+| `MentHlth`             | Number of days of poor mental health | scale 1-30 days|
+| `PhysHlth`             | Number of days physical illness or injury days in past 30 days| scale 1-30 days|
+| `DiffWalk`             | Respondent has serious difficulty walking or climbing stairs? |0 = no, 1 = yes |
+| `Sex`                  | Indicate sex of respondent|0 = female 1 = male |
+| `Age`                  | 13-level age category |*1* = Age 18 to 24, *2* = Age 25 to 29, *3* = Age 30 to 34, *4* = Age 35 to 39, *5* = Age 40 to 44, *6* = Age 45 to 49, *7* = Age 50 to 54, *8* = Age 55 to 59, *9* = Age 60 to 64, *10* = Age 65 to 69, *11* = Age 70 to 74, *12* = Age 75 to 79, *13* = Age 80 or older|
+| `Education`            | 6-level education level category| 1 = Never attended school or only kindergarten, 2 = Grades 1 through 8 (Elementary), 3 = Grades 9 through 11 (Some high school), 4 = Grade 12 or GED (High school graduate), 5 = College 1 year to 3 years (Some college or technical school), 6 = College 4 years or more (College graduate) |
+| `Income`               | 8-level income category |1 = Less than \$10,000, 2 = Less than \$15,000 (\$10,000 to less than \$15,000), 3 = Less than \$20,000 (\$15,000 to less than \$20,000), 4 = Less than \$25,000 (\$20,000 to less than \$25,000), 5 = Less than \$35,000 (\$25,000 to less than \$35,000), 6 = Less than \$50,000 (\$35,000 to less than \$50,000), 7 = Less than \$75,000 (\$50,000 to less than \$75,000), 8 = \$75,000 or more|
+Table: *Table 1.* Description of variables
+
+## Goal
+
+The goal of this analysis is twofold. First, we aim to build classification models that predict whether a person has diabetes or not based on their health indicators. For that, we present two models -- a relatively simple one and a more complex one -- and evaluate their individual and comparative performance. Second, we want to get an insight into the relevant factors that are associated with developing diabetes, the so-called risk factors among the given health indicators (predictors) in the dataset. 
+
+## Load Packages & Import Data
+
+We load the relevant packages and import the diabetes dataset.
+
+```{r packages}
+## load packages
+library(magrittr)       # for using pipes
+library(ggplot2)        # for creating plots
+library(purrr)          # for using map function
+library(ggpubr)         # for using ggarrange function
+library(caret)          # for general model fitting and evaluation
+library(knitr)          # for kable tables
+library(kableExtra)     # for nice tables
+library(gtsummary)      # for creating a table split by group
+library(tidyverse)      # for data wrangling
+library(devtools)       # source the r script from a github repo
+library(xgboost)        # for xgboost modeling
+library(RColorBrewer)   # for color specification in ggplots
+library(lm.beta)        # for standardized coefficients
+library(plotROC)        # for using geom_roc()
+library(pROC)           # for creating roc curves
+library(pander)         # for quick table building
+```
+
+```{r data}
+## load the data
+diabetes <- read.csv("Data/Data.csv")
+```
+
+## Set Seed & Recode Variable 
+
+We set the seed for reproducibility.
+
+```{r seed}
+## set the seed
+set.seed(123)
+```
+
+Some variables are misspecified and we correspondingly change their variable type (to factors).
+
+```{r recode}
+## recode variables
+diabetes %<>% mutate(across(-c(BMI, Age, PhysHlth, MentHlth), as.factor))
+```
+
+<hr>
+# Data Inspection
+
+## Descriptive Statistics
+
+<!-- - min/max for numeric? Check the table caption! -->
+<!-- - footnotes not clear? -->
+```{r missingness}
+## checking for the presence of missing values
+any(is.na(diabetes)) 
+```
+
+There are no missing values in the dataset.
+
+```{r tablesummary, class.source = 'fold-hide'}
+## summary statistics table using the gtsummary table
+diabetes %>% 
+   # rearrange the variables such that factor comes after numeric variables 
+   relocate(where(is.factor), .after = where(is.numeric)) %>% 
+   mutate(
+      across(
+         # recode the factor variable levels
+         c(Diabetes_binary, HighBP, HighChol, CholCheck, Smoker, Stroke, 
+               HeartDiseaseorAttack, PhysActivity, Fruits, Veggies, 
+               HvyAlcoholConsump, AnyHealthcare, NoDocbcCost, DiffWalk),
+         ~ fct_recode(.x, "Yes " = "1", "No " = "0")),
+         Sex = fct_recode(Sex, "Male" = "1", "Female" = "0"),
+         GenHlth = fct_recode(
+            GenHlth, "excellent" = "1","very good" =  "2", "good" = "3", 
+            "fair" ="4", "poor" = "5"),
+         Education = fct_recode(
+            Education, "Never attended" = "1", "Elementary" = "2", 
+            "Some high school" =  "3", "High school graduate" = "4" , 
+            "Some college" = "5", "College graduate" = "6"),
+         Income = fct_recode(
+            Income, "< 10,000" = "1", "10,000 - 15,000" = "2", 
+            "15,000 - 20,000" = "3", "20,000 - 25,000" = "4", 
+            "25,000 - 35,000" = "5", "35,000 - 50,000" = "6", 
+            "50,000 - 75,000" = "7", "> 75,000" = "8")) %>% 
+   tbl_summary(
+      # show summary statistics by diabetes group
+      by = Diabetes_binary,
+      type = c(BMI, MentHlth, PhysHlth, Age) ~ "continuous",
+      label = list(
+         # description of each variable
+         c(Age) ~ "Age (see above)",
+         c(GenHlth) ~ "Genetic Health",
+         c(MentHlth) ~ "Mental Health",
+         c(HighBP) ~ "High Blood Pressure",
+         c(HighChol) ~ "High Cholesterol",
+         c(CholCheck) ~ "Cholesterol Check in 5 Years",
+         c(HeartDiseaseorAttack) ~ "Coronary Heart Disease or Myocardial Infarction",
+         c(PhysActivity) ~ "Physical Activity in Past 30 Days",
+         c(Fruits) ~ "Consumes Fruit 1 Or More Times per Day",
+         c(Veggies) ~ "Consumes Vegetables 1 Or More Times per Day",
+         c(DiffWalk) ~ "Serious Difficulty Walking",
+         c(HvyAlcoholConsump) ~ "Consumes High Amounts of Alcohol",
+         c(AnyHealthcare) ~ "Health Care Coverage",
+         c(NoDocbcCost) ~ "Could Not See Doctor Because of Cost",
+         c(PhysHlth) ~ "Physical Health"),
+      # specify the summary statistics
+      statistic = list(
+         all_continuous() ~ "{mean}, {median} ({sd})",
+         all_categorical() ~ "{n} ({p}%)")) %>%
+      modify_footnote(update = everything() ~ NA) %>%
+   add_overall() %>% 
+   bold_labels() %>% 
+   # modify the table formatting
+   modify_header(label ~ "**Variable**") %>% 
+   modify_spanning_header(c("stat_1", "stat_2") ~ "**Diabetes**") %>% 
+   modify_caption(caption = "Summary Table") %>% 
+   as_kable_extra() %>% 
+   kable_classic(bootstrap_options = "striped", full_width = TRUE) %>% 
+   row_spec(0, bold = TRUE)
+```
+
+From the summary table, it can be seen that there are quite some differences between the groups of patients with and without diabetes. For example, in the group of diabetes patients, the proportion of individuals with high blood pressure, high cholesterol, heart disease or heart attack and who have difficulty walking or smoke is higher. On the other hand, the proportion of the people with diabetes eating fruits, eating vegetables or who are physically active is lower compared to the group of people without diabetes. 
+The proportion of people with a heavy alcohol consumption is higher among people without diabetes (6.2\%) than among people with diabetes (2.4\%).
+The latter group (diabetes) scores slightly worse on mental health and considerably worse on physical health on average. They also have a higher BMI (32 vs. 28).
+We will look into these differences between the groups in more detail by visualizing them in the following section. Note that although `Age` consists of 13 age group categories, we decide to treat it as continuous given that it has interval properties. Keep in mind that the value of `Age` represents the age category not the actual age of an individual.
+
+
+## Descriptive plots
+
+### Marginal distributions
+
+We examine histogram and density plots of numeric variables (i.e., Age, BMI, Physical Health, Mental Health), and bar plots for some of the categorical variables. We choose a couple of categorical variables that are deemed more interesting to explore (e.g., `Education`, `Income`).
+
+```{r plots-numeric, fig.height=5, fig.cap="Marginal distribution of numeric variables", class.source = 'fold-hide'}
+## for each of the numeric variable, create a histogram and density plot
+hist <- diabetes %>% 
+   # select numeric variables
+   select_if(is.numeric) %>% 
+   # extract variable names
+   names(.) %>% 
+   # using map function to create ggplot for each variable
+   map(
+      ~ ggplot(diabetes, aes_string(x = .)) + 
+      geom_histogram(
+         aes(y=..density..), 
+         color = 1, 
+         fill = "white") +
+      geom_density(
+         color = "#158cba", 
+         fill = "#158cba", 
+         alpha = 0.25, 
+         bw = 0.5) +
+   theme_minimal())
+
+# arrange all plots in 2 by 2 grid
+plot1 <- ggarrange(plotlist=hist, nrow = 2, ncol = 2)
+
+# add the title of figure
+annotate_figure(
+   plot1, 
+   top = text_grob(
+      "Distribution of BMI, Mental Health, Physical Health, and Age", 
+      size = 14))
+```
+
+We see that Body Mass Index (*BMI*) is roughly normally distributed with a slight skew to the right.
+The number of days with poor mental health in 30 days prior to the survey (*MentHlth*) is zero for more than 60% of the individuals. All other responses are endorsed by less than 5% of participants,
+with a slight spike on thirty days (around 5%).
+The number of days with physical illness or injury in 30 days prior to the survey (*PhysHlth*) follows a similar pattern to mental health with the majority (>50%) having zero days with complaints. The remaining responses are usually below 10%, with the exception of thirty days which is endorsed by slightly more than 10% of individuals.
+The 13-level age category (*Age*) in the dataset is a unimodal distribution centered around ages 65-69 (the tenth response category) with a left skew.
+
+```{r plots-categorical, fig.height=3, fig.cap = "Marginal distribution of categorical variables",class.source = 'fold-hide'}
+## create a barplot for the categorical variables 
+bar <- diabetes %>% 
+   select(Education, Income) %>% 
+   # extract variable names
+   names(.) %>% 
+   # using map function to create ggplot for each variable
+   map(
+      ~ ggplot(diabetes) + 
+      geom_bar(
+         aes_string(x = .), 
+         color = "#158cba", 
+         fill = "#158cba", 
+         alpha = 0.25) +
+      theme_classic()) 
+
+# arrange all plots in 1 by 2 grid
+plot2 <- ggarrange(plotlist = bar, ncol = 2)
+
+# add the common title of figure
+annotate_figure(
+   plot2, 
+   top = text_grob(
+      "Distribution of Education and Income Categories", 
+      size = 14))
+```
+
+The examination of the 6-level education level category (*Education*) reveals that the majority of the individuals are college graduates (the sixth category), followed by some college or technical school (the fifth category), and high school graduates (the fourth category). We see that lower levels of education are rarer in the dataset. 
+
+The 8-level income category (*Income*) shows that each increased level of income has more individuals than the preceding level. Hence, the lowest income category (<\$10,000) has the fewest individuals, and each subsequent category rises with a stable increase. However, the highest income category (\$75,000+) appears to comprise more individuals than is expected by the change rate observed between the subsequent categories.
+
+### Conditional distributions
+
+In the following part, we explore heterogeneity between the diabetes groups in some of the variables including the ones that show lots of differences in the summary table (Table \@ref(tab:tablesummary)) above (e.g., proportion of high blood pressure, level of cholesterol, physical health).
+
+```{r plots-bmi-age, fig.height=6, fig.width=8, fig.cap = "Conditional distribution plots 1",class.source = 'fold-hide'}
+## explore heterogeneity between groups using highest discriminating variables 
+# create density plots for bmi and age
+bmi_age <- diabetes %>% 
+   select(BMI, Age) %>% 
+   # extract variable names
+   names(.) %>% 
+   # using map function to create ggplot for each variable
+   map(
+      ~ ggplot(diabetes, aes_string(x = .)) +
+      # density plot
+      geom_density(aes(
+         fill = Diabetes_binary, 
+         color = Diabetes_binary), 
+         alpha = 0.4, 
+         bw = 0.5) +
+      # add rug marks
+      geom_rug(size=0.1, aes(colour = Diabetes_binary))+
+      # specify our chosen color
+      scale_fill_manual(
+         values = c("#E69F00", "#56B4E9"), 
+         labels=c("0: no", "1: yes")) +
+      scale_color_manual(
+         values = c("#E69F00", "#56B4E9"), 
+         labels=c("0: no", "1: yes")) +
+      # add the labels for legend
+      labs(fill = "Diabetes", color = "Diabetes") + 
+      # specify the minimal theme
+      theme_minimal())
+
+# create bar plots for blood pressure and cholesterol in proportion
+bp_chol <- diabetes %>%
+   select(HighBP, HighChol) %>%
+   imap(~ as.data.frame(prop.table(
+      table(.x, diabetes$Diabetes_binary), margin = 1)) %>%
+      ggplot(aes(x = `.x`, y = Freq, col = Var2)) +
+         geom_col(aes(
+         fill = Var2,
+         color = Var2),
+         alpha = 0.4,
+         width=0.4) +
+      # specify our chosen color
+      scale_fill_manual(
+         values = c("#E69F00", "#56B4E9"),
+         labels=c("0: no", "1: yes")) +
+      scale_color_manual(
+         values = c("#E69F00", "#56B4E9"),
+         labels=c("0: no", "1: yes")) +
+      # add the labels for legend
+      labs(
+         fill = "Diabetes", 
+         color = "Diabetes", 
+         x = .y,
+         y = "Relative frequency") +
+      # specify the classic2 theme
+      theme_minimal())
+
+# arrange plots in 2 by 2 grid
+plot3 <- ggarrange(
+   plotlist = c(bmi_age, bp_chol),
+   ncol = 2, nrow=2, 
+   common.legend = TRUE, 
+   legend = "bottom")
+annotate_figure(
+   plot3,
+   top = text_grob("Distribution of BMI, Age, High Blood Pressure and High Cholesterol per Diabetes Group", 
+   size = 13))
+```
+
+
+Here we examine how the distributions of BMI and Age differ between diabetics and non-diabetics.
+For BMI, we see that diabetics have a higher BMI average and more observations on the right tail which is also longer. This is in accordance with our expectations. 
+For Age, we see that diabetics tend to be older than non-diabetics which makes sense since type-2 diabetes can develop later in life, e.g., due to lifestyle choices.
+The bottom two plots show that the there is a higher proportion of people with high blood pressure and high cholesterol level in the diabetic group. 
+
+```{r plots-conditional, fig.width=8, fig.height=6, fig.cap="Conditional distribution plots 2",class.source = 'fold-hide'}
+## conditional plots for bmi per age and mental health per sex
+# boxplot of bmi per age catgegory
+bmi <- diabetes %>% 
+   ggplot(aes(x= as.factor(Age), y= BMI)) +
+   geom_boxplot(aes(fill = Diabetes_binary), outlier.size = 0.3) +
+   labs(
+      title = "Distribution of BMI per Age category", 
+      x = "Age (category)", 
+      fill = "Diabetes") +
+   scale_fill_manual(
+      values= alpha(c("#E69F00", "#56B4E9"), 0.5), 
+      labels=c("0: no", "1: yes"))+
+   theme_minimal() + 
+   theme(legend.position="none")
+
+# boxplot of mental health per sex
+mental <- diabetes %>% 
+   ggplot(aes(x= Sex, y= MentHlth)) +
+   geom_boxplot(aes(fill = Diabetes_binary), outlier.size = 0.1) +
+   labs(title = "Distribution of Mentally Sick Days", fill = "Diabetes") +
+   scale_fill_manual(
+      values= alpha(c("#E69F00", "#56B4E9"), 0.5), 
+      labels=c("0: no", "1: yes"))+
+   scale_x_discrete(labels=c("0: Female", "1: Male")) +
+   theme_minimal()
+
+# boxplot of physical health per sex
+physical <- diabetes %>% 
+   ggplot(aes(x= Sex, y= PhysHlth)) +
+   geom_boxplot(aes(fill = Diabetes_binary), outlier.size = 0.1) +
+   labs(title = "Distribution of Physically Sick Days", fill = "Diabetes") +
+   scale_fill_manual(
+      values= alpha(c("#E69F00", "#56B4E9"), 0.5), 
+      labels=c("0: no", "1: yes"))+
+   scale_x_discrete(labels=c("0: Female", "1: Male")) +
+   theme_minimal()
+
+# arrange the plots 
+ggarrange(bmi, 
+   ggarrange(mental, physical, 
+      nrow=1, ncol=2, common.legend = TRUE, legend = "bottom"), 
+   nrow =2)
+```
+
+In the first plot, we see that diabetics have a higher BMI in every age category.
+The second plot shows that there is a greater interquartile range in mentally sick days for diabetics than for healthy people, especially for women as compared to men. 
+Similarly, the third plot shows that diabetics have a greater interquartile range in physically sick days than healthy people which is also more prominent in women.
+
+### Correlation plot {#correlation}
+
+Furthermore, we explore the correlation of having `Diabetes` with all of the other variables by creating the following barplot.
+
+```{r plot-correlation, fig.cap="Correlation between diabetes and other variables",class.source = 'fold-hide'}
+## plot indicating the correlation between outcome and all predictors
+diabetes %>% 
+   # convert all variables to numeric
+   mutate(across(everything(), ~as.numeric(.))) %>% 
+   # compute correlations
+   cor(.) %>% as.data.frame() %>% 
+   # select the correlations with Diabetes only
+   select(Diabetes_binary) %>% 
+   # rename the column
+   rename(cor = Diabetes_binary) %>% 
+   # drop the perfect correlation with itself
+   filter(cor != 1) %>% 
+   # create variables need to be mapped for the plot
+   mutate(var = rownames(.),
+          group = ifelse(cor > 0, "pos", "neg")) %>% 
+   # create the ggplot
+   ggplot(aes(reorder(x = var, -cor), y = cor, fill=group)) +
+   geom_col() +
+   # specify the color
+   scale_fill_manual(
+      values = alpha(c("#CC0000", "#000099"), 0.6), 
+      labels = c("negative", "positive")) +
+   # specify the labels
+   labs(
+      title = "Correlation of diabetes with other variables", 
+      y = "Correlation with Diabetes", 
+      fill = "Correlation", 
+      x = "") +
+   # specify the theme
+   theme_minimal() + 
+   # coordinates flip
+   coord_flip()
+```
+
+From the plot, we can see that the extent to which `Diabetes` is correlated with the other variables varies from around -0.2 (`Income`) to 0.4 (`GenHlth`). Overall, the correlations are not that high but regardless, we expect that the variables with relatively higher correlations would be more important when predicting whether a person has diabetes or not. 
+
+<hr>
+
+# Analytic Strategy
+
+## Model Selection
+
+The goal of the present assignment is to compare two machine learning models of differing complexity on a diabetes prediction task.
+We base our model selection on the sample of models which were part of the INFOMDA1 course curriculum.
+Since our task is binary classification, we consider K-Nearest Neighbors (KNN), logistic regression, linear discriminant analysis (LDA); tree-based methods such as bagging, random forest (RF), and boosting; and support vector machine (SVM).
+There is no single way to express model complexity. We apply the following strategy:
+
+1) First we classify the models into parametric and non-parametric models. 
+This is useful because one definition of model complexity is tied to its parametricity.
+According to @russell_artificial_2010, while parametric models tend to be less complex due to having a fixed number of parameters to estimate, non-parametric models are associated with higher model complexity.
+
+```{r table-parametricity, echo=FALSE}
+tibble(
+   "Parametric Methods" = c(
+      "Logistic Regression", 
+      "Linear Discriminant Analysis", 
+      rep("",3)), 
+   "Non-parametric Methods" = c(
+      "K-Nearest Neighbors", 
+      "Bagging", 
+      "Random Forest", 
+      "Boosting", 
+      "Support Vector Machine")) %>%
+   kable() %>% 
+   kable_styling(latex_options = "striped")
+```
+
+
+2) Another definition of model complexity is tied to its interpretability -- while simple models tend to be interpretable, complex models do not [@sarker_deep_2021]. According to this definition of complexity, our parametric models are inherently interpretable and hence can be considered simple.
+Our non-parametric models are less interpretable and hence more complex, with the exception of KNN which could still be considered a simple model. This is because KNN's internal mechanism is very easy to understand. Even though it is non-parametric, it is interpretable. Hence, we classify KNN as a simple model. 
+
+Having combined the two definitions of model complexity, we finalize our list for model selection:
+
+```{r table-complexity, echo=FALSE}
+tibble(
+   "Simple Methods" = c(
+      "Logistic Regression", 
+      "Linear Discriminant Analysis", 
+      "K-Nearest Neighbors", 
+      ""), 
+   "Complex Methods" = c(
+      "Bagging", 
+      "Random Forest", 
+      "Boosting", 
+      "Support Vector Machine")) %>%
+   kable() %>% 
+   kable_styling(latex_options = "striped")
+```
+
+
+
+For the simple model, we have to decide between logistic regression, LDA and KNN.
+According to @gareth_introduction_2013, logistic regression will outperform LDA when the normality assumption does not hold. Many predictors in our dataset are categorical. Therefore, we cannot assume normal distributions for such predictors on both levels of the outcome. For this reason we prefer logistic regression. 
+Furthermore, our dataset is relatively high dimensional. In such circumstances, KNN often performs worse than parametric models, even when the data does not meet the parametric assumptions, e.g. is non-linear. The increase in the number of predictors affects KNN significantly in terms of the total model error [@gareth_introduction_2013].
+For this reason, we exclude KNN, thus arriving to logistic regression as our simple model.
+
+For the complex model, we have to choose between bagging, random forest, boosting and SVM.
+Bagging produces an ensemble of highly correlated trees which makes it a high-variance method, especially compared to other tree ensemble methods [@gareth_introduction_2013]. Since we want our final model to be low variance (and low bias), we exclude bagging. 
+Random forest produces an ensemble of decorrelated trees. Hence, it has lower variance than bagging [@gareth_introduction_2013].
+Boosting combines a large number of weak trees into a single decision tree.
+This makes the interpretability of the outcome higher for boosting than for random forest [@gareth_introduction_2013].
+SVM is a classification algorithm based on dividing the feature space using kernels. Kernels allow for considerable flexibility in terms of the shape of the boundary between the classes [@gareth_introduction_2013]. However, finding the most appropriate kernel can be a challenging task. Also, SVM models are highly uninterpretable [@martin-barragan_interpretable_2014]. For this reason, we choose boosting as our complex model.
+
+To reiterate, our final choice is **logistic regression** for the simple model, and **boosting** for the complex model.
+
+### Simple Model: Logistic Regression
+
+Logistic regression is a linear 
+binary classifier [@gareth_introduction_2013].
+It is considered a simple parametric model.
+When the true decision boundary is non-linear,
+logistic regression can have elevated bias compared to more complex / non-parametric models.
+This is due to logistic regression making a number of assumptions.
+In order to reduce its bias, 
+logistic regression needs to be tuned properly. 
+Nonetheless, we expect its accuracy to be lower 
+than that of a complex model
+when dealing with data which consists of a mixture of categorical and continuous variables [@kirasich_random_2018].
+Being a parametric model, 
+logistic regression makes several assumptions
+that need to be inspected [@kirasich_random_2018]. 
+A limitation of logistic regression is that it can overfit in high-dimensional datasets.
+For this reason, it is preferable to apply regularization. 
+To this end, we make our own regularization method instead of using an already existing one.
+We compute feature importances by standardizing regression coefficients for every predictor.
+
+### Complex Model: Boosting
+
+Boosting is an ensemble tree method which can lower variance of decision trees. Unlike bagging and random forest, boosting does not take bootstrapped samples from the data. Instead, a series of weak trees (often stumps) is grown sequentially. Each fitted tree will have some misclassifications. These misclassified observations are then given higher weights, and a new weak tree is fitted. The new stump focuses on correctly labelling the previous misclassified observations. However, each iteration often leads to another set of misclassified observations.
+This process is repeated a number of times, and in the final step, a large number of weak trees is combined to produce a single outcome for any new observations [@gareth_introduction_2013].
+In order to find the optimal set of tuning parameters, we manually build a grid of hyperparameters and use 3-fold cross-validation to find the best combination.
+As boosting is a non-parametric method, we compute the feature importance to interpret the contribution of the features based on SHAP values [@lundberg_unified_2017]. More explanation on SHAP values will follow.
+
+
+## Train-Test Split
+
+We split the dataset into a training set (80%) and a test set (20%).
+Within the train set, we will tune our models and we use the test set to assess their performance. Since our dataset is perfectly balanced, there is no concern with regards to imbalanced classes when randomly dividing observations into the train and test set.
+
+```{r datasets}
+## split the data into training and test set
+# add train/test indicator 
+diabetes %<>% 
+   mutate(
+      split = sample(c("train", "test"), 
+      size = nrow(.), 
+      replace = TRUE, 
+      prob=c(0.8, 0.2)))
+
+# training data
+diabetes_train <- diabetes %>% 
+   filter(split=="train") %>% 
+   dplyr::select(-split)
+
+# test data
+diabetes_test <- diabetes %>% 
+   filter(split=="test") %>% 
+   dplyr::select(-split)
+```
+
+```{r plot-traintest, out.width="70%", fig.cap="Training and Test dataset", class.source = 'fold-hide'}
+## visualize training/test dataset split
+diabetes %>% 
+   ggplot(aes(x = Diabetes_binary, fill = split)) +
+   # create a stacked bar plot
+   geom_bar(position = "stack") + 
+   # choose a color scheme
+   scale_fill_manual(values = alpha(c("#E69F00", "#56B4E9"), 0.5))+
+   # specify the x-axis tick label
+   scale_x_discrete(labels = c("No (0)", "Yes (1)")) +
+   # add number of data points in the plot
+   geom_text(
+      stat='count', 
+      aes(label = ..count..), 
+      position = position_stack(vjust=0.5)) +
+   # specify the labels
+   labs(x = "Diabetes", title = "Train/Test Dataset Split") +
+   # choose a simple theme
+   theme_classic()
+```
+
+## Performance Evaluation
+
+For each model, we create a confusion matrix from which we compute a number of classification metrics such as following:
+
+- Accuracy
+- Kappa (Cohen's Kappa)
+- McNemar's test 
+- Sensitivity
+- Specificity
+- Positive predicted value
+- Negative predicted value
+- Balanced accuracy
+- F1 score
+
+In order to compare the model performance, we compare cross-validated accuracy and kappa values. For each model, we also plot the receiver operating characteristic ([ROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic)) curve to assess the overall prediction performance and calibration plot to inspect how well the predicted probabilities correspond to observed proportions.
+In addition, we compare two classifiers using decision boundary plots, which can demonstrate how the classifiers divide feature space based on the outcome. 
+In order to identify risk factors of diabetes, we compute variable importance metrics for each model. For logistic regression, we do this using the standardized regression coefficients, and for boosting we use SHAP values.
+
+<hr>
+
+# Analysis
+
+## Simple Model (Binary Logistic Regression)
+
+The model development for the binary logistic regression consists of two steps.
+First, we perform a feature selection using nonparametric bootstrapping. 
+Second, we apply 10-fold cross validation on the training data. 
+Finally, we evaluate the model performance on the test data using 10-fold cross validation repeated 3 times. 
+
+### Feature Selection
+
+Although the `glm` function automatically encodes variables, 
+we explicitly create dummy encoding here. 
+This explicit encoding helps to simplify the feature selection pipeline. 
+
+```{r data-logistic}
+## dummy encode the diabetes train and test set
+# create dummy encoding for the training data for the glm pipeline
+diabetes_2_train <- diabetes_train %>%
+   mutate(Diabetes_binary = as.numeric(Diabetes_binary) - 1) %>%
+   fastDummies::dummy_cols(
+      remove_first_dummy = TRUE,
+      remove_selected_columns = TRUE
+   )
+
+# create dummy encoding for the test data for the glm pipeline
+diabetes_2_test <- diabetes_test %>%
+   mutate(Diabetes_binary = as.numeric(Diabetes_binary) - 1) %>%
+   fastDummies::dummy_cols(
+      remove_first_dummy = TRUE,
+      remove_selected_columns = TRUE
+   )
+```
+
+From the original dataset, we created 250 bootstrap samples. 
+To each dataset, we fit a full model (including all predictors). 
+The model is fit using the `glm()` function of the `stats` package.
+From each model, we obtain the standardized coefficients. 
+The bootstrap regression estimate $c_k$ for each predictor $k$ 
+is simply the mean of the standardized coefficients.
+
+```{r bootstrapping, eval=FALSE}
+## find the most important predictors by using bootstrap estimation
+# create 250 bootstrap samples from the training data
+bootstraps <- replicate(
+   n = 250,
+   expr = diabetes_2_train[sample(nrow(diabetes_2_train), replace = TRUE), ],
+   simplify = FALSE
+)
+
+# create the formula for the binary logistic regression models
+predictors <- paste(colnames(diabetes_2_train[-1]), collapse = " + ")
+formula = as.formula(paste0("Diabetes_binary ~", predictors))
+
+# fit a binary logistic regression model to each bootstrap dataset
+bootstraps_fit <- bootstraps %>%
+  map(~.x %>%
+        glm(formula = formula,
+            data = .,
+            family = binomial(link = "logit"))
+      )
+
+# obtain the standardized coefficients from each model
+bootstraps_coef <- bootstraps_fit %>%
+  map(~.x %>% lm.beta() %>% .[["coefficients"]]) %>%
+  do.call("rbind", .) %>%
+  as_tibble() 
+```
+
+```{r load-logistic, include=FALSE}
+## obtain the standardized bootstrap coefficients
+load("Data/Logistic.RData")
+```
+
+We then order the coefficients on the absolute value in descending order $(c_1, ..., c_k)$. 
+This ordered list forms a measure of the variable importance.
+Then, we run several models each time increasing the model complexity. 
+We start with a null model (intercept only) and each time we include up to $k$ most important predictors. 
+Finally, we stop if the full model has been reached. 
+
+```{r model-logistic}
+## fit logistic models with the k most important predictors
+# get the importance of variables based on the standardized coefficients
+predictors_ordered <- bootstraps_coef %>%
+   colMeans() %>%
+   .[-1] %>%
+   .[order(abs(.), decreasing = TRUE)] %>%
+   names()
+
+# create a list to store the models
+models <- list()
+
+# for each variable
+for (k in 1:length(predictors_ordered)) {
+   # select the k most important predictors
+   predictors <- paste(predictors_ordered[1:k], collapse = " + ")
+
+   # create formula for the logistic regression
+   formula <- as.formula(paste0("Diabetes_binary ~", predictors))
+
+   # fit logistic regression model
+   models[k] <- glm(
+      formula = formula,
+      data = diabetes_2_train,
+      family = binomial(link = "logit")
+   ) %>% list()
+}
+
+# additionally create the null model (intercept only)
+model_null <- glm(
+      formula = Diabetes_binary ~ 1,
+      data = diabetes_2_train,
+      family = binomial(link = "logit")
+) %>% list()
+
+# combine the null model with models
+models <- c(model_null, models)
+```
+
+For all models, we evaluate the accuracy, kappa, sensitivity, and specificity values. 
+
+```{r model-evaluation}
+## evaluate each model by obtaining the confusion matrix
+# for each model obtain the confusion matrix
+bootstrap_eval <- models %>%
+   map(~.x %>%
+      predict(., type = "response") %>%
+      tibble() %>%
+      mutate(
+         predict = (. > 0.5), .keep = "none",
+         truth = as.logical(diabetes_2_train$Diabetes_binary),
+         predict = factor(predict, levels = c("TRUE", "FALSE")),
+         truth = factor(truth, levels = c("TRUE", "FALSE"))
+      ) %>%
+      table() %>%
+      caret::confusionMatrix(positive = "TRUE")
+   )
+
+# for each model get the overall results of the confusion matrix results
+bootstrap_accuracy <- bootstrap_eval %>%
+   sapply("[[", "overall") %>%
+   t() %>%
+   as.data.frame() %>%
+   mutate(k = row_number() - 1)
+
+# for each model get all other results of the confusion matrix results
+bootstrap_confusion <- bootstrap_eval %>%
+   sapply("[[", "byClass") %>%
+   t() %>%
+   as.data.frame() %>%
+   mutate(k = row_number() - 1)
+```
+
+```{r plot-evaluation, fig.cap = "Model Complexity versus Model Performance", class.source = 'fold-hide'}
+## plot of the evaluation metrics to select a certain k
+bootstrap_accuracy %>%
+   left_join(bootstrap_confusion, by = "k") %>%
+   pivot_longer(
+       cols = c("Accuracy", "Kappa", "Sensitivity", "Specificity"),
+       names_to = "Measure",
+       values_to = "Value") %>%
+   ggplot(aes(x = k, y = Value, color = Measure)) +
+   geom_vline(xintercept = 21, linetype = "dotted") +
+   geom_point() +
+   geom_line() +
+   theme_minimal()
+```
+
+The figure above shows the model performance: accuracy, kappa, sensitivity, 
+and specificity as a function of complexity given as $k$.
+We observe that after including the 21 most important predictors,
+the evaluation metrics do not increase anymore. 
+Hence, we select the coefficients from the model for which $k = 21$. 
+In the next section, we apply 10-fold cross validation repeated three times.
+
+### Cross Validation
+
+```{r logistic-cv}
+## perform cross validation on the selected model 
+# re-code the outcome variable as factor again for the caret train
+diabetes_2_train <- diabetes_2_train %>%
+   mutate(
+      Diabetes_binary = as.factor(Diabetes_binary),
+      Diabetes_binary = recode(Diabetes_binary,
+         "0" = "Nondiabetic", "1" = "Diabetic"))
+
+# specify the internal validation settings
+train_control <- trainControl(
+   method = "repeatedcv", 
+   number = 10,
+   repeats = 3,
+   allowParallel = TRUE
+)
+
+# train the model on training set
+model <- train(
+   models[[22]][["formula"]],
+   data = diabetes_2_train,
+   trControl = train_control,
+   method = "glm",
+   family = binomial()
+)
+```
+
+```{r logistic-summary}
+# print cross validation results
+summary(model)
+```
+
+From the cross validated results, we can observe that
+
+- The positive coefficients of `GenHlth_5`, `GenHlth_4`, `GenHlth_3`, `CholCheck_1`, `GenHlth_2`, `HighBP_1`, `HighChol_1`, `Sex_1`, `HeartDiseaseorAttack_1`, `Stroke_1`, `Age`, `DiffWalk_1`, `Education_2`, and `BMI` of the logistic regression model translate into odds ratios that are greater than one. That in turn, means that the predicted probability of having diabetes increases as the covariate increases.
+
+- Conversely, the negative coefficients of `HvyAlcoholConsump_1`, `Income_8`, `Income_7`, `Income_6`, `Income_5`, `Income_4`, and `Education_6` of the logistic regression model translate into odds ratios that are less than one. That in turn, means that the predicted probability of having diabetes decreases as the covariate increases.
+
+- All predictors are statistically significant at the alpha level of 0.05, except `Education_2`.
+
+- `HvyAlcoholConsump_1` appears to have a protective effect against having diabetes. This result could be spurious and is probably caused by either confounding or adjustment on a collider.
+
+```{r logistic-print}
+# model
+print(model)
+```
+
+### Prediction Evaluation {#lreval}
+
+```{r logistic-confusion, class.source = 'fold-hide'}
+## confusion matrix of the test data
+# re-code the variables for the confusion matrix
+diabetes_2_test <- diabetes_2_test %>%
+   mutate(
+      Diabetes_binary = as.factor(Diabetes_binary),
+      Diabetes_binary = recode(Diabetes_binary,
+         "0" = "Nondiabetic", "1" = "Diabetic"))
+
+# predicted and true values for the outcome variable
+pred = predict(model, newdata = diabetes_2_test)
+true = diabetes_2_test$Diabetes_binary
+
+# confusion matrix
+confusionMatrix(pred, true, positive = "Diabetic")
+```
+
+- The confusion matrix obtained from logistic regression model on the test data is given above. There are 5415 true positives (TP), 5176 true negatives (TN), 1838 false positives (FP), and 1603 false negatives (FN). Note, the positive category is `Diabetic`. 
+
+- **Accuracy** = TP + TN / (TP + TN + FP + FN) = 0.75, with the 95% CI [0.748, 0.762]. The "*no-information rate*" is roughly 0.50, given the balanced dataset. We can accept the hypothesis that the accuracy is greater than the no information rate ($p < .001$).
+
+- **Kappa (Cohen’s Kappa)** gives the estimate of level of agreement; Kappa = $(p_{o} - p_{e} )/(1 - p_{e})$, where $p_{o}$ is observed proportion of agreement and $p_{e}$ is expected proportion of agreement (baseline agreement). Kappa = 1 means perfect agreement, whereas Kappa = 0 means observed agreement is only due to chance. There is no such explicit guidelines on interpreting the magnitude of Kappa but in general, Kappa value between 0.41 and 0.60 are considered as moderate agreement [@landis_measurement_1977]. Based on that, we conclude that there is a moderate agreement in our case given that Kappa value is 0.51. 
+
+- **McNemar's test** also checks for the agreement between observed and predicted proportion of "Yes" class. The null hypothesis is that there is no disagreement. Based on the fact that the corresponding p-value is very small ($p <.001$), we reject the null hypothesis and conclude that there is a disagreement between observed and predicted proportion. This is not surprising as there is quite a portion of mis-predicted cases.
+
+- **Sensitivity** = TP / (TP + FN) = 0.77, meaning that if one has diabetes, then there is 77% probability that the model will detect this.
+
+- **Specificity** = TN / (TN + FP) = 0.74, meaning that if one doesn't have diabetes, then there is 74% probability that the model will detect this.
+
+- **Positive predicted value** (PPV) = TP / (FP + TP) = 0.75, meaning that if one is predicted to have diabetes, then there is 75% probability that the person actually has diabetes.
+
+- **Negative predicted value** (NPV) = TN / (TN + FN) = 0.76, meaning that if one is predicted to not have diabetes, then there is 76% probability that the person does not actually have diabetes.
+
+- **Balanced accuracy** = (sensitivity + specificity)/2 = 0.75. 
+
+- **F1 score** = 2 $\cdot$ (precision $\cdot$ recall) / (precision + recall) = 0.75. Both the balanced accuracy and F1 score are in agreement the accuracy value. That is not surprising given the balanced dataset.
+
+### Variance Importance
+
+The variable importance can be estimated from the z-value of each coefficient.
+
+```{r logistic-importance, class.source = 'fold-hide'}
+## check variable importance (top 15)
+varImp(model, scale=TRUE)[["importance"]] %>% 
+   rename("Importance" = "Overall") %>%
+   # subset the top 15
+   slice_max(Importance, n = 15) %>%
+   # create ggplot for importance 
+   ggplot(aes(
+      x = reorder(rownames(.), Importance), 
+      y = Importance, 
+      fill = Importance)) + 
+   geom_bar(stat="identity")+
+   # add the importance value
+   geom_text(
+      aes(label = round(Importance, 2), col = Importance), 
+      hjust = -0.2) +
+   # specify the gradient color
+   scale_fill_gradient(low = "grey40", high = "#28B463") + 
+   scale_color_gradient(low = "grey40", high = "#28B463") +
+   scale_y_continuous(limits = c(0, 104)) +
+   coord_flip() + theme_minimal() +
+   # edit the labels
+   theme(legend.position = "none", axis.title.y = element_blank()) +
+   labs(title = "Logistic regression - Variable Importance")
+```
+
+The variable importance plot shows that `BMI`, `Age`, `GenHlth_3`, `GenHlth_4`, `GenHlth_5`, `HighBP_1`, and `HighChol_1` are important predictors. It is interesting to note that these variables correspond to the variables that are highly correlated as we saw earlier in the correlation plot in the section \@ref(correlation).
+
+### Model Assumptions
+
+In this section, we check the model assumptions. 
+The logistic regression model assumes that: 
+
+- The outcome is dichotomous
+- Independence of observations
+- Linearity assumption
+- Influential values
+- Multicollinearity
+
+**Dichotomous Outcome** The outcome `Diabetes_binary` is indeed binary. 
+
+```{r logistic-linearity, fig.cap = "Relationship between Continious Predictors and the Logit of the Outcome", class.source = 'fold-hide'}
+# linearity assumption
+diabetes_2_test %>% 
+   select(Age, BMI) %>%
+   mutate(Prob = predict(
+      model, 
+      newdata = diabetes_2_test, 
+      type = "prob")$Diabetic,
+          Odds = Prob / (1 - Prob), 
+          Logit = log(Odds)) %>%
+   gather(key = "Predictor", value = "Value", -c(Logit, Prob, Odds)) %>%
+   ggplot(aes(x = Value, y = Logit)) + 
+   geom_point(size = 0.5, alpha = 0.5) +
+   geom_smooth(method = "loess") + 
+   theme_bw() + 
+   facet_wrap(~ Predictor, scales = "free_x")
+```
+
+
+**Linearity assumption** The scatter plots show that `Age` and `BMI` are roughly linearly associated with the outcome in logit scale.
+
+**Independence of observations** The standardized residuals appear to follow no particular pattern. This evidence supports that the observations are independent.
+
+**Influential values** There are no absolute standardized residuals above 3. Hence, there is support that there are no influential observations in our data.
+
+```{r logistic-independance, fig.cap = "Standardized Residuals", class.source = 'fold-hide'}
+# independence + outliers
+broom::augment(model[["finalModel"]]) %>% 
+   mutate(
+      Index = 1:n(),
+      Index = abs(Index - median(Index))) %>%
+   ggplot(aes(Index, .std.resid)) + 
+   geom_point(aes(color = .outcome), alpha = 0.2) +
+   labs(y = "Std Residuals") + 
+   theme_bw()
+```
+
+**Multicollinearity** There appears to be no multicollinearity as there is no VIF value that exceeds the value 5.
+
+```{r}
+# multicollinearity
+car::vif(model[["finalModel"]]) 
+```
+
+
+
+## Complex Model (Gradient Boosting)
+
+We use *XGBoost* algorithm, which stands for *eXtreme Gradient Boosting* to build a boosting model. As implied in its name, it utilizes the gradient boosting technique by adding more and more weak learners until no further improvement can be made. 
+
+### Hyperparameters of *eXtreme Gradient Boosting*:
+
+- `nrounds`: number of iterations, that is, how often the algorithm tries to iteratively improves the fit based on the result from the previous round. The higher `nround` is, the more complicated the resulting model is going to be (fitted to the training dataset).
+- `eta`: step size shrinkage is to prevent overfitting, which is analogous to learning rate. The higher `eta`, the faster the algorithm will fit.
+- `max_depth`: maximum depth of a tree, which can be used to control overfitting. Higher `max_depth` allows model to become more complex. It will be tuned using CV.
+- `gamma`: minimum loss reduction required to make a split. The larger `gamma` is, the more conservative the algorithm will be.
+- `colsample_bytree`: the subsample ratio of columns when constructing each tree. Subsampling occurs once for every tree constructed.
+- `subsample`: fraction of observations to be randomly sampled for each tree. Setting it to 0.5 means that the xgboost algorithm would randomly sample half of the training dataset prior to growing trees and that will correspondingly prevent overfitting. Lower values make the algorithm more conservative and prevents overfitting.
+- `min_child_weight`: minimum sum of weights of all observations required in a child. It is also used to control overfitting such that higher values prevent a model from learning highly specific relations in the training dataset. 
+
+### Grid Search for Hyperparameters
+
+We build a tuning grid for the algorithm to explore between different hyperparameter values. To get started, we use some suggestions from this [tutorial](https://www.youtube.com/watch?v=lwv8GneTUOk). 
+
+```{r xgboost-tuning, eval=FALSE}
+## grid search: set up the hyper-parameter search pool
+# there are in total 7 hyperparameters for eXtreme Grading Boosting algorithms
+xgb_grid = expand.grid(
+   # number of boosting iterations
+   nrounds = c(500, 1000, 1500),
+   # shrinkage parameter
+   eta = c(0.1, 0.3, 0.5),
+   # max tree depth
+   max_depth = c(2, 4, 6),
+   # minimum loss reduction
+   gamma = c(0, 10),
+   # subsample ratio of columns
+   colsample_bytree = c(0.5, 1),
+   # subsample percentage
+   subsample = c(0.5, 1),
+   # minimum sum of instance weight
+   min_child_weight = c(0, 20)
+)
+
+# specify the training control parameters 
+cvcontrol <- trainControl(
+   # 3-fold cv
+   method = "cv",
+   number = 3,
+   # save the performance measures for all resample
+   returnResamp = "all",
+   # save the class probabilities for each resample
+   classProbs = TRUE)
+
+# have to change the levels of Diabetes_binary (output variable) to character instead of number (0, 1)
+# (caret package specific)
+levels(diabetes_train$Diabetes_binary) = c("No","Yes")
+
+# train the model for each parameter combination in the grid
+# using CV specified as per training control parameters
+xgboost_tune <- train(Diabetes_binary ~ ., 
+                       data = diabetes_train,
+                       # method: eXtreme gradient boosting
+                       method = "xgbTree",
+                       # loss function to be minimized: (binary:logistic) 
+                       objective = "binary:logistic",
+                       # apply our training control specifics
+                       trControl = cvcontrol,
+                       # search the specified grid above
+                       tuneGrid = xgb_grid)
+
+# save the result as Rdata since it takes very long to run
+save(xgboost_tune, file = "xgb_tune.RData")
+```
+
+### Tuning result
+
+```{r}
+## load the xgb tuning result
+load("Data/Xgb_tune.RData")
+```
+
+```{r, eval=FALSE}
+# tuning results in detail
+print(xgboost_tune)
+```
+
+<details>
+  <summary>***See the parameter tuning results.***</summary>
+```{r, echo=FALSE, eval=TRUE}
+# model result
+print(xgboost_tune)
+```
+</details> 
+<br>
+
+To get an idea how much the accuracy differs for various sets of tuning parameters, we plot the accuracy for varying values for `eta`, `gamma`, `max_depth` and `nrounds` while keeping the other parameters fixed. 
+
+```{r tuningplot, fig.width=10, fig.height=7, fig.cap = "Accuracy per combination of tuning parameters", class.source = 'fold-hide'}
+## plot the accuracy for different combinations of tuning parameters
+xgboost_tune$results %>% 
+  # find the max accuracy data point
+  mutate(max_acc = factor(max(Accuracy) == Accuracy)) %>%
+  # fix the hyperparameters that are not of interest
+  filter(colsample_bytree == 0.5, min_child_weight == 0, subsample == 1.0) %>% 
+  # convert the following variables to factor 
+  mutate_at(vars(gamma, max_depth, nrounds), list(factor)) %>% 
+  # create ggplot
+  ggplot(aes(x = eta, y = Accuracy, color = max_depth))+
+  # change the point shape and size for the maximum accuracy point
+  geom_point(aes(shape = max_acc, size = max_acc))+
+  geom_line()+
+  # facet the plot on the combination of the following two variables
+  facet_grid(gamma~nrounds, labeller = label_both, scales = "free_y")+
+  labs(title="Accuracy for selected tuning parameters", subtitle = "Fixed tuning parameters: colsample_bytree = 0.5, min_child_weight = 0, subsample = 1.0", shape = "Locate the higest accuracy point")+
+   # specify the max accuracy point shape
+   scale_shape_manual(values = c(20, 8), labels = c("accuracy", "Maximum accuracy"))+
+   # specify the max accuracy point size
+   scale_size_manual(values = c(0.7, 2.5))+
+   # get rid of one part of the legend and change the theme
+   guides(size="none") + theme_light() + theme(legend.position = "bottom")
+```
+
+In this subset of options, the accuracy for `eta`= 0.1, `nrounds` = 1000, `max_depth` = 6, and `gamma`= 10 is the highest. Indeed, we can see that this is the best set of hyperparameters found by the algorithm across all the different combinations (see below).
+
+```{r echo=FALSE}
+## best set of tuning hyperparameter values
+xgboost_tune$bestTune %>% 
+   # remove row names
+   remove_rownames() %>% 
+   # make a simple table
+   pander(caption = "The best set of hyperparameters")
+```
+
+### XGB final model
+Next, we run the XGBoost algorithm with the best set of hyperparameters identified above. We use three times repeated 10-fold cross-validation and save the identified final model. 
+```{r xgboost_final, eval=FALSE}
+# best tuning parameter set
+final_grid <- xgboost_tune$bestTune
+
+# specify the internal validation settings
+train_control <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          repeats = 3,
+                          allowParallel = TRUE)
+
+# obtain the final model based on the best parameter set
+xgb_model_final <- train(Diabetes_binary ~ ., 
+                       data = diabetes_train,
+                       trControl = train_control,
+                       tuneGrid = final_grid,
+                       method = "xgbTree",
+                       verbose = TRUE)
+
+# save the result as Rdata since it takes a bit long to run
+save(xgb_model_final, file = "xgb_final.RData")
+```
+
+### Prediction evaluation
+In the following, the prediction performance of the final model is evaluated by looking at different performance measures obtained using a confusion matrix.
+
+```{r}
+# load the final model
+load("Data/Xgb_final.RData")
+```
+
+```{r}
+# final model 
+print(xgb_model_final)
+```
+
+```{r}
+# make predictions on the test dataset
+levels(diabetes_test$Diabetes_binary) = c("No","Yes")
+pred <- predict(xgb_model_final, newdata = diabetes_test[,-1])
+
+# create the confusion matrix
+confusionMatrix(
+   diabetes_test$Diabetes_binary, 
+   pred, 
+   positive = "Yes", 
+   dnn = c("Prediction", "Truth")) 
+```
+
+- First, from the confusion matrix, we see that there are 5081 true negatives (TN), 1933 false negatives (FN), 1450 false positives (FP), and 5568 true positives (TP). One thing to note is that our reference category (i.e., 'Positive' Class) is originally set to "NO" (0), which refers to no diabetes but in order to simplify the interpretation, we manually changed the 'Positive' Class = *Yes*. 
+
+- In the second part, we see that **Accuracy** = TP + TN / (TP + TN + FP + FN) = 0.76, with the 95% CI [0.7517, 0.766]. The "*no-information rate*" is the largest proportion of the observed classes (there were slightly more  "Yes", hence the rate is 0.53). A hypothesis test is also carried out to evaluate whether the overall accuracy rate is greater than the no-information rate. Given that p-value is very small ($p < .001$), we reject the null hypothesis (accuracy rate is the same as the no-information rate) and conclude that the accuracy rate is greater than the no-information rate.
+
+- As explained earlier in the section \@ref(lreval), **Kappa** (Cohen’s Kappa) gives the estimate of level of agreement. Again following the suggestion of @landis_measurement_1977 (i.e., Kappa value between 0.41 and 0.60 are considered as moderate agreement), we conclude that there is a moderate agreement in our case given that Kappa value is 0.52.    
+
+- **McNemar's test** p-value is very small ($p <.001$), we reject the null hypothesis and conclude that there is a disagreement between observed and predicted proportion. Again, this is not surprising as there is quite a portion of mis-predicted cases.
+
+- **Sensitivity** = TP / (TP + FN) = 0.74, meaning that if one has diabetes, then there is 74% probability that the model will detect this.
+
+- **Specificity** = TN / (TN + FP) = 0.78, meaning that if one doesn't have diabetes, then there is 78% probability that the model will detect this.
+
+- **Positive predicted value (PPV)** = TP / (FP + TP) = 0.79, meaning that if one is predicted to have diabetes, then there is 79% probability that the person actually has diabetes.
+
+- **Negative predicted value (NPV)** = TN / (TN + FN) = 0.72, meaning that if one is predicted to not have diabetes, then there is 72% probability that the person does not actually have diabetes.
+
+- **Balanced accuracy** = (sensitivity + specificity)/2 = 0.76. It is very similar to the overall accuracy, and it is likely due to the fact that we have a balanced dataset. In addition, it is not shown above, but the **F1 score** = 2 $\cdot$ (precision $\cdot$ recall) / (precision + recall) = 0.77. Again, it is not too different from the accuracy, which makes sense as our dataset was balanced and there were equal number cases in both classes (Yes/No Diabetes).
+
+### Variable importance
+
+Here we try out the global feature importance calculations that come with the `caret` package. Note that the importance of variable could be inconsistent such that the order in which a model sees features can affect its estimation.
+
+```{r, fig.cap="Variable imporatnce based on XGboosting", class.source = 'fold-hide'}
+## check variable importance (top 15)
+varImp(xgb_model_final, scale=TRUE)[["importance"]] %>% 
+   rename("Importance" = "Overall") %>%
+   # subset the top 15
+   slice_max(Importance, n = 15) %>%
+   # create ggplot for importance 
+   ggplot(aes(
+      x = reorder(rownames(.), Importance), 
+      y = Importance, 
+      fill = Importance)) + 
+   geom_bar(stat="identity")+
+   # add the importance value
+   geom_text(
+      aes(label = round(Importance, 2), col = Importance), 
+      hjust = -0.2) +
+   # specify the gradient color
+   scale_fill_gradient(low = "grey40", high = "#28B463") + 
+   scale_color_gradient(low = "grey40", high = "#28B463") +
+   scale_y_continuous(limits = c(0, 104)) +
+   coord_flip() + theme_minimal() +
+   # edit the labels
+   theme(legend.position = "none", axis.title.y = element_blank()) +
+   labs(title = "XGBoosting - Variable Importance")
+```
+
+Given the plot above, we can see that `HighBP1`, `BMI`, `HighChol1`, `Age`, and `DiffWalk1` are relatively more important than the others. It is interesting to note that these variables correspond to the variables that are highly correlated as we saw earlier in the correlation plot in the section \@ref(correlation).
+
+#### SHAP (SHapley Additive exPlanations)
+
+The possible inconsistency described above motivates the use of SHapley Additive exPlanations (SHAP) values since they guarantee consistency by computing the average of the marginal contribution across all permutations (i.e., all possible orders). On top of that, the collective SHAP values can show how much each predictor contributes, either positively or negatively, to the target variable. This is like the variable importance plot but it is able to show the positive or negative relationship for each variable with the target (see Figure \@ref(fig:SHAPsummary)). Lastly, another advantage of using SHAP value is that each observation gets its own set of SHAP values. This greatly increases its transparency. We can explain why a case receives its prediction and the contributions of the predictors. Traditional variable importance plots only show the results across the entire population but not on each individual case. The local interpretability enables us to pinpoint and contrast the impacts of the factors. 
+
+```{r SHAP, cache=TRUE, results='hide'}
+## compute the SHAP values
+# download `shap.R` file from the Github repo
+source_url("https://github.com/KyuriP/shap-values/blob/master/shap.R?raw=TRUE")
+
+# define predictor matrix (x)
+train_x <- model.matrix(Diabetes_binary ~ ., diabetes_train)[,-1] # exclude intercepts
+
+# return a matrix of SHAP score and mean ranked score list
+shap_results <- shap.score.rank(xgb_model_final$finalModel,
+                                X_train = train_x,
+                                shap_approx = F)
+```
+
+Here we plot the variance importance plot based on the average SHAP values.
+
+```{r, fig.cap="Variable imporatnce based on SHAP values", class.source = 'fold-hide'}
+## variable importance plot (top 15) based on SHAP value rank
+# extract the average SHAP scores
+shap_importance <- data.frame(shap_results$mean_shap_score) %>% 
+   rename("Importance" = "shap_results.mean_shap_score")
+
+shap_importance %>%
+   # subset the top 15 
+   slice_max(Importance, n = 15) %>%
+   # create ggplot for the shap scores (renamed to importance)
+   ggplot(aes(
+      x = reorder(rownames(.), Importance), 
+      y = Importance, 
+      fill = Importance)) + 
+   geom_bar(stat="identity")+
+   # add the importance value
+   geom_text(aes(label = round(Importance, 2), col = Importance), hjust = -0.2) +
+   # specify the gradient color
+   scale_fill_gradient(low = "grey40", high = "#28B463") + 
+   scale_color_gradient(low = "grey40", high = "#28B463") +
+   scale_y_continuous(limits = c(0, 0.5)) +
+   coord_flip() + theme_minimal() +
+   # edit the labels
+   theme(legend.position = "none", axis.title.y = element_blank()) +
+   labs(title = "Shap Feature Importanace")
+```
+
+The graph above is plotted based on the average of the SHAP value magnitudes across the dataset. One of the things that stand out the most in this plot is the changed rank order. Based on the SHAP values, the important variables are in the following order: `BMI` > `HighBP1`> `Age` > `HighChol1`, followed by `GenHlth`. 
+
+<hr>
+
+Rather than plotting a typical feature importance bar chart, we can also use a density scatter plot of SHAP values for each feature to identify how much impact each feature has on the model output for individuals in the validation dataset. Features are sorted by the sum of the SHAP value magnitudes across all samples.
+
+```{r SHAPsummary, cache=TRUE, fig.cap="SHAP value summary plot"}
+## summary plot for SHAP values (top 15 variables)
+shap_long <- shap.prep(shap = shap_results, X_train = train_x, top_n = 15)
+plot.shap.summary(shap_long)
+```
+
+In the chart above, the x-axis represents the SHAP value, and the y-axis shows all the features. Each point on the chart is one SHAP value for a prediction and feature. Purple color means higher value of a feature and yellow color means lower value of a feature. We can get the general sense of features' directionality impact based on the distribution of the dots. Overlapping dots are jittered in y-axis direction, so we get a sense of the distribution of the SHAP values per feature.  
+Positive SHAP value means positive impact on prediction, leading the model to predict "No" (reference class = "No": no diabetes). Negative SHAP value means negative impact, leading the model to predict "Yes" (has diabetes).  
+For example:
+
+- Those with high BMI tend to have negative SHAP scores, meaning that they have a higher probability of being predicted to "Yes".  That is, those with high BMI have a higher probability of having diabetes.
+
+- Those with high BP (blood pressure), age, high cholesterol have negative SHAP values, meaning that they have a higher probability of having diabetes.
+
+<hr>
+
+In the summary plot, we see the indications of the relationship between the value of a feature and the impact on the prediction. But to see the exact form of the relationship, we have to look at SHAP dependence plots.
+
+```{r, fig.width=10, fig.height=10, fig.cap = "SHAP dependence plot", cache=TRUE}
+## SHAP contribution dependency plot (top 15)
+xgb.plot.shap(train_x, model = xgb_model_final$finalModel, n_col = 3, top_n = 15)
+```
+
+- Looking at BMI, we can see how increase in BMI is associated with a decrease in SHAP values (w.r.t. not having diabetes). Interesting to note that around the BMI value of 60, the curve starts to increase again, which reflects a non-linear relationship between BMI and (not) having diabetes.
+
+- With high blood pressure (`HighBP`) and high cholesterol (`HighChol`), we can see the increase in the level of blood pressure and cholesterol leads to decrease in SHAP values, meaning that the higher blood pressure and cholesterol level are, the more likely to be predicted to have diabetes. The same pattern is observed with `GenHlth`, `DiffWalk`, `HeartDiseaseorAttack`, and `CholCheck`.
+
+- When it comes to sex (1 = male, 0 = female), we can see that male (`sex=1`) individuals are highly associated with lower SHAP values compared to the female individuals. It indicates that males are more likely to be predicted to have diabetes.
+
+<hr>
+
+# Overall Conclusion
+In this last part, we compare the performance of the Binary Logistic Regression model and the XGBoosting model based on overall Accuracy/Kappa, ROC curve, and calibration. We also summarize some evaluation metrics that are shown previously in each of the confusion matrices. In addition, we revisit the important variables, trying to get an insight into the relevant factors that are associated with developing diabetes
+
+```{r overallacc, fig.cap = "Overall accuracy and kappa comparison", fig.width=7, fig.height=5, class.source = 'fold-hide'}
+## Accuracy and Kappa comparison
+# Accuracy per model
+model_summary_acc <- data.frame(method="Logistic Regression", Accuracy = model$resample$Accuracy) %>%
+   rbind(data.frame(method = "XGBoosting", Accuracy = xgb_model_final$resample$Accuracy
+))
+
+# Kappa values per model
+model_summary_kappa <- data.frame(method="Logistic Regression", Kappa = model$resample$Kappa) %>%
+   rbind(data.frame(method = "XGBoosting", Kappa = xgb_model_final$resample$Kappa
+))
+
+# create a boxplot for accuracy  
+acc <- ggplot(model_summary_acc, aes(x = method, y = Accuracy)) + 
+  geom_boxplot(outlier.shape = NA, aes(fill = method, alpha = 0.3)) +
+  geom_jitter(alpha = 0.2, position = position_jitter(w = 0.05), col = "grey20") +
+  theme_classic() + labs(y = "Accuracy", x="") +
+  theme(legend.position = "none") 
+
+# create boxplot for kappa
+kappa <- ggplot(model_summary_kappa, aes(x = method, y = Kappa)) + 
+  geom_boxplot(outlier.shape = NA, aes(fill = method, alpha = 0.3)) +
+  geom_jitter(alpha = 0.2, position = position_jitter(w = 0.05), col = "grey20") +
+  theme_classic() + labs(y = "Kappa", x ="") +
+  theme(legend.position = "none") 
+
+# put the plots in 1 by 2 grid
+plot5.1 <- ggarrange(plotlist = list(acc, kappa), ncol = 2)
+
+# add the title of figure
+annotate_figure(
+   plot5.1, 
+   top = text_grob("Model Resample Performance Comparison", 
+   size = 13))
+```
+
+Figure \@ref(fig:overallacc) shows that XGBoosting has a higher accuracy and Kappa compared to the logistic regression. Also, the spread of two measures seems to be relatively larger with the logistic regression, meaning that there was more variance in predictions for logistic regression compared to XGboosting model.
+
+```{r roccurve, fig.cap = "ROC comparison", class.source = 'fold-hide'}
+## ROC comparison
+# predicted probability for each model
+pred_lr <- predict(model, newdata = diabetes_2_test, type = "prob")$Diabetic
+pred_boost <- predict(xgb_model_final, newdata = diabetes_test[,-1], type = "prob")
+
+# roc for each model
+roc_lr <- roc(diabetes_2_test$Diabetes_binary, pred_lr)
+roc_boost <- roc(diabetes_test$Diabetes_binary, pred_boost$No)
+
+# auc for each model
+auc_lr <- as.numeric(roc_lr$auc)
+auc_boost <- as.numeric(roc_boost$auc)
+
+# plot the ROC for each model
+ggroc(list(roc_lr, roc_boost), legacy.axes = TRUE, aes=c("color")) +
+  # add the diagonal line
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="grey", linetype="dashed", lwd=0.3) +
+  # specify the labels
+  scale_color_discrete(labels = c("logistic regression", "XGboosting")) + 
+  theme_classic() + labs(title = "ROC for Logistic Regression and XGboosting", color = "models") +
+  # add AUC values
+  annotate("text", x = 0.9, y = .1, 
+           label = paste("AUC_lr:", round(auc_lr,2), "\nAUC_xgboost:", round(auc_boost, 2)))
+```
+
+The AUC of XGBoosting (0.84) is slightly higher than the AUC of the logistic regression (0.83). In the ROC plot, it can also be seen that the curve for the XGBoosting model is always above the ROC for the logistic regression model even though it is trivial and the ROC curves almost overlap.
+
+
+```{r calibrationplot, fig.cap = "Calibration comparison",class.source = 'fold-hide'}
+## Calibration comparison
+# obtain the calibration statistics
+calibration_xgboost <- calibration(factor(diabetes_test[,1]) ~ pred_boost$Yes, class = "Yes")$data
+calibration_lr <- calibration(true ~ pred_lr, class = "Diabetic")$data
+
+# plot the calibration plot
+ggplot()  +
+   geom_line(data = calibration_lr, aes(midpoint, Percent, color = "lr")) +
+   geom_point(data = calibration_lr, aes(midpoint, Percent,  color = "lr"), size = 2) +
+   geom_line(data = calibration_xgboost, aes(midpoint, Percent, color = "boost"))+
+   geom_point(data = calibration_xgboost, aes(midpoint, Percent, color = "boost"), size = 2) +
+   geom_line(aes(c(0, 100), c(0, 100)), linetype = 2, color = alpha('grey50', 0.5)) +
+   scale_color_manual(name = "Model", 
+                     values = c( "lr" = "#F8766D", "boost" = "#00BFC4"), 
+                     labels = c("logistic regression", "xgboost")) + 
+   labs(title="Calibration plot for predicted probabilities by logistic regression and xbgoost", 
+        x ="Bin Midpoint", color = "model") +
+   theme_minimal() 
+```
+
+Calibration plot shows that the calibration of both model is almost equally good, as both lines follow the diagonal well. As is the case in ROC, again the difference is minimal between the models, yet we can see that XGboosting model is slightly better than logistic regression model (as the logistic regression model deviates from the diagonal more around the Bin Midpoint of 50 and 80).
+
+```{r boundaryplot, fig.height=5, fig.width=10, class.source = 'fold-hide', fig.cap = "Decision boundary comparison"}
+## estimate the decision boundary using the continuous variables (Age & BMI)
+## logistic regression
+# estimate the logistic model
+lr_mod <- glm(Diabetes_binary ~ Age + BMI, data = diabetes_train, family="binomial")
+# predict classes as per predicted probabilities
+lr_prob <- predict(lr_mod, diabetes_test[1:9801,], type = "response")
+# ref.cat = nondiabetes
+lr_classes <- ifelse(lr_prob > 0.5, 1, 0)
+lr_test <- data.frame(diabetes_test[1:9801, c("Diabetes_binary","Age","BMI")], group=lr_classes)
+
+# create prediction grid (use min/max of each variable)
+lgrid <- expand.grid(Age=seq(min(diabetes_test$Age), max(diabetes_test$Age), by=0.1), 
+                     BMI=seq(min(diabetes_test$BMI), max(diabetes_test$BMI)), by=0.1)
+
+# compute predicted grid for logistic reg.
+lr_PredGrid <- ifelse(predict(lr_mod, newdata=lgrid, type="response") > 0.5, 0, 1)
+lrPredGrid_prob <- predict(lr_mod, newdata=lgrid, type = 'response')
+
+#plot decision boundary for logistic reg.
+plot_lr <- ggplot(data = lgrid, mapping = aes(x = Age, y = BMI))+
+   geom_raster(data = lgrid, mapping = aes(fill = lr_PredGrid), 
+               alpha = lrPredGrid_prob, interpolate = TRUE)+
+   scale_fill_gradientn(colours = c("#E75B64", "#278B9A"), breaks = c(1, 2), 
+                        labels = c("Nondiabetic", "Diabetic")) +
+   geom_point(data = lr_test, aes(x=Age, y=BMI, shape = as.factor(Diabetes_binary)), 
+              size=1, color="darkslategray")+
+   labs(title = "Logistic regression", shape ="Diabetes")  +
+   scale_shape_manual(values = c(16, 17))+
+   guides(fill = guide_legend(title="Diabetes prediction")) +
+   theme_classic()
+
+## XGboosting
+# obtain the xgboost trained model
+# boosting <- train(Diabetes_binary ~ Age + BMI, 
+#                   data = diabetes_train,
+#                   method = "xgbTree")
+#
+# save it to an RData as it takes some time to run
+#save(boosting, file = "Data/boosting.RData")
+
+# load the boosting model
+load("Data/boosting.RData")
+# predict classes and obtain corresponding predicted probabilities
+classes_boosting <- predict(boosting, newdata = diabetes_test[1:9801,-1])
+probs_boosting <- predict(boosting, newdata = diabetes_test[1:9801,-1], type = "prob")
+test_boost <- data.frame(diabetes_test[1:9801, c("Diabetes_binary","Age","BMI")], group=classes_boosting)
+
+# compute predicted grid for xgboost
+boost_PredGrid <- as.numeric(predict(boosting, newdata=lgrid))
+boostPredGrid_prob <-predict(boosting, newdata=lgrid, type = 'prob')[,1]
+
+# plot decision boundary for xgboost
+plot_boost <- ggplot(data=lgrid, mapping = aes(x=Age, y=BMI))+
+   geom_raster(data = lgrid, mapping = aes(fill=boost_PredGrid), 
+               alpha = boostPredGrid_prob, interpolate = TRUE)+
+   geom_point(data = test_boost, aes(x=Age, y=BMI, shape=as.factor(Diabetes_binary)), 
+              size=1, color="darkslategray") + 
+   labs(title = "XGboosting", shape ="Diabetes") +
+   scale_shape_manual(values = c(16, 17))+
+   scale_fill_gradientn(colours=c("#278B9A","#E75B64"), breaks = c(1, 2), 
+                        labels = c("Nondiabetic","Diabetic"))+
+   guides(fill = guide_legend(title="Diabetes prediction")) +
+   theme_classic()
+   
+# combine the plots and annotate
+boundaryplot <- ggarrange(plot_boost, plot_lr, common.legend = TRUE, legend="bottom")
+annotate_figure(boundaryplot, top = text_grob("Decision boundary plots", size = 16))
+```
+
+To get a better intuition on how these two models predict, we tried plotting the decision boundary for both models using the continuous variables `Age` and `BMI`. We expected that the logistic regression model would have a somewhat linear boundary, while xgboost model would show a more flexible boundary. As shown in Figure \@ref(fig:boundaryplot), the decision boundary of logistic regression is more or less linear, while the boundary of XGboosting is very curvy and divides the feature space flexibly, which is in accordance with our expectation. Note that this plot is made for illustrative purposes, and the models used here to estimate the boundaries are not the actual final models but their reduced versions.
+
+```{r tab1, echo=FALSE}
+# create a simple table with summary metrics
+table1 <- data.frame(Model = c("logistic regression", "XGboosting"), Precision = c(0.746,0.793), F1score = c(0.758,0.774), Balanced_accuracy = c(0.754,0.760))
+table1 %>%  knitr::kable(align = "lccc", format="html", caption = "Comparison on evaluation metrics") %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+```{r tab2, echo=FALSE}
+# create a simple table with important variables
+lrimp <- varImp(model)$importance %>% slice_max(Overall, n=15) %>%  rownames()
+boostingimp <- shap_importance %>% slice_max(Importance, n=15) %>% rownames()
+data.frame(Rank = 1:15, "Logistic regression" = lrimp, XGboosting = boostingimp) %>% 
+   knitr::kable(align = "lcc", format="html", caption = "Comparison on important variables") %>% 
+  kableExtra::kable_styling(bootstrap_options = c("hover", "condensed"))
+```
+
+All things considered, we conclude that the XGboosting approach -- which is the more complex model we chose -- performs better than the comparatively simpler Binary Logistic Regression model. Table \@ref(tab:tab1) summarizes some of the evaluation metrics, and again it supports the superior performance of XGboosting model as it has a higher precision, F1score, and balanced accuracy. 
+
+Regarding the fact that we did not find any dramatic differences between the two models, we assume that it is due to the good fit of logistic regression. More complex models (e.g., XGboosting) often work much better when the base model (e.g., logistic regression) severely under/overfits the data, which is in fact not the case here. In addition, concerning the fact that the overall accuracy is consistently estimated around 75% from both models, we think that it is basically the limitation of what can be inferred from the dataset we have. We could partly expect such a mediocre performance from the correlations we observed in \@ref(correlation), where the overall correlations between the predictors and diabetes were not super high.
+
+With regard to our second aim (i.e., getting insight into risk factors of diabetes), we revisit the important variables from each model. Table \@ref(tab:tab2) shows the top 15 variables and we can see that both models indicate that *BMI*, *Age*, *general health*, *blood pressure*, and *cholesterol level* are the most important variables for predicting diabetes. This actually corresponds to the relatively highly correlated variables shown in \@ref(correlation), which naturally makes sense. Together with the SHAP dependence plot we saw earlier, it can be concluded that high BMI, high blood pressure, high age, poor general health, and high cholesterol level are the crucial risk factors of diabetes. 
+
+<hr>
+# References
+<div id="refs"></div>
+
+<hr>
+
+```{r}
+## Query and print information about the current R session
+sessionInfo()
+```
