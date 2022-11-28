@@ -1,0 +1,568 @@
+---
+title: "Supervised Learning and Visualisation"
+subtitle: "Assignment 2: Prediction models"
+author: "Abdool Al-Khaledi, Amalia Tsakali and Willem van Veluw"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Introduction
+The ability to cater preventive, diagnostic and treatment measures on a case-by-case basis has widely been considered as the holy grail of modern medicine, despite the inherent variability present in individuals. However, decoding this inherent variability across a wide range of possible attributes that might effect a person's health was a non-trivial issue, which has since been explored by leveraging machine learning algorithms. To that end, the purpose of this study is to investigate the performance of several supervised learning algorithms at a diagnostic (diabetic vs. non-diabetic) classification task. Specifically, we will assess the performance of a LR model (generalized linear classifier), a classification tree (non-linear classifier) and a random forest (ensemble of non-linear classifiers) at this task. The accuracy values of the models will be compared via the McNemar test in order to assess the performance of the linear vs non-linear models, as well as to determine if the performance of the ensemble model was significantly different from the individual models. 
+
+
+### The dataset
+The dataset under analysis for the purpose of this study is the "Pima Indians Diabetes Database". This database is a standard database in R and can be found in the package `mlbench`. The data was originally curated by the U.S based National Institute of Diabetes and Digestive and Kidney Diseases. The dataset contains 768 observations, with each observation representing an individual, along with 9 columns, where 8 of these columns are predictor variables and the final "diabetes" column states the class label (positive or negative). The label here refers to whether or not a person is diabetic. It is important to note that the dataset is a subset of the NIH database. In this study, all the observations refer to females at least 21 years of age and of Pima Indian heritage. The predictor variables include: the number of times pregnant (`pregnant`), the diastolic blood pressure (`pressure`), tricep skin-fold thickness (`triceps`), serum-insulin (`insulin`), B.M.I (`mass`), a measure of diabetes presence in the pedigree chart (`pedigree`), and age in years (`age`). 
+
+
+```{r, include = FALSE}
+library(tidyverse)
+library(caret)
+library(cowplot)
+library(mice)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(pROC)
+library(mlbench)
+data("PimaIndiansDiabetes2")
+
+set.seed(45)
+```
+
+### Missing values
+When exploring the dataset, we observed that there was a considerable amount of missing values. The number of missing values per variable is computed below. We see that the variable `insulin` contains a lot of missing values: almost 50% of the observations has no record for insulin. Therefore, we cannot simply throw away all rows with missing values since it constitutes a large fraction of the dataset. We have to deal with the missing values in a different way.
+
+```{r, echo = FALSE}
+nr_nas <- 1:9
+names(nr_nas) <- colnames(PimaIndiansDiabetes2)
+for(i in 1:ncol(PimaIndiansDiabetes2)){
+  nr_nas[i] <- sum(is.na(PimaIndiansDiabetes2[,i]))
+}
+"Number of missing values in the dataset:"
+nr_nas[-9]
+```
+Let us first inspect the missing data in a little bit more detail. From the missing data pattern plot we see below, we can draw equivalent conclusions as from the table above. The variable `insulin` is the most problematic one, followed by `triceps` and `pressure`. There are 652 rows with at least one missing value in total. 
+
+```{r, echo = FALSE}
+mice::md.pattern(PimaIndiansDiabetes2, rotate.names = TRUE)
+```
+We decided to work around the problem of missing values by imputing them: the package `mice` has a nice function for this. Credits to this approach go to Gerko Vink who pointed us in the right direction and helped us a lot by providing some example code. After imputing the missing values, we can confirm that there are none left from the table below. We can now move on with inspecting the data and creating the models. 
+
+```{r}
+data_complete <- PimaIndiansDiabetes2 %>% 
+  mice(m = 1, maxit = 100, printFlag = FALSE) %>% 
+  complete()
+```
+
+```{r, echo = FALSE}
+nr_nas_complete <- 1:9
+names(nr_nas_complete) <- colnames(data_complete)
+for(i in 1:ncol(data_complete)){
+  nr_nas_complete[i] <- sum(is.na(data_complete[,i]))
+}
+"Missing values in the dataset after impution:"
+nr_nas_complete[-9]
+
+mice::md.pattern(data_complete, rotate.names = TRUE)
+```
+
+### Summary statistics
+In order to get a grip on our data and to also determine whether the imputation has altered the properties of our dataset, we will extract some summary statistics and create some exploratory plots concerning the distribution of each value among healthy and diseased individuals. 
+```{r, echo = FALSE}
+"The dataset before imputation"
+summary(PimaIndiansDiabetes2)
+
+"The dataset after imputation"
+summary(data_complete)
+
+PimaIndiansDiabetes2 %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = diabetes, fill = diabetes)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  labs(title = "The dataset before imputation.",
+       subtitle = "Note that 652 rows have been ommited because of the missing values.") +
+  theme_minimal()
+
+data_complete %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = diabetes, fill = diabetes)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  labs(title = "The dataset after imputation.",
+       subtitle = "No rows are omitted, since there are no missing values anymore.") +
+  theme_minimal()
+
+
+```
+These tables and plots give us an insight in our dataset. We see for example that the glucose ranges between 44 and 199, with an average of 121.6, that we have individuals between the age of 21 and 81, where the majority of people without diabetes can be considered young, and that we have a person that has been pregnant 17 times! In the plot for the variable `pregnant` we can see as well that people without diabetes seem to get pregnant fewer times. We also see that our dataset is imbalanced, with 500 negative and 268 positive individuals. 
+We can conclude that imputing the missing values has not altered the distribution of our data. So we believe it is safe to use the imputed dataset from this point on.
+
+### Models and Metrics
+In our analysis we consider three models. We would classify two models as being simple: the Logistic Regression (LR) and the Classification Tree (CT). As a more complex model, we consider the Random Forest (RF). 
+
+To be able to state and compare the performance of our models, we construct the confusion matrix of predictions on the test data. Here, we will list the metrics that we will use, alongside the abbreviations we used in the remainder of the document.
+
+- TP: True positive. The number of cases that were correctly classified as having diabetes.  
+- TN: True negative. The number of cases  that were correctly classified as not having diabetes.  
+- FN: False negatives. The number of cases that were incorrectly classified as not having diabetes, when in reality they do.
+- FP: False positives. The number of cases that were incorrectly classified as having diabetes while being healthy.  
+- ACC: Accuracy. The proportion of correctly classified cases.  
+- TPR: True positive rate/ sensitivity. The proportion of cases with diabetes that were correctly classified as having diabetes.  
+- TNR: True negative rate/ specificity. The proportion of healthy cases that were correctly classified as being healthy.  
+- PPV: Positive predictive value/precision. The proportion of predicted positive samples that really have diabetes.  
+- NPV: Negative predictive value. The proportion of predicted healthy samples that are truly healthy.  
+- F1: F1 score. It's the harmonic mean of Positive predictive value and sensitivity. We use it as a measure of overall performance. It has the advantage of being unaffected by class imbalance.  
+
+ROC curves will also be used since they are a great way to simultaneously visualize sensitivity and specificity throughout the range of possible thresholds.
+The AUC (area under the curve) is a good measure of the overall performance, and will also be used to compare the different models.
+
+Besides the "standard" metrics summed up above, we would also like to draw significant conclusions based on the relative performance of our models to each other. We are able to draw these significant conclusion by performing a statistical test. The McNemar test was employed in order to compare the performance of our classifiers. This non-parametric statistical test receives input in the form of a 2x2 contingency table and is produced by tallying the number of similar and dissimilar predictions made by the two models under investigation. Worth noting is that the null hypothesis states that the row and column marginal frequencies of the contingency table are not statistically different. A positive McNemar test which denotes a significant difference is reached when the p-value is less than 0.05, at a 95 % confidence interval. In order to determine if the differences in accuracy of the models we see when predicting on the test set is significant, we will compare the performance of the non-linear classifiers: CT and RF against the LR model, respectively. Furthermore, we will compare the performance of the single CT against the more complex RF algorithm, to determine if the added complexity of the RF offers an advantage in this diagnostic task. 
+
+### Creating training and testing sets
+Before we start training our models we divide the dataset into a training and a test set. For the training set we will use 80% of the data (614 observations) and the test set will be formed by the remaining 20% (154 observations). For training the CT we will perform a 10-fold cross-validation. Hence, the 614 training observations will be divided in six folds of 61 observations and four folds of 62 observations. These folds are not necessary for training the RF: for that we will use the out-of-bag (OOB) samples and the OOB-error rate metric, which we will expound on in later sections.
+
+```{r}
+data_complete <- data_complete %>% 
+  mutate(Set = sample( c(rep("Train", 614), rep("Test", 154))))
+
+data_train <- data_complete %>% 
+  filter(Set == "Train") %>% 
+  mutate(Fold = sample( c(rep(1:6, each = 61), rep(7:10, each = 62))))
+data_test <- data_complete %>% filter(Set == "Test")
+```
+
+# Simple model: Logistic regression
+### Approach
+Logistic Regression (LR) is a classification method that models the probability of an observation by the logit-link function. The probability of observation $\vec{x}$ to belong at class 1 ($y=1$) is modelled as
+$$
+  P(y = 1|x) = \frac{1}{1+exp(-\vec{\beta}\bullet\vec{x})},
+$$
+where $\vec{\beta}\bullet\vec{x}=\beta_0+\beta_1\cdot x_1+...+\beta_J\cdot x_J$. Then it follows that class 0 has a probability of
+$$
+\begin{align*}
+  P(y = 0|x) & = 1-P(y=1|x)\\ 
+    & = \frac{1}{1+exp(\vec{\beta}\bullet\vec{x})}.
+\end{align*}
+$$
+When a LR model is fit, the coefficients $\vec{\beta}=\beta_0,...,\beta_J$ are estimated. With these estimates in place, the class of a (new) observation is predicted as the one with largest probability.  
+For a simple prediction rule, the log-odds form a nice tool. The log-odds are defined as
+$$
+\begin{align*}
+  \log(\frac{P(y=1|x)}{P(y=0|x)}) & = \log(exp(\vec{\beta}\bullet\vec{x}))\\
+  & = \vec{\beta}\bullet\vec{x}.
+\end{align*}
+$$
+Now, when the probability of class 1 is largest, the log-odds are positive. In the other case, where the probability of class 0 is largest, the log-odds are negative. This induces a simple prediction rule for LR: predict class 1 if $\vec{\beta}\bullet\vec{x}\geq0$, and class 0 otherwise.
+
+### Training Results
+We have trained a LR model with all eight variables as predictors. The estimated coefficients can be seen below. These coefficients tell us something about the in- or decrease of the odds when the variable in question is increased by one unit. For example, if `pregnant` increases by one, the odds of diabetes are multiplied by $e^{0.149184}\approx1.16$. It is interesting to note that both `pressure` and `insulin` have a negative association with the probability of diabetes: their coefficients are negative.
+```{r, include = FALSE}
+lr_mod <- glm(formula = diabetes ~.,
+              data = data_train %>% select(-Set, -Fold),
+              family = binomial)
+```
+```{r, echo = FALSE}
+lr_mod
+```
+To visualise the influence of a certain variable on the prediction probability, we took the following procedure.
+
+(1) To investigate the influence of one variable, we fix all other variables at their mean.
+(2) Create a sequence of 1000 points between the minimum and maximum observed value of the variable of interest.
+(3) Compute the prediction probability for every point: we obtain 1000 prediction probabilities.
+
+These plots are in accordance with the coefficient values we extracted from the model. Namely, we see see a decrease in probability when the values of predictors with negative coefficients increase, such as `pressure` and `insulin`, and an increase for the predictors that have a positive coefficient.
+We also see that predictors whose coefficient is high in absolute value, like `pedigree`, display a detectable change in probability inside a small range of values. And vice versa, predictors with a low absolute value coefficient, like `insulin`, need a larger increase in their value for a visible change in probability. This becomes apparent by looking at the x-axes.  
+One surprising thing about these plots is that we see a linear relationship between the probability and many predictors, when we would expect a sigmoid curve, similar to the one for `glucose`.
+
+```{r, include = FALSE}
+means <- data_train %>% 
+  select(-diabetes,-Set) %>% 
+  apply(MARGIN = 2, FUN = mean)
+
+plot_data <- list()
+for(i in 1:8){
+  x <- seq(min(data_train[,i]), max(data_train[,i]), length.out = 1000)
+  data <- matrix( means[-i] %>% rep(each = 1000), nrow = 1000)
+  data <- data.frame(x,data)
+  colnames(data) <- c(names(means[i]), names(means[-i]))
+  
+  y <- predict(lr_mod, newdata = data, type = "response")
+  
+  plot_data[[i]] <- data.frame(x,y)
+}
+
+plot_pregnant <- plot_data[[1]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "pregnant",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_glucose <- plot_data[[2]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "glucose",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_pressure <- plot_data[[3]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "pressure",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_triceps <- plot_data[[4]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "triceps",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_insulin <- plot_data[[5]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "insulin",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_mass <- plot_data[[6]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "mass",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_pedigree <- plot_data[[7]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "pedigree",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+
+plot_age <- plot_data[[8]] %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  labs(x = "age",
+       y = "probability") +
+  ylim(0,1) +
+  theme_minimal()
+```
+
+```{r, echo = FALSE}
+plot_grid(plot_pregnant, plot_glucose, plot_pressure,
+          plot_triceps, plot_insulin, plot_mass,
+          plot_pedigree, plot_age)
+```
+
+### Performance Results
+As the LR model is trained, we would like to measure its performance on the test data. The confusion matrix and the metrics that follow are stated below.
+```{r, echo = FALSE}
+lr_pred_probs <- predict(lr_mod, newdata = data_test, type = "response")
+lr_preds <- factor(lr_pred_probs > .5, labels = c("neg", "pos"))
+
+lr_confmat <- table(True = data_test$diabetes, Predicted = lr_preds)
+
+"Confusion matrix of the Logistic Regression."
+lr_confmat
+#calculate the most important metrics
+TN_lr <- lr_confmat[1, 1]
+FN_lr <- lr_confmat[2, 1]
+FP_lr <- lr_confmat[1, 2]
+TP_lr <- lr_confmat[2, 2]
+```
+
+```{r, echo = FALSE}
+"Metrics of the Logistic Regression."
+tibble(
+  ACC = (TP_lr + TN_lr) / sum(lr_confmat),
+  TPR = TP_lr / (TP_lr + FN_lr),
+  TNR = TN_lr / (TN_lr + FP_lr),
+  PPV = TP_lr / (TP_lr + FP_lr),
+  NPV = TN_lr / (TN_lr + FN_lr),
+  F1 = 2*((PPV*TPR)/(PPV+TPR))
+)
+```
+
+```{r, echo = FALSE}
+#ROC
+roc_lr <- roc(data_test$diabetes, lr_pred_probs)
+ggroc(roc_lr) + theme_minimal() + labs(title = "Logistic Regression")
+
+roc_lr
+```
+We see that our model classifies 0.7857143 of the unseen cases correctly. Looking more into the metrics we realize that out of the patients with diabetes, only 64% of them were correctly identified by our LR model. That is also shown by the F1-score which is quite lower that the accuracy. 
+Nevertheless, we see an area under the curve of 0.8463, which is impressive for such a simple model.
+
+
+# Simple model: Classification Tree
+### Approach
+The second model that we will consider is the Classification Tree (CT). The idea of such a tree is to recursively make splits based on the variables. Each split should make the observations within one of the resulting groups as similar as possible. The prediction rule of the tree is defined as "majority vote": within a leaf node, determine the class with maximal frequency among the observation within that node. If two or more classes have equal frequency, then choose uniformly random.  
+An important notion to make when considering CTs is the tree complexity. A CT has a high complexity when it makes a lot of splits, resulting in a large/deep tree with many leaf nodes that contain few observations. In that case, there is a high variance among the predictions. To prevent this, one can *prune* the tree: stop splitting when some condition is met. For instance, one could
+
+- stop splitting when the number of observations in a node is below some threshold $n_{min}$.
+- stop splitting when the complexity of the tree is larger then some threshold $cp$.
+
+Note that there are more ways to prune a tree (or complexity parameters to specify). A list of all complexity parameters and their default values can be found in the documentation of `rpart.control`. Note the default values $n_{min} = 20$ and $cp = 0.01$.  
+We will tune the *hyperparameters* $n_{min}$ and $cp$ by means of the 10-fold cross-validation as specified earlier. The metric of performance that we will use is the accuracy. For the possible values of the hyperparameters, we consider $56$ combinations:
+
+- $n_{min}\in\{50\cdot i|i=0,...,6\}$, as $n_{min}=0$ resembles the full grown tree and $n_{min}=300$ gives a tree with just one split (with all other hyperparameters equal to their default value).
+- $cp\in\{0.01\cdot i|i=0,...,7\}$, as $cp=0$ resembles the full grown tree and $cp=0.07$ gives a tree with just one split (with all other hyperparameters equal to their default value).
+
+### Training Results
+The results of the 10-fold cross-validation can be found below. For the implementation of the cross-validation, please read the .Rmd file. From the table we can read that the tree with $n_{min}=50$ and $cp = 0$ performs best: its mean accuracy over the folds equals approximately 0.76. With the hyperparameters set, we fit the CT again on the entire training dataset. The resulting tree can be found below the table.
+
+
+```{r, include = FALSE}
+nmins <- seq(0,300, by = 50)
+cps <- seq(0,0.07, by = 0.01)
+
+accuracies <- matrix(nrow = length(nmins), ncol = length(cps))
+colnames(accuracies) <- paste("cp =", as.character(cps))
+rownames(accuracies) <- paste("n_min =", as.character(nmins))
+
+for(i in 1:length(nmins)){
+  for(j in 1:length(cps)){
+    mean_acc <- 0
+    for(k in 1:10){
+      train <- data_train %>% filter(Fold != k) %>% select(-Set, -Fold)
+      val <- data_train %>% filter(Fold == k)
+      ctree <- rpart(diabetes ~.,
+                     data = train,
+                     control = rpart.control(minsplit = nmins[i], cp = cps[j]))
+      preds <- predict(ctree, newdata = val, type = "class")
+      acc <- sum(val$diabetes == preds)/nrow(val)
+      mean_acc <- mean_acc + acc/10
+    }
+    accuracies[i,j] <- mean_acc
+  }
+}
+```
+
+```{r, echo = FALSE}
+"Mean accuracy over 10 folds. The rows represent n_min, the columns represent cp."
+accuracies
+
+hyperparams <- which(accuracies == max(accuracies), arr.ind = TRUE)
+ctree_mod <- rpart(diabetes ~.,
+                   data = data_train %>% select(-Set, -Fold),
+                   control = rpart.control(minsplit = (hyperparams[1]-1)*50, cp = (hyperparams[2]-1)*0.01))
+rpart.plot(ctree_mod)
+```
+
+It is interesting to see that the CT does multiple splits on `glucose`. It seems that this variable contains a lot of helpful information. We see that idea confirmed by the computed variable importance, see the barplot below.  
+The second thing that we noted is the following. Although `insulin` is the second most important variable, the tree does not perform a split on that variable. We are unsure why this happens.  
+The last interesting notion is that the tree predicts an observation with `pregnant` greater than 7 and `glucose` between 96 and 124 as *diabetes*. We see that the leaf in which this observation ends up contains 8% of the training observations (about 49 observations). Among this 49 observations, there is a slight majority with class *diabetes*: 53% of the cases in this leaf node has diabetes. That is a small margin.
+
+```{r, echo = FALSE}
+data.frame(Variable = names(ctree_mod$variable.importance),
+           Importance = ctree_mod$variable.importance) %>% 
+  ggplot(aes(x = Variable, y = Importance, fill = Variable)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Variable importance for the classification tree.") +
+  theme_minimal()
+```
+
+### Performance results
+To be able to compare the performance of the CT with other models, we construct the confusion matrix of predictions on the test data. From this confusion matrix, we compute the metrics that we think are most important.
+
+```{r, echo = FALSE}
+ctree_preds <- predict(ctree_mod, newdata = data_test, type = "class")
+
+ctree_confmat <- table(True = data_test$diabetes, Predicted = ctree_preds)
+
+"Confusion matrix of the Classification Tree."
+ctree_confmat
+#calculate the most important metrics
+TN_tree <- ctree_confmat[1, 1]
+FN_tree <- ctree_confmat[2, 1]
+FP_tree <- ctree_confmat[1, 2]
+TP_tree <- ctree_confmat[2, 2]
+
+"Metrics of the Cassification Tree."
+tibble(
+  ACC = (TP_tree + TN_tree) / sum(ctree_confmat),
+  TPR = TP_tree / (TP_tree + FN_tree),
+  TNR = TN_tree / (TN_tree + FP_tree),
+  PPV = TP_tree / (TP_tree + FP_tree),
+  NPV = TN_tree / (TN_tree + FN_tree),
+  F1 = 2*((PPV*TPR)/(PPV+TPR))
+)
+#ROC
+ctree_preds_prob <- predict(ctree_mod, newdata = data_test)
+class(ctree_preds_prob)
+roc_ctree <- roc(data_test$diabetes, ctree_preds_prob[,2])
+ggroc(roc_ctree) + theme_minimal() + labs(title = "Classification tree")
+roc_ctree
+```
+
+We see that our model classifies 0.7662338 of the unseen cases correctly. We can again understand from looking at the rest of the metrics that the high accuracy is mostly because of the correct classification of healthy patients, which make up the majority of the cases.
+We see an area under the curve of 0.7554, which is quite less than the LR model.
+
+# Complex Model: Random Forest 
+### Approach
+The final model under investigation is the Random Forest (RF) model, which expands on the decision tree model by building several classification trees and leveraging "The wisdom of the crowd". The RF model further adds to the complexity of a single decision tree by de-correlating the predictor variables. This is done by sampling a random number of features in the assessment of each split, for each tree of the ensemble. The RF model was implemented by calling the `randomForest` function in the package bearing the same name. It should be noted that any parameters not mentioned were set to their default value. Hyperparameter search was not conducted in an exhaustive fashion to extract the global minimum. Instead, values around the default for each mentioned hyper-parameter were chosen where possible. The OOB-error averaged over all trees in a forest is used to compare forests and decide upon the hyperparameters. This measure of error is computed by predicting the generated model on the 'out-of'-bag' sample. This sample consists of observations that were left out during random sampling. It is possible to compare hyperparameters via this measure since each individual iteration was trained on its own out-of-bag sample. View .Rmd file for more information on the implementation. 
+
+Several hyperparameters were optimized in the creation of the model: 
+
+- $mtry$ : The number of predictor variables randomly sampled without replacement at the assessment of each split. It should be noted that since sampling without replacement
+occurs at the node level, it is still possible to split on the same attribute multiple times in a tree. By convention $mtry = \sqrt{p}$, with $p$ as the number of predictors, and normally one would take values around this default in the tuning process. However, since the number of predictor variables in our analysis is only 8, it is possible to assess splitting on 1 to 8 variables. 
+
+- $ntree$: The number of trees grown in the ensemble, for which the results will be averaged to return the final classification of the RF.The default value for $ntree$ passed in the 'train' function is 500. The values explored in determining the best value for $ntree$ ranged from 250-600 trees grown with an incremental increase of 50 trees. In addition we explored forests with many trees (800, 1000 or 2000). Hence, we consider 11 different values for $ntree$.
+
+- $maxnodes$: An important hyperparameter to fend-off against overfitting. This parameter places a constraint on the maximum number of leaf-nodes grown, for each tree in the ensemble. Note that $maxnodes$ has no default value and is  optimized by taking a range of values from 5 to 30, increased by steps of 5. Hence, we considered 6 different values for $maxnodes$.
+
+Having 8 different values for $mtry$, 11 different values of $ntree$ and 6 different values of $maxnodes$, we have 528 different combinations of hyperparameters to consider in our tuning approach.
+
+
+### Training results
+The results of the hyperparameter tuning are stated below. We see that the minimal OOB-error is reached by setting `mtry` = 3, `ntree` = 300 and `maxnodes` = 30. These hyperparameters resulted in an OOB-error of 0.226.
+```{R , echo = FALSE}
+mtrys <- 1:8
+ntrees <- c(250, 300, 350, 400, 450, 500, 550, 600, 800, 1000, 2000)
+maxnodess <- seq(5,30, length.out = 6)
+grid_size <- length(mtrys) * length(ntrees) * length(maxnodess)
+
+grid <- data.frame(mtry = rep(mtrys, each = 66),
+                   ntree = rep(ntrees, each = 8) %>% rep(6),
+                   maxnodes = rep(maxnodess, 88),
+                   oob_err = rep(NA,grid_size))
+
+set.seed(123)
+for(i in 1:nrow(grid)){
+  params <- grid[i,]
+  rf <- randomForest(diabetes ~.,
+                     data = data_train %>% select(-Set, -Fold),
+                     mtry = params$mtry,
+                     ntree = params$ntree,
+                     maxnodes = params$maxnodes)
+  grid[i,4] <- unname(rf$err.rate[params$ntree,1])
+}
+best <- grid[which.min(grid$oob_err),]
+grid %>% arrange(oob_err) %>% head()
+```
+To extract which variable is the most important, we construct a variable importance plot. Similar to the CT, `glucose` is considered to be the most important variable. Besides this similarity, there is also an interesting difference between the forest and the tree. The difference is in the variable `pedigree`: in the tree this was the least important variable, whereas the forest considers it to be the fifth important variable. This might be due to the idea behind forests: randomly consider columns to split on.
+
+```{r, echo = FALSE}
+set.seed(502)
+rf_mod <- randomForest(diabetes ~.,
+                        data = data_train %>% select(-Set, -Fold),
+                        mtry = best$mtry,
+                        ntree = best$ntree,
+                        maxnodes = best$maxnodes)
+
+data.frame(Variable = rownames(rf_mod$importance), 
+           Importance = unname(rf_mod$importance)) %>% 
+  ggplot(aes(x = Variable, y = Importance, fill = Variable)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Variable importance for the random forest.") +
+  theme_minimal()
+```
+
+### Performance Results
+The RF that had the best performance in training is used to make predictions on the test set. The confusion matrix of the forest is shown below. From this confusion matrix, we have computed the metrics previously discussed and plotted the ROC. 
+
+```{r, echo = FALSE, message = FALSE}
+rf_preds <- predict(rf_mod, newdata = data_test)
+rf_confmat <- table(True = data_test$diabetes, Predicted = rf_preds)
+
+"Confusion matrix of the Random Forest."
+rf_confmat
+
+#calculate the most important metrics
+TN_rf <- rf_confmat[1, 1]
+FN_rf <- rf_confmat[2, 1]
+FP_rf <- rf_confmat[1, 2]
+TP_rf <- rf_confmat[2, 2]
+
+tibble(
+  ACC = (TP_rf + TN_rf) / sum(rf_confmat),
+  TPR = TP_rf / (TP_rf + FN_rf),
+  TNR = TN_rf / (TN_rf + FP_rf),
+  PPV = TP_rf / (TP_rf + FP_rf),
+  NPV = TN_rf / (TN_rf + FN_rf),
+  F1 = 2*((PPV*TPR)/(PPV+TPR))
+)
+#ROC
+rf_preds_prob <- predict(rf_mod, newdata = data_test, type = "prob" )
+roc_rf <- roc(data_test$diabetes, rf_preds_prob[,2])
+ggroc(roc_rf) + theme_minimal() + labs(title = "Random Forest")
+
+roc_rf
+```
+Finally, our RF has an accuracy of 0.7857143, and 70% of the diseased patients were correctly classified, which is the highest we have seen. 
+The area under the curve for our RF is also the highest of all of our models. 
+We see that our RF outperforms its simplified equivalent and does slightly outperform the LR.
+
+# McNemar's test
+We have performed McNemar's test three times: one time for each pair of models.The test was implemented manually without the use of a dedicated R function. Please view the .Rmd for the implementation.
+
+```{r, include = FALSE}
+mcnemar <- function(preds1, preds2){
+  if(length(preds1) != length(preds2)){
+    stop("The number of predictions should be equal.")
+  }
+  
+  data <- data.frame(model1 = preds1,
+                     model2 = preds2)
+  b <- data %>% filter(model1 == "pos", model2 == "neg") %>% nrow()
+  c <- data %>% filter(model1 == "neg", model2 == "pos") %>% nrow()
+  
+  test_stat <- (b - c)^2/(b+c)
+  p_val <- pchisq(test_stat, df = 1)
+  
+  return(list(Test_statistic = test_stat, p_value = p_val))
+}
+```
+
+First, let us compare the simple models. The test set consisted of 154 cases and we see that there are 133 cases predicted equivalently. Hence, the difference in the predictions of the models is in the remaining 21 cases. Since this number is low, we predict that the difference in performance is not significant. 
+
+```{r, echo = FALSE}
+"Number of equal predictions of the LR and the CT"
+sum(lr_preds == ctree_preds)
+```
+
+We see our thoughts confirmed by the results of the McNemar test. As the p-value is way above the significance level of 5%, the difference in performance is indeed not considered to be significant.
+```{r, echo = FALSE}
+lr_vs_ctree <- mcnemar(lr_preds, ctree_preds)
+lr_vs_ctree
+```
+
+Secondly, we compare the performance of the CT and the RF. The number of equal predictions is equal to 141. Hence, the remaining 13 cases result in different predictions. Again, we suggest that there is no significant difference in the performance of the tree and the forest. This idea is confirmed by the McNemar test as well: the p-value is highly above the level of significance 5%.
+
+```{r, echo = FALSE}
+"Number of equal predictions of the CT and the RF"
+sum(ctree_preds == rf_preds)
+
+"Results of the McNemar test"
+ctree_vs_rf <- mcnemar(ctree_preds, rf_preds)
+ctree_vs_rf
+```
+
+Lastly, the LR and the RF are compared. The number of cases that were predicted equally by these two models is 136. Hence, the difference between the models is in the remaining 18 cases. Since this number is rather small, we see our suggestion of no significant difference confirmed by the McNemar test. The p-value is again greater than the level of significance 5%. 
+```{r, echo = FALSE}
+"Number of equal predictions of the LR and the RF"
+sum(lr_preds == rf_preds)
+
+"Results of the McNemar test"
+lr_vs_rf <- mcnemar(lr_preds, rf_preds)
+lr_vs_rf
+```
+
+# Conclusion
+The results of the three-fold McNemar's test shows that the difference in performance of the three models, using accuracy as a measure, is not significant. One would expect that the non-linear property of the tree algorithms would offer an advantage in such a diagnostic classification task when compared to the linear regression model. However, the simplicity of the LR model might have offered it the flexibility to generalize to the test set. We should note that the relatively small size of 154 cases might have been predominated by the effect of selecting few of our eight predictors. This effect might have seeped itself into all three models, resulting in the high correlation in classification between the compared algorithms. Case in point, blood glucose level was a variable which greatly impacted the probability of a classification. This is further corroborated by the seemingly linear relationship between blood glucose level and the prediction probability of the positive class in the LR model as well as with the multiple splits on glucose in the CT. In the case of the RF, de-correlating the variables did not seem to affect the classification performance relative to the LR or CT. The RF sampled only three predictors with each split, which reduces the chances of weighing 'glucose' in the computation of the optimal splits. This effect however might have been curbed by averaging the 300 trees grown. Furthermore, allowing 30 leaf-nodes per tree could increases the chances of splitting on glucose at some point, even when sampling only three predictors. All of these factors come together to result in a model which overfit the training data, while heavily weighing one predictor variable in the classification. Lastly, the class imbalance might have affected the performance when predicting the diseased category, which in a medical scenario is very undesirable. One would prefer a greater number of false positives than false negatives. The reasoning here is that we accept healthy individuals to be classified as diabetic, since further testing could dismiss this idea. However, classifying a diabetic individual as healthy could opt them out of seeking further testing that would indeed reveal a positive case. 
+
+###
+###
+###
