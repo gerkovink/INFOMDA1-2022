@@ -1,0 +1,192 @@
+---
+title: "Practical 1 - Data wrangling"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(ISLR)
+library(tidyverse)
+library(haven)
+library(readxl)
+
+set.seed(123)
+```
+
+```{r}
+object_1 <- 1:5
+object_2 <- 1L:5L
+object_3 <- "-123.456"
+object_4 <- as.numeric(object_2)
+object_5 <- letters[object_1]
+object_6 <- as.factor(rep(object_5, 2))
+object_7 <- c(1, 2, 3, "4", "5", "6")
+```
+
+2.
+```{r}
+object_7 <- as.numeric(object_7)
+```
+
+3.
+```{r}
+objects <- list(object_1, object_2, object_3, object_4, object_5, object_6, 
+                object_7)
+```
+
+
+4.
+```{r}
+dat <- data.frame(Var1 = object_1, Var2 = object_2, Var3 = object_5)
+dat
+```
+
+5.
+```{r}
+ncol(dat)
+nrow(dat)
+```
+
+
+6.
+```{r}
+apps<-read.csv("data/googleplaystore.csv")
+
+head(apps)
+```
+
+9. & 10.
+```{r}
+students <- read_xlsx("data/students.xlsx")
+head(students)
+summary(students)
+```
+11.
+```{r}
+filter(students, grade < 5.5)
+```
+
+12.
+```{r}
+filter(students, grade > 8, programme == "A")
+```
+13.
+```{r}
+arrange(students, programme, -grade)
+```
+
+14.
+```{r}
+select(students, student_number, programme)
+
+students <- mutate(students, pass = grade > 5.5)
+students
+```
+
+15.
+```{r}
+students_recoded <- mutate(students, 
+  programme = recode(programme, "A" = "Science", "B" = "Social Science")
+)
+
+students_dataset <-
+  read_xlsx("data/students.xlsx") %>% 
+  mutate(prog = recode(programme, "A" = "Science", "B" = "Social Science")) %>% 
+  filter(grade > 5.5) %>% 
+  arrange(programme, -grade) %>% 
+  select(student_number, prog, grade)
+students_dataset
+```
+
+
+16.
+```{r}
+popular_apps <-
+  read_csv("data/googleplaystore.csv") %>% 
+  mutate(Downloads = parse_number(Installs)) %>% 
+  filter(Downloads > 5e8) %>% # 5e8 is the same as 5 x 10^8
+  arrange(-Rating) %>% 
+  select(App, Rating, Reviews, Downloads, Category) %>% 
+  distinct(App, .keep_all = TRUE)
+popular_apps
+```
+
+
+```{r}
+students_dataset %>% 
+  summarise(
+    mean = mean(grade), 
+    variance = var(grade), 
+    min = min(grade), 
+    max = max(grade)
+  )
+```
+
+
+17.
+```{r}
+
+
+popular_apps %>% 
+  summarise(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating)
+  )
+```
+
+
+18.
+```{r}
+popular_apps %>% 
+  summarise(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+
+students_dataset %>% 
+  group_by(prog) %>% 
+  summarise(
+    mean = mean(grade), 
+    variance = var(grade), 
+    min = min(grade), 
+    max = max(grade)
+  )
+
+
+popular_apps %>%
+  group_by(Category) %>% 
+  summarise(
+    med = median(Rating),
+    min = min(Rating), 
+    max = max(Rating),
+    mad = mad(Rating)
+  )
+```
+
+
+20.
+```{r}
+apps %>% 
+  filter(Category == "GAME" | Category == "COMMUNICATION") %>% 
+  select(App, Category, Rating) %>% 
+  distinct(App, .keep_all = TRUE) %>% 
+  group_by(Category) %>% 
+  summarise(
+    mean = mean(Rating, na.rm = TRUE),
+    median = median(Rating, na.rm = TRUE)
+  )
+```
+
+
+
+

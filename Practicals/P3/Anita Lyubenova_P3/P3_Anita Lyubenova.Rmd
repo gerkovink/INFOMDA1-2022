@@ -1,0 +1,160 @@
+---
+title: "Practical 3 - Exploratory data analysis"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r results='hide'}
+library(tidyverse)
+library(magrittr)
+library(mice)
+library(DAAG)
+```
+
+```{r}
+head(boys)
+tail(boys)
+!is.unsorted(boys$age)
+
+summary(boys)
+
+boys %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Distribution of age")
+
+boys %>%
+  ggplot(aes(x = gen)) +
+  geom_bar(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Distribution of genital Tanner stage")
+
+md.pattern(boys)
+
+boys_mis <- boys %>%
+  mutate(gen_mis = is.na(gen),
+         phb_mis = is.na(phb),
+         tv_mis  = is.na(tv))
+
+boys_mis %>%
+  group_by(gen_mis) %>%
+  summarize(age = mean(age))
+
+boys_mis %>%
+  group_by(phb_mis) %>%
+  summarize(age = mean(age))
+
+boys_mis %>%
+  group_by(tv_mis) %>%
+  summarize(age = mean(age))
+
+boys_mis %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(fill = "dark green") + 
+  facet_wrap(~gen_mis) +
+  theme_minimal()
+
+
+boys_mis %>%
+  ggplot(aes(x = age, y = bmi)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Scatter plot of age versus bmi")
+
+
+boys_mis %>%
+  ggplot(aes(x = age, y = bmi, col = gen_mis)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_viridis_d() +
+  labs(title = "Scatter plot of age versus bmi")
+
+boys_mis %>%
+  ggplot(aes(x = reg, y = age)) +
+  geom_boxplot(fill = "dark green") +
+  theme_minimal() +
+  labs(title = "Boxplot of age by region.")
+
+boys_mis %>%
+  ggplot(aes(x = age, fill = gen)) +
+  geom_density(alpha = 0.7) +
+  theme_minimal() +
+  scale_fill_brewer() +
+  labs(title = "Density of age by genital Tanner stage")
+
+boys %>%
+  mutate(Age = cut(age, 0:22, labels = paste0(0:21, " years")),
+         Height = hgt - mean(hgt, na.rm = TRUE)) %>%
+  group_by(Age) %>%
+  summarize(Height = mean(Height, na.rm = TRUE)) %>%
+  mutate(color = ifelse(Height > 0, "Above average", "Below average")) %>%
+  ggplot(aes(x = Height, y = Age, fill = color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+elastic <- bind_rows("Elastic1" = elastic1,
+                     "Elastic2" = elastic2,
+                     .id = "Set")
+
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+
+elastic %>%
+  ggplot(aes(x = stretch, y = distance, col = Set)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Elastic bands data")
+
+
+fit1 <- lm(distance ~ stretch, elastic1)
+fit2 <- lm(distance ~ stretch, elastic2)
+
+fit1 %>% predict(se.fit = TRUE)
+fit2 %>% predict(se.fit = TRUE)
+
+fit1 %>% summary()
+fit2 %>% summary()
+
+fit1 %>% summary() %$% r.squared
+fit2 %>% summary() %$% r.squared
+
+fit1 %>% plot(which = 5)
+fit2 %>% plot(which = 5)
+
+fit1$residuals
+pred <- predict(fit1, newdata = elastic2)
+
+pred_dat <- 
+  data.frame(distance = pred, 
+             stretch  = elastic2$stretch) %>%
+  bind_rows(Predicted = .,
+            Observed  = elastic2, 
+            .id = "Predicted")
+
+pred_dat %>%
+  ggplot(aes(stretch, distance, col = Predicted)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Predicted and observed distances")
+
+cor(elastic2$distance, pred)
+
+```
+
