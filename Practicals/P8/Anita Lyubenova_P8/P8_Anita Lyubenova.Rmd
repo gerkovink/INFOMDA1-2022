@@ -1,0 +1,186 @@
+---
+title: "Practical 8 - Ensemble Methods"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(psych)
+library(caret)
+library(gbm)
+library(xgboost)
+library(data.table)
+library(ggforce)
+```
+
+```{r}
+set.seed(123)
+```
+
+```{r}
+df <- readRDS("data/train_disease.RDS")
+
+head(df)
+
+tail(df)
+
+df %>%
+  select(-c(Gender, Disease)) %>%
+  describeBy(df$Disease, fast = TRUE)
+
+df %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_boxplot(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+
+df %>%
+  select(-Gender) %>%
+  pivot_longer(where(is.numeric)) %>%
+  ggplot(aes(x = value, col = Disease, fill = Disease)) +
+  geom_density(alpha = 0.8) +
+  facet_wrap(~name, scales = "free") +
+  scale_color_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal()
+
+prop.table(table(df$Gender, df$Disease), margin = 1) %>%
+  as.data.frame %>%
+  select(Gender = Var1, Disease = Var2, `Relative Frequency` = Freq) %>%
+  ggplot(aes(y = `Relative Frequency`, x = Gender, col = Disease, fill = Disease)) +
+  geom_histogram(alpha = 0.8, stat = "identity", position = "dodge") +
+  scale_fill_brewer(palette = "Paired") +
+  scale_color_brewer(palette = "Paired") +
+  theme_minimal()
+
+cvcontrol <- trainControl(method = "repeatedcv", 
+                          number = 10,
+                          allowParallel = TRUE)
+
+bag_train <- train(Disease ~ .,
+                   data = df, 
+                   method = 'treebag',
+                   trControl = cvcontrol,
+                   importance = TRUE)
+
+bag_train %>%
+  varImp %>%
+  plot
+
+confusionMatrix(predict(bag_train, type = "raw"),
+                df$Disease)
+
+bag_train
+
+
+rf_train <- train(Disease ~ .,
+                  data = df, 
+                  method = 'rf',
+                  trControl = cvcontrol,
+                  importance = TRUE)
+
+rf_train %>%
+  varImp %>%
+  plot
+
+rf_train
+
+gbm_train <- train(Disease ~ .,
+                   data = df,
+                   method = "gbm",
+                   verbose = F,
+                   trControl = cvcontrol)
+
+summary(gbm_train)
+
+gbm_train
+
+
+library(devtools)
+source_url("https://github.com/pablo14/shap-values/blob/master/shap.R?raw=TRUE")
+
+train_x <- model.matrix(Disease ~ ., df)[,-1]
+train_y <- as.numeric(df$Disease) - 1
+xgboost_train <- xgboost(data = train_x,
+                         label = train_y, 
+                         max.depth = 10,
+                         eta = 1,
+                         nthread = 4,
+                         nrounds = 4,
+                         objective = "binary:logistic",
+                         verbose = 2)
+
+
+
+pred <- tibble(Disease = predict(xgboost_train, newdata = train_x)) %>%
+  mutate(Disease = factor(ifelse(Disease < 0.5, 1, 2),
+                          labels = c("Healthy", "Disease")))
+
+table(pred$Disease, df$Disease)
+
+shap_results <- shap.score.rank(xgboost_train,
+                                X_train = train_x,
+                                shap_approx = F)
+
+var_importance(shap_results)
+
+shap_long <- shap.prep(shap = shap_results,
+                       X_train = train_x)
+
+plot.shap.summary(shap_long)
+
+xgb.plot.shap(train_x, features = colnames(train_x), model = xgboost_train, n_col = 3)
+
+test <- readRDS("data/test_disease.RDS")
+
+bag_test <- predict(bag_train, newdata = test)
+rf_test  <- predict(rf_train, newdata = test)
+gbm_test <- predict(gbm_train, newdata = test)
+xgb_test <- predict(xgboost_train, newdata = model.matrix(Disease ~ ., test)[,-1]) %>%
+  factor(x = ifelse(. < 0.5, 1, 2), levels = c(1,2), labels = c("Healthy", "Disease"))
+
+list(bag_test, 
+     rf_test, 
+     gbm_test, 
+     xgb_test) %>%
+  map(~ confusionMatrix(.x, test$Disease))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

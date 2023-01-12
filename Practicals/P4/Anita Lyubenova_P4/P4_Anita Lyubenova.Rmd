@@ -1,0 +1,209 @@
+---
+title: "Practical 3 - Exploratory data analysis"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r results='hide'}
+library(ISLR)
+library(MASS)
+library(tidyverse)
+```
+
+
+
+```{r}
+some_formula <- outcome ~ predictor_1 + predictor_2
+class(some_formula)
+
+as.character(some_formula)
+
+lm_ses <- lm(formula = medv ~ lstat, data = Boston)
+
+coef(lm_ses)
+
+summary(lm_ses)
+
+y_pred <- predict(lm_ses)
+
+tibble(pred = y_pred, 
+       obs  = Boston$medv) %>% 
+  ggplot(aes(x = pred, y = obs)) +
+  geom_point() +
+  theme_minimal() +
+  geom_abline(slope = 1)
+
+pred_dat <- tibble(lstat = seq(0, 40, length.out = 1000))
+
+y_pred_new <- predict(lm_ses, newdata = pred_dat)
+
+p_scatter <- 
+  Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+
+p_scatter
+
+pred_dat <- pred_dat %>% mutate(medv = y_pred_new)
+
+p_scatter + geom_line(data = pred_dat)
+
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "confidence")
+
+head(y_pred_95)
+
+gg_pred <- tibble(
+  lstat = pred_dat$lstat,
+  medv  = y_pred_95[, 1],
+  lower = y_pred_95[, 2],
+  upper = y_pred_95[, 3]
+)
+
+gg_pred
+
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper), data = gg_pred, fill = "#00008b44") +
+  geom_point(colour = "#883321") + 
+  geom_line(data = pred_dat, colour = "#00008b", size = 1) +
+  theme_minimal() + 
+  labs(x    = "Proportion of low SES households",
+       y    = "Median house value",
+       title = "Boston house prices")
+
+y_pred_95 <- predict(lm_ses, newdata = pred_dat, interval = "prediction")
+
+
+# create the df
+gg_pred <- tibble(
+  lstat = pred_dat$lstat,
+  medv  = y_pred_95[, 1],
+  l95   = y_pred_95[, 2],
+  u95   = y_pred_95[, 3]
+)
+
+# Create the plot
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) + 
+  geom_ribbon(aes(ymin = l95, ymax = u95), data = gg_pred, fill = "#00008b44") +
+  geom_point(colour = "#883321") + 
+  geom_line(data = pred_dat, colour = "#00008b", size = 1) +
+  theme_minimal() + 
+  labs(x     = "Proportion of low SES households",
+       y     = "Median house value",
+       title = "Boston house prices")
+
+
+mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+
+mse(1:10, 10:1)
+
+mse(Boston$medv, predict(lm_ses))
+
+splits <- c(rep("train", 253), rep("validation", 152), rep("test", 101))
+
+boston_master <- Boston %>% mutate(splits = sample(splits))
+
+boston_train <- boston_master %>% filter(splits == "train")
+boston_valid <- boston_master %>% filter(splits == "validation")
+boston_test  <- boston_master %>% filter(splits == "test")
+
+model_1 <- lm(medv ~ lstat, data = boston_train)
+summary(model_1)
+
+model_1_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_1))
+
+
+model_1_mse_valid <- mse(y_true = boston_valid$medv, 
+                         y_pred = predict(model_1, newdata = boston_valid))
+
+model_2 <- lm(medv ~ lstat + age + tax, data = boston_train)
+model_2_mse_train <- mse(y_true = boston_train$medv, y_pred = predict(model_2))
+model_2_mse_valid <- mse(y_true = boston_valid$medv, 
+                         y_pred = predict(model_2, newdata = boston_valid))
+
+
+model_2_mse_test <- mse(y_true = boston_test$medv, 
+                        y_pred = predict(model_2, newdata = boston_test))
+
+# The estimate for the expected amount of error when predicting 
+# the median value of a not previously seen town in Boston when 
+# using this model is:
+
+sqrt(model_2_mse_test)
+
+
+mse <- function(y_true, y_pred) mean((y_true - y_pred)^2)
+
+cv_lm <- function(formula, dataset, k) {
+  # We can do some error checking before starting the function
+  stopifnot(is_formula(formula))       # formula must be a formula
+  stopifnot(is.data.frame(dataset))    # dataset must be data frame
+  stopifnot(is.integer(as.integer(k))) # k must be convertible to int
+  
+  # first, add a selection column to the dataset as before
+  n_samples  <- nrow(dataset)
+  select_vec <- rep(1:k, length.out = n_samples)
+  data_split <- dataset %>% mutate(folds = sample(select_vec))
+  
+  # initialise an output vector of k mse values, which we 
+  # will fill by using a _for loop_ going over each fold
+  mses <- rep(0, k)
+  
+  # start the for loop
+  for (i in 1:k) {
+    # split the data in train and validation set
+    data_train <- data_split %>% filter(folds != i)
+    data_valid <- data_split %>% filter(folds == i)
+    
+    # calculate the model on this data
+    model_i <- lm(formula = formula, data = data_train)
+    
+    # Extract the y column name from the formula
+    y_column_name <- as.character(formula)[2]
+    
+    # calculate the mean square error and assign it to mses
+    mses[i] <- mse(y_true = data_valid[[y_column_name]],
+                   y_pred = predict(model_i, newdata = data_valid))
+  }
+  
+  # now we have a vector of k mse values. All we need is to
+  # return the mean mse!
+  mean(mses)
+}
+
+cv_lm(formula = medv ~ lstat + age + tax, dataset = Boston, k = 9)
+
+cv_lm(formula = medv ~ lstat + I(lstat^2) + age + tax, dataset = Boston, k = 9)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

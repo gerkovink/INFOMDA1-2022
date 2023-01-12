@@ -1,0 +1,153 @@
+---
+title: "Practical 7 - Non-linear regression"
+author: "Anita Lyubenova"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r results='hide'}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+set.seed(123)
+```
+
+```{r}
+Boston %>% 
+  ggplot(aes(x = lstat, y = medv)) +
+  geom_point() +
+  theme_minimal()
+
+pred_plot <- function(model) {
+  # First create predictions for all values of lstat
+  x_pred <- seq(min(Boston$lstat), max(Boston$lstat), length.out = 500)
+  y_pred <- predict(model, newdata = tibble(lstat = x_pred))
+  
+  # Then create a ggplot object with a line based on those predictions
+  Boston %>%
+    ggplot(aes(x = lstat, y = medv)) +
+    geom_point() +
+    geom_line(data = tibble(lstat = x_pred, medv = y_pred), size = 1, col = "blue") +
+    theme_minimal()
+}
+
+
+lin_mod <- lm(medv ~ lstat, data = Boston)
+pred_plot(lin_mod)
+
+pn3_mod <- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = Boston)
+pred_plot(pn3_mod)
+
+poly(1:5, degree = 3, raw = TRUE)
+
+pn3_mod2 <- lm(medv ~ poly(lstat, 3, raw = TRUE), data = Boston)
+pred_plot(pn3_mod2)
+
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+pred_plot(pw2_mod)
+
+coef(pw2_mod)
+
+pw5_mod <- lm(medv ~ cut(lstat, 5), data = Boston)
+pred_plot(pw5_mod)
+
+table(cut(Boston$lstat, 5))
+
+brks <- c(-Inf, quantile(Boston$lstat, probs = c(.2, .4, .6, .8)), Inf)
+pwq_mod <- lm(medv ~ cut(lstat, brks), data = Boston)
+pred_plot(pwq_mod)
+
+table(cut(Boston$lstat, brks))
+
+piecewise_cubic_basis <- function(vec, knots = 1) {
+  # If there is only one section, just return the 3rd order polynomial
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+  
+  # cut the vector
+  cut_vec <- cut(vec, breaks = knots + 1)
+  
+  # initialise a matrix for the piecewise polynomial
+  out <- matrix(nrow = length(vec), ncol = 0)
+  
+  # loop over the levels of the cut vector
+  for (lvl in levels(cut_vec)) {
+    
+    # temporary vector
+    tmp <- vec
+    
+    # set all values to 0 except the current section
+    tmp[cut_vec != lvl] <- 0
+    
+    # add the polynomial based on this vector to the matrix
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+    
+  }
+  
+  # return the piecewise polynomial matrix
+  out
+  
+}
+
+
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 1), data = Boston)
+pc2_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 2), data = Boston)
+pc3_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 3), data = Boston)
+
+pred_plot(pc1_mod)
+
+pred_plot(pc2_mod)
+
+pred_plot(pc3_mod)
+
+boston_tpb <- Boston %>% as_tibble %>% select(medv, lstat)
+
+
+boston_tpb <- boston_tpb %>% mutate(lstat2 = lstat^2, lstat3 = lstat^3)
+
+boston_tpb <- boston_tpb %>% 
+  mutate(lstat_tpb = ifelse(lstat >  median(lstat), (lstat - median(lstat))^3, 0))
+
+tpb_mod <- lm(medv ~ lstat + lstat2 + lstat3 + lstat_tpb, data = boston_tpb)
+summary(tpb_mod)
+
+
+bs1_mod <- lm(medv ~ bs(lstat, knots = median(lstat)), data = Boston)
+summary(bs1_mod)
+
+
+mean(abs(predict(bs1_mod) - predict(tpb_mod)))
+
+
+
+pred_plot(bs1_mod)
+
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston)
+pred_plot(ns3_mod)
+
+library(cowplot)
+plot_grid(
+  pred_plot(lin_mod) + ggtitle("Linear regression"),
+  pred_plot(pn3_mod) + ggtitle("Polynomial"),
+  pred_plot(pw5_mod) + ggtitle("Piecewise constant"),
+  pred_plot(pc3_mod) + ggtitle("Piecewise cubic"),
+  pred_plot(bs1_mod) + ggtitle("Cubic spline"),
+  pred_plot(ns3_mod) + ggtitle("Natural spline")
+)
+
+
+
+
+
+
+```
+
