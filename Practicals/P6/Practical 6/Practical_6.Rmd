@@ -1,0 +1,281 @@
+```{r data}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+
+library(pROC)
+
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+set.seed(45)
+```
+
+```{r data2}
+treatment <- read_csv("data/cardiovascular_treatment.csv")
+
+treatment %>% mutate(severity = as.factor(severity),
+                     gender = as.factor(gender),
+                     dose = as.factor(dose), 
+                     response = as.factor(response))
+
+```
+
+
+
+```{r a1}
+lr_mod <- glm(response ~ ., "binomial", treatment)
+
+
+prob_lr <- predict(lr_mod, type = "response")
+pred_lr <- ifelse(prob_lr > .5, 1, 0)
+
+table(true = treatment$response, pred = pred_lr)
+```
+```{r a2}
+confm_lr <- table(true = treatment$response, pred = pred_lr)
+
+TP <-  confm_lr[2, 2]
+TN <-  confm_lr[1, 1]
+FP <-  confm_lr[1, 2]
+FN <-  confm_lr[2, 1]
+ 
+
+data.frame(
+ACC = (TP + TN) / sum(confm_lr),
+TPR = TP / (TP+FN),
+TNR = TN / (FP+TN),
+FPR = FP / (FP+TN),
+PPV = TP / (TP+FP),
+NPV = TN / (TN+FN))
+
+confm_lr
+
+
+```
+They're also both the same
+
+
+```{r a3}
+
+lda_mod <- lda(response ~ ., treatment)
+
+confm_lda <- table(true = treatment$response, pred = pred_lr)
+
+TP <-  confm_lda[2, 2]
+TN <-  confm_lda[1, 1]
+FP <-  confm_lda[1, 2]
+FN <-  confm_lda[2, 1]
+
+confm_lda
+
+#PPV
+TP / (TP + FP)
+
+#NPV
+TN / (TN+FN)
+
+# The performance is exactly the same
+
+```
+
+```{r a4}
+newtreatment <- read_csv("data/new_patients.csv") %>% 
+  mutate(severity = as.factor(severity),
+         gender   = as.factor(gender),
+         dose     = as.factor(dose),
+         response = as.factor(response))
+
+
+lr_mod_new <- glm(response ~ ., "binomial", newtreatment)
+
+
+prob_lr_new <- predict(lr_mod_new, type = "response")
+pred_lr_new <- ifelse(prob_lr_new > .5, 1, 0)
+
+table(true = newtreatment$response, pred = pred_lr_new)
+
+confm_lr_new <- table(true = newtreatment$response, pred = pred_lr_new)
+
+TP <-  confm_lr[2, 2]
+TN <-  confm_lr[1, 1]
+FP <-  confm_lr[1, 2]
+FN <-  confm_lr[2, 1]
+ 
+confm_lr_new
+
+data.frame(
+ACC = (TP + TN) / sum(confm_lr_new),
+TPR = TP / (TP+FN),
+TNR = TN / (FP+TN),
+FPR = FP / (FP+TN),
+PPV = TP / (TP+FP),
+NPV = TN / (TN+FN))
+
+
+```
+
+
+```{r a4b}
+
+lda_mod <- lda(response ~ ., newtreatment)
+
+confm_lda_new <- table(true = newtreatment$response, pred = pred_lr_new)
+
+TP <-  confm_lda[2, 2]
+TN <-  confm_lda[1, 1]
+FP <-  confm_lda[1, 2]
+FN <-  confm_lda[2, 1]
+
+confm_lda_new
+
+#PPV
+TP / (TP + FP)
+
+#NPV
+TN / (TN+FN)
+```
+
+```{r a5}
+brierscore <- mean((prob_lr_new -(as.numeric(newtreatment$response)-1))^2)
+
+#meansquared difference between the probability and the true class
+```
+
+
+```{r a5}
+
+lr1_mod <- glm(response ~ severity + age + bb_score, "binomial", treatment)
+
+prob_lr1 <- predict(lr1_mod, type = "response")
+
+lr2_mod <- glm(response ~ age + I(age^2) + gender + bb_score * prior_cvd * dose, "binomial", treatment)
+
+prob_lr2 <- predict(lr2_mod, type = "response")
+
+```
+
+```{r a6}
+roc_lr1 <- roc(treatment$response, prob_lr1)
+
+roc_lr2 <- roc(treatment$response, prob_lr2)
+
+ggroc(roc_lr1) + labs(title = "LR1")
+ggroc(roc_lr2) + labs(title = "LR2")
+```
+```{r a7}
+roc_lr1
+roc_lr2
+
+# o.5 is the minimum value, below that it is suggested that there is a bug in the data as it ranks a random positive example higher than a random negative example less than 50% of the time.
+
+ggplot(data.frame(x = c(1, 1, 0), y = c(0, 1, 1)),
+       aes(x, y)) + 
+  geom_line() +
+  xlim(1, 0) +
+  labs(x = "specificity", y = "sensitivity")
+
+
+
+```
+```{r a8a}
+
+# fit lda model, i.e. calculate model parameters
+lda_iris <- lda(Species ~ ., data = iris)
+
+# use those parameters to compute the first linear discriminant
+first_ld <- -c(as.matrix(iris[, -5]) %*% lda_iris$scaling[,1])
+
+# plot
+tibble(
+  ld = first_ld,
+  Species = iris$Species
+) %>% 
+  ggplot(aes(x = ld, fill = Species)) +
+  geom_histogram(binwidth = .5, position = "identity", alpha = .9) +
+  scale_fill_viridis_d(guide = ) +
+  theme_minimal() +
+  labs(
+    x = "Discriminant function",
+    y = "Frequency", 
+    main = "Fisher's linear discriminant function on Iris species"
+  ) + 
+  theme(legend.position = "top")
+
+
+```
+```{r a8}
+summary(iris)
+
+iris %>% 
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, colour = Species))+
+  geom_point() +
+  theme_minimal()
+
+iris %>% 
+  ggplot(aes(x = Sepal.Width, y = Petal.Width, colour = Species))+
+  geom_point() +
+  theme_minimal()
+
+iris
+
+```
+```{r a9}
+lda_iris_sepal <- lda(Species ~ Sepal.Length + Sepal.Width, data = iris)
+
+lda_iris_mat <- table(true = iris$Species, predicted = predict(lda_iris)$class)
+
+
+lda_iris_mat2 <- table(true = iris$Species, predicted = predict(lda_iris_sepal)$class)
+
+lda_iris_mat
+lda_iris_mat2
+
+#the lda_iris model perfors better
+```
+```{r a11}
+iris_tree_mod <- rpart(Species ~ ., data = iris, method = "class")
+
+rpart.plot(iris_tree_mod)
+# question 12: the answer is versicolor -> by following the paths
+```
+```{r a13}
+iris %>% 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, colour = Species))+
+  geom_point() +
+  geom_segment(aes(x = 2.5, xend = 2.5, y = -Inf, yend = Inf), colour = "black") +
+  geom_segment(aes(x = 2.5, xend = Inf, y = 1.7, yend = 1.7), colour = "black") +
+  theme_minimal()
+
+```
+
+```{r a14}
+
+iris_tree_full_mod <- rpart(Species ~ ., data = iris, control=rpart.control(minbucket = 1, cp = 0))
+
+rpart.plot(iris_tree_full_mod)
+
+```
+```{r a15}
+rf_mod <- randomForest(Species ~ ., data = iris)
+
+var_imp <- importance(rf_mod)
+tibble(
+  importance = c(var_imp), 
+  variable = rownames(var_imp)
+) %>% 
+  ggplot(aes(x = variable, y = importance, fill = variable)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    x = "Variable", 
+    y = "Mean reduction in Gini coefficient", 
+    title = "Variable importance"
+  )
+```
+
+
+
+
+
