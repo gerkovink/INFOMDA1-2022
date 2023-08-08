@@ -1,0 +1,155 @@
+```{r data}
+library(MASS)
+library(splines)
+library(ISLR)
+library(tidyverse)
+
+set.seed(45)
+
+```
+
+```{r}
+
+pred_plot <- function(model) {
+  x_pred <- seq(min(Boston$lstat), max(Boston$lstat), length.out = 500)
+  y_pred <- predict(model, newdata = tibble(lstat = x_pred))
+  Boston %>%
+    ggplot(aes(x = lstat, y = medv)) +
+    geom_point() +
+    geom_line(data = tibble(lstat = x_pred, medv = y_pred), size = 1, col = "blue") +
+    theme_minimal()
+}
+ 
+pred_plot
+```
+
+```{r}
+lin_mod <- lm(medv ~ lstat, data = Boston)
+
+
+```
+
+```{r}
+pn3_mod<- lm(medv ~ lstat + I(lstat^2) + I(lstat^3), data = Boston)
+
+pred_plot(pn3_mod)
+
+```
+
+```{r}
+poly(1:5, degree = 3, raw = TRUE)
+
+poly_mod<- lm(medv ~ poly(lstat, degree= 3, raw = TRUE), data = Boston)
+
+pred_plot(poly)
+```
+
+```{r 6}
+pw2_mod <- lm(medv ~ I(lstat <= median(lstat)), data = Boston)
+
+pred_plot(pw2_mod)
+
+coef(pw2_mod)
+#the predicted value for a low-lstat neighbourhood is 16.68 + 11.71 = 28.39
+```
+
+```{r 7}
+pw5_mod <- lm(medv ~ cut(lstat, 5), data = Boston)
+
+pred_plot(pw5_mod)
+
+```
+
+```{r 8}
+brks <- c(-Inf, quantile(Boston$lstat, probs = c(.2, .4, .6, .8)), Inf)
+pwq_mod <- lm(medv ~ cut(lstat, brks), data = Boston)
+pred_plot(pwq_mod)
+
+```
+
+```{r 9}
+
+# The function "piecewise_cubic_basis" is defined, and takes in two arguments: "vec" and "knots", with "knots" having a default value of 1.
+
+piecewise_cubic_basis <- function(vec, knots = 1) {
+#An if statement is used to check if the value of "knots" is equal to 0. If it is, the function returns the results of applying the "poly" function to the input vector "vec" with degree set to 3 and raw set to true.
+  if (knots == 0) return(poly(vec, degree = 3, raw = TRUE))
+
+# This function is used to divide the input vector into several intervals based on the specified breaks.
+  cut_vec <- cut(vec, breaks = knots + 1)
+
+ # make a matrix for the piecewise polynomial
+  out <- matrix(nrow = length(vec), ncol = 0)
+# A for loop is used to iterate over the levels of the "cut_vec" object, where "lvl" is the current level.
+  for (lvl in levels(cut_vec)) {
+    tmp <- vec
+    tmp[cut_vec != lvl] <- 0
+    out <- cbind(out, poly(tmp, degree = 3, raw = TRUE))
+  }
+# The output of "out" matrix is returned.  
+  out
+}
+
+```
+
+```{r 10}
+pc1_mod <- lm(medv ~ piecewise_cubic_basis(lstat, 1), data = Boston)
+pc2_mod <-  lm(medv ~ piecewise_cubic_basis(lstat, 2), data = Boston)
+pc3_mod <-  lm(medv ~ piecewise_cubic_basis(lstat, 3), data = Boston)
+
+pred_plot(pc1_mod)
+pred_plot(pc2_mod)
+pred_plot(pc3_mod)
+```
+
+```{r 11}
+boston_tpb <- Boston %>% as_tibble %>% select(medv, lstat)
+
+```
+
+```{r 12}
+boston_tpb <- boston_tpb %>% mutate(lstat2 = lstat^2, lstat3 = lstat^3)
+```
+
+```{r 13}
+
+boston_tpb <- boston_tpb %>% 
+  mutate(lstat_tpb = ifelse(lstat >  median(lstat), (lstat - median(lstat))^3, 0))
+
+```
+
+```{r 14}
+tpb_mod <- lm(medv ~ ., data = boston_tpb)
+summary(tpb_mod)
+
+# it has 5 predictors and 5 degrees of freedom
+```
+
+```{r 15}
+bs1_mod <- lm(medv ~ bs(lstat, median(lstat)), data = Boston)
+
+mean(abs(predict(bs1_mod) - predict(tpb_mod)))
+```
+
+```{r 16}
+pred_plot(bs1_mod)
+
+```
+
+```{r 17}
+ns3_mod <- lm(medv ~ ns(lstat, df = 3), data = Boston)
+
+pred_plot(ns3_mod)
+```
+
+```{r 18}
+library(cowplot)
+
+plot_grid(pred_plot(lin_mod) + ggtitle("Linear regression"),
+  pred_plot(pn3_mod) + ggtitle("Polynomial"),
+  pred_plot(pw5_mod) + ggtitle("Piecewise constant"),
+  pred_plot(pc3_mod) + ggtitle("Piecewise cubic"),
+  pred_plot(bs1_mod) + ggtitle("Cubic spline"),
+  pred_plot(ns3_mod) + ggtitle("Natural spline")
+)
+```
